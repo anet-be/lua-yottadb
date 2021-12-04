@@ -1,0 +1,41 @@
+# Overview
+
+Work-in-progress Lua bindings for YottaDB.
+
+# Developer Notes
+
+    # Install dependencies.
+    sudo apt-get install --no-install-recommends {libconfig,libelf,libgcrypt,libgpgme,libgpg-error,libssl}-dev
+    # Fetch YottaDB.
+    ydb_distrib="https://gitlab.com/api/v4/projects/7957109/repository/tags"
+    ydb_tmpdir='tmpdir'
+    mkdir $ydb_tmpdir
+    wget -P $ydb_tmpdir ${ydb_distrib} 2>&1 1>${ydb_tmpdir}/wget_latest.log
+    ydb_version=`sed 's/,/\n/g' ${ydb_tmpdir}/tags | grep -E "tag_name|.pro.tgz" | grep -B 1 ".pro.tgz" | grep "tag_name" | sort -r | head -1 | cut -d'"' -f6`
+    git clone --depth 1 --branch $ydb_version https://gitlab.com/YottaDB/DB/YDB.git
+    # Build YottaDB.
+    cd YDB
+    mkdir build
+    cd build/
+    cmake -D CMAKE_INSTALL_PREFIX:PATH=$PWD -D CMAKE_BUILD_TYPE=Debug ../
+    make -j4
+    make install
+    cd yottadb_r132
+    nano configure # replace 'root' with 'mitchell'
+    nano ydbinstall # replace 'root' with 'mitchell'
+    # Install YottaDB locally.
+    ./ydbinstall --installdir /home/mitchell/code/lua/lua-yottadb/YDB/install --utf8 default --verbose --group mitchell --user mitchell --overwrite-existing
+    # may need to fix yottadb.pc
+    cd ../..
+    chmod ug+w install/ydb_env_set # change '. $ydb_tmp_env/out' to 'source $ydb_tmp_env/out'
+    sudo chown root.root install/gtmssecshr
+    sudo chmod a+s install/gtmsecshr
+
+    # Setup env.
+    source YDB/install/ydb_env_set
+
+    # Run tests with gdb.
+    ydb_gbldir=/tmp/lydb.gld gdb lua5.3
+    b set
+    y
+    r -llydb tests/test.lua
