@@ -40,6 +40,7 @@ local function setup()
 end
 
 local has_simple_data = false
+-- Inserts SIMPLE_DATA into the YDB database for the test that calls this function.
 local function simple_data()
   for i = 1, #SIMPLE_DATA do
     local key, value = SIMPLE_DATA[i][1], SIMPLE_DATA[i][2]
@@ -60,11 +61,12 @@ local function teardown()
   os.remove(gbldat)
 end
 
+-- Skips the given test when running the test suite.
 local function skip(f)
   if #arg > 0 then return end -- do not skip manually specified tests
-  for k, v in pairs(_G) do
-    if v == f then _G['skip_' .. k], _G[k] = v, nil end
-  end
+  local skip = {}
+  for k, v in pairs(_G) do if v == f then skip[#skip + 1] = k end end
+  for _, name in ipairs(skip) do _G['skip_' .. name], _G[name] = v, nil end
 end
 
 local function validate_varname_inputs(f)
