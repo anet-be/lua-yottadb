@@ -1081,6 +1081,72 @@ function test_zwr2str()
   assert(e.code ~= _yottadb.YDB_OK)
 end
 
+function test_key()
+  simple_data()
+  local yottadb = require('yottadb')
+
+  local key = yottadb.key('^test1')
+  assert(key.varname == '^test1')
+  assert(#key.subsarray == 0)
+  assert(key.name == '^test1')
+  assert(key.value == 'test1value')
+
+  key = yottadb.key('^test2'):sub('sub1')
+  assert(key.varname == '^test2')
+  assert(#key.subsarray == 1)
+  assert(key.subsarray[1] == 'sub1')
+  assert(key.name == 'sub1')
+  assert(key.value == 'test2value')
+  assert(key == yottadb.key('^test2'):sub('sub1'))
+
+  key = yottadb.key('test3local'):sub('sub1')
+  key.value = 'smoketest3local'
+  assert(yottadb.key('test3local'):sub('sub1').value == 'smoketest3local')
+
+  key = yottadb.key('^myglobal'):sub('sub1'):sub('sub2')
+  key = yottadb.key('sub3', key)
+  assert(tostring(key) == '^myglobal("sub1","sub2","sub3")')
+
+  key = yottadb.key('^nonexistent')
+  assert(key.value == nil)
+  key = yottadb.key('nonexistent')
+  assert(key.value == nil)
+
+  key = yottadb.key('localincr')
+  assert(key:incr() == '1')
+  assert(key:incr(-1) == '0')
+  assert(key:incr('2') == '2')
+  assert(key:incr('testeroni') == '2') -- unchanged
+  local ok, e = pcall(key.incr, key, true)
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  key = yottadb.key('testeroni'):sub('sub1')
+  local key_copy = yottadb.key('testeroni'):sub('sub1')
+  local key2 = yottadb.key('testeroni'):sub('sub2')
+  assert(key == key_copy)
+  assert(key ~= key2)
+
+  key = yottadb.key('iadd')
+  key = key + 1
+  assert(tonumber(key.value) == 1)
+  key = key - 1
+  assert(tonumber(key.value) == 0)
+  key = key + '2'
+  assert(tonumber(key.value) == 2)
+  key = key - '3'
+  assert(tonumber(key.value) == -1)
+  key = key + 0.5
+  assert(tonumber(key.value) == -0.5)
+  key = key - -1.5
+  assert(tonumber(key.value) == 1)
+  key = key + 'testeroni'
+  assert(tonumber(key.value) == 1) -- unchanged
+  ok, e = pcall(function() key = key + {} end)
+  assert(not ok)
+  assert(e:find('string expected'))
+end
+
 -- Run tests.
 print('Starting test suite.')
 local tests = {}
