@@ -11,11 +11,7 @@ local M = {}
 -- @return numeric YDB error code or nil
 -- @name get_error_code
 function M.get_error_code(message)
-  if message:find('^%d+,') then
-    -- YDB error codes are negative, but reported as positive in error messages.
-    return -tonumber(message:match('^%d+'))
-  end
-  return tonumber(message)
+  return tonumber(message:match('^YDB Error: (%-?%d+):'))
 end
 
 local key = {}

@@ -46,13 +46,12 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
 
 // Raises a Lua error with most recent error message reported by YDB.
 static int error(lua_State *L, int code) {
-  if (code != YDB_LOCK_TIMEOUT && code != YDB_TP_ROLLBACK && code != YDB_ERR_TPTIMEOUT && code != YDB_ERR_TPCALLBACKINVRETVAL && code != YDB_ERR_NODEEND) {
-    char message[2048]; // docs say 2048 is a safe size
-    ydb_zstatus(message, 2048);
-    lua_pushstring(L, message);
-  } else {
-    lua_pushfstring(L, "%d", code);
-  }
+  ydb_buffer_t message;
+  YDB_MALLOC_BUFFER(&message, 2048); // docs say 2048 is a safe size
+  *message.buf_addr = '\0';
+  ydb_message(code, &message);
+  lua_pushfstring(L, "YDB Error: %d: %s", code, message.buf_addr);
+  YDB_FREE_BUFFER(&message);
   lua_error(L);
 }
 
