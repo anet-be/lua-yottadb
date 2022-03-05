@@ -44,14 +44,15 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
   ASSERT_STACK_TOP(L);
 }
 
-// Raises a Lua error with error object {code = X, message = Y} where X is the YDB error code
-// and Y is the message reported by YDB.
+// Raises a Lua error with most recent error message reported by YDB.
 static int error(lua_State *L, int code) {
-  lua_newtable(L);
-  lua_pushnumber(L, code), lua_setfield(L, -2, "code");
-  char message[2048]; // docs say 2048 is a safe size
-  ydb_zstatus(message, 2048);
-  lua_pushstring(L, message), lua_setfield(L, -2, "message");
+  if (code != YDB_LOCK_TIMEOUT && code != YDB_TP_ROLLBACK && code != YDB_ERR_TPTIMEOUT && code != YDB_ERR_TPCALLBACKINVRETVAL && code != YDB_ERR_NODEEND) {
+    char message[2048]; // docs say 2048 is a safe size
+    ydb_zstatus(message, 2048);
+    lua_pushstring(L, message);
+  } else {
+    lua_pushfstring(L, "%d", code);
+  }
   lua_error(L);
 }
 
@@ -202,10 +203,10 @@ static int tpfn(void *tpfnparm) {
   }
   int status;
   if (lua_pcall(L, n - 1, 1, 0) != LUA_OK) {
-    if (lua_type(L, -1) == LUA_TTABLE) {
-      status = (lua_getfield(L, -1, "code"), lua_tointeger(L, -1));
-      lua_pop(L, 1);
-    } else {
+    const char *s = lua_tostring(L, -1);
+    char *endp;
+    status = strtol(s, &endp, 10);
+    if (endp == s) {
       lua_pushvalue(L, -1), lua_setfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error");
       status = LUA_YDB_ERR;
     }

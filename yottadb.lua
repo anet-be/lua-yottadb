@@ -4,6 +4,20 @@ local _yottadb = require('_yottadb')
 
 local M = {}
 
+---
+-- Returns the YDB error code (if any) for the given error message.
+-- Returns `nil` if the message is not a YDB error.
+-- @param message String error message.
+-- @return numeric YDB error code or nil
+-- @name get_error_code
+function M.get_error_code(message)
+  if message:find('^%d+,') then
+    -- YDB error codes are negative, but reported as positive in error messages.
+    return -tonumber(message:match('^%d+'))
+  end
+  return tonumber(message)
+end
+
 local key = {}
 
 function M.key(varname, subsarray)
@@ -58,7 +72,8 @@ function key:__index(k)
   elseif k == 'value' then
     local ok, value = pcall(_yottadb.get, self.varname, self.subsarray)
     if ok then return value end
-    if value.code == _yottadb.YDB_ERR_GVUNDEF or value.code == _yottadb.YDB_ERR_LVUNDEF then return nil end
+    local code = M.get_error_code(value)
+    if code == _yottadb.YDB_ERR_GVUNDEF or code == _yottadb.YDB_ERR_LVUNDEF then return nil end
     error(value) -- propagate
   else
     return rawget(self, k) or key[k]
