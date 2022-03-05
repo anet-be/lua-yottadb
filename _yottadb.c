@@ -439,6 +439,7 @@ typedef struct ydb_key_t {
 // timeout: optional timeout in seconds to wait for lock
 static int lock(lua_State *L) {
   int num_keys = 0;
+  if (lua_gettop(L) > 0) luaL_argcheck(L, lua_istable(L, 1), 1, "table of keys expected");
   if (lua_istable(L, 1)) {
     num_keys = luaL_len(L, 1);
     for (int i = 1; i <= num_keys; i++) {
@@ -509,6 +510,9 @@ static int lock(lua_State *L) {
 static int delete_excl(lua_State *L) {
   luaL_argcheck(L, lua_istable(L, 1), 1, "table of varnames expected");
   int namecount = luaL_len(L, 1);
+  for (int i = 0; i < namecount; i++) {
+    luaL_argcheck(L, lua_geti(L, 1, i + 1) == LUA_TSTRING, 1, "varnames must be strings"), lua_pop(L, 1);
+  }
   ydb_buffer_t varnames[namecount];
   for (int i = 0; i < namecount; i++) {
     lua_geti(L, 1, i + 1);
@@ -646,6 +650,16 @@ static const const_Reg yottadb_constants[] = {
   {"YDB_ERR_TPTIMEOUT", YDB_ERR_TPTIMEOUT},
   {"YDB_ERR_NODEEND", YDB_ERR_NODEEND},
   {"YDB_ERR_NUMOFLOW", YDB_ERR_NUMOFLOW},
+  {"YDB_MAX_IDENT", YDB_MAX_IDENT},
+  {"YDB_ERR_VARNAME2LONG", YDB_ERR_VARNAME2LONG},
+  {"YDB_ERR_INVVARNAME", YDB_ERR_INVVARNAME},
+  {"YDB_MAX_SUBS", YDB_MAX_SUBS},
+  {"YDB_ERR_MAXNRSUBSCRIPTS", YDB_ERR_MAXNRSUBSCRIPTS},
+  {"YDB_ERR_LOCKSUB2LONG", YDB_ERR_LOCKSUB2LONG},
+  {"YDB_MAX_NAMES", YDB_MAX_NAMES},
+  {"YDB_ERR_NAMECOUNT2HI", YDB_ERR_NAMECOUNT2HI},
+  {"YDB_ERR_INVSTRLEN", YDB_ERR_INVSTRLEN},
+  {"YDB_ERR_TPCALLBACKINVRETVAL", YDB_ERR_TPCALLBACKINVRETVAL},
   {NULL, 0}
 };
 

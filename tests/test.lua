@@ -60,11 +60,63 @@ local function teardown()
   os.remove(gbldat)
 end
 
-function skip(f)
+local function skip(f)
   if #arg > 0 then return end -- do not skip manually specified tests
   for k, v in pairs(_G) do
     if v == f then _G['skip_' .. k], _G[k] = v, nil end
   end
+end
+
+local function validate_varname_inputs(f)
+  local ok, e = pcall(f, true)
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT + 1))
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_VARNAME2LONG)
+
+  if f == _yottadb.get then
+    _yottadb.set(string.rep('b', _yottadb.YDB_MAX_IDENT), 'val') -- avoid YDB_ERR_LVUNDEF
+  end
+  ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT))
+  assert(ok or e.code == _yottadb.YDB_ERR_NODEEND)
+
+  ok, e = pcall(f, '\x80')
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_INVVARNAME)
+end
+
+local function validate_subsarray_inputs(f)
+  --local ok, e = pcall(f, 'test', 'subsarray')
+  --assert(not ok)
+  --assert(e:find('table of subs expected'))
+
+  local subs = {}
+  for i = 1, _yottadb.YDB_MAX_SUBS do subs[i] = 'b' end
+  if f == _yottadb.get then _yottadb.set('test', subs, 'val') end -- avoid YDB_ERR_LVUNDEF
+  ok, e = pcall(f, 'test', subs)
+  assert(ok or e.code == _yottadb.YDB_ERR_NODEEND)
+
+  subs[#subs + 1] = 'b'
+  ok, e = pcall(f, 'test', subs)
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_MAXNRSUBSCRIPTS)
+
+  ok, e = pcall(f, 'test', {true})
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  if f == _yottadb.get then
+    _yottadb.set('test', {string.rep('b', _yottadb.YDB_MAX_STR)}, 'val') -- avoid YDB_ERR_LVUNDEF
+  end
+  ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR)})
+  -- Note: subscripts for lock functions are shorter, so ignore those errors.
+  assert(ok or e.code == _yottadb.YDB_ERR_NODEEND or e.code == _yottadb.YDB_ERR_LOCKSUB2LONG)
+
+  --ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR + 1)})
+  --assert(not ok)
+  --assert(e.code == _yottadb.YDB_ERR_INVSTRLEN)
 end
 
 function test_get()
@@ -92,6 +144,10 @@ function test_get()
   -- Handling of large values.
   _yottadb.set('testlong', string.rep('a', _yottadb.YDB_MAX_STR))
   assert(_yottadb.get('testlong') == string.rep('a', _yottadb.YDB_MAX_STR))
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.get)
+  validate_subsarray_inputs(_yottadb.get)
 end
 
 function test_set()
@@ -103,6 +159,21 @@ function test_set()
   -- Unicode/i18n value.
   _yottadb.set('testchinese', '你好世界')
   assert(_yottadb.get('testchinese') == '你好世界')
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.set)
+  validate_subsarray_inputs(_yottadb.set)
+
+  local ok, e = pcall(_yottadb.set, 'test', {'b'}, true)
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  ok, e = pcall(_yottadb.set, 'test', {'b'}, string.rep('b', _yottadb.YDB_MAX_STR))
+  assert(ok)
+
+  ok, e = pcall(_yottadb.set, 'test', {'b'}, string.rep('b', _yottadb.YDB_MAX_STR + 1))
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_INVSTRLEN)
 end
 
 function test_delete()
@@ -139,6 +210,14 @@ function test_delete()
   ok, e = pcall(_yottadb.get, 'test11', {'sub1'})
   assert(not ok)
   assert(e.code == _yottadb.YDB_ERR_LVUNDEF)
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.delete)
+  validate_subsarray_inputs(_yottadb.delete)
+
+  ok, e = pcall(_yottadb.delete, 'test', {'b'}, true)
+  assert(not ok)
+  assert(e:find('number expected'))
 end
 
 function test_data()
@@ -150,6 +229,10 @@ function test_data()
   assert(_yottadb.data('^test3') == _yottadb.YDB_DATA_VALUE_DESC)
   assert(_yottadb.data('^test3', {'sub1'}) == _yottadb.YDB_DATA_VALUE_DESC)
   assert(_yottadb.data('^test3', {'sub1', 'sub2'}) == _yottadb.YDB_DATA_VALUE_NODESC)
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.data)
+  validate_subsarray_inputs(_yottadb.data)
 end
 
 -- Note: for some reason, this test must be run first to pass.
@@ -221,8 +304,86 @@ function test__lock_incr()
   local ok, e = pcall(_yottadb.lock, {{"^test1"}})
   assert(not ok)
   assert(e.code == _yottadb.YDB_LOCK_TIMEOUT)
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.lock_incr)
+  validate_subsarray_inputs(_yottadb.lock_incr)
+
+  ok, e = pcall(_yottadb.lock_incr, 'test', {'b'}, true)
+  assert(not ok)
+  assert(e:find('number expected'))
 end
 --skip(test__lock_incr) -- for speed
+
+function test_lock()
+  -- Validate inputs.
+  local ok, e = pcall(_yottadb.lock, {{'\x80'}})
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_INVVARNAME)
+
+  ok, e = pcall(_yottadb.lock, true)
+  assert(not ok)
+  assert(e:find('table of keys expected'))
+
+  --local keys = {}
+  --for i = 1, _yottadb.YDB_LOCK_MAX_KEYS do keys[i] = {'test' .. i} end
+  --ok, e = pcall(_yottadb.lock, keys)
+  --assert(ok)
+
+  --keys[#keys + 1] = {'test' .. (#keys + 1)}
+  --ok, e = pcall(_yottadb.lock, keys)
+  --assert(not ok)
+  --assert(e.code == 0)
+
+  ok, e = pcall(_yottadb.lock, {true})
+  assert(not ok)
+  assert(e:find('table of keys expected'))
+
+  ok, e = pcall(_yottadb.lock, {{}})
+  assert(not ok)
+  assert(e:find('varnames must be strings'))
+
+  --ok, e = pcall(_yottadb.lock, {{'varname', {'subscript'}, 'extra'}})
+  --assert(not ok)
+  --assert(e:find('too many'))
+
+  ok, e = pcall(_yottadb.lock, {{string.rep('a', _yottadb.YDB_MAX_IDENT)}})
+  assert(ok)
+
+  ok, e = pcall(_yottadb.lock, {{string.rep('a', _yottadb.YDB_MAX_IDENT + 1)}})
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_VARNAME2LONG)
+
+  ok, e = pcall(_yottadb.lock, {{'test', true}})
+  assert(not ok)
+  assert(e:find('subs must be tables'))
+
+  local subsarray = {}
+  for i = 1, _yottadb.YDB_MAX_SUBS do subsarray[i] = 'test' .. i end
+  ok, e = pcall(_yottadb.lock, {{'test', subsarray}})
+  assert(ok)
+
+  subsarray[#subsarray + 1] = 'test' .. (#subsarray + 1)
+  ok, e = pcall(_yottadb.lock, {{'test', subsarray}})
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_MAXNRSUBSCRIPTS)
+
+  ok, e = pcall(_yottadb.lock, {{'test', {true}}})
+  assert(not ok)
+  assert(e:find('subs must be strings'))
+
+  ok, e = pcall(_yottadb.lock, {{'test', {string.rep('a', _yottadb.YDB_MAX_STR)}}})
+  assert(not ok)
+
+  ok, e = pcall(_yottadb.lock, {{'test', {string.rep('a', _yottadb.YDB_MAX_STR + 1)}}})
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_INVSTRLEN)
+end
+
+local function test_lock_decr()
+  validate_varname_inputs(_yottadb.lock_decr)
+  validate_subsarray_inputs(_yottadb.lock_decr)
+end
 
 local function tp_set(varname, subs, value, retval)
   _yottadb.set(varname, subs, value)
@@ -525,6 +686,40 @@ function test_tp_reset_some()
   _yottadb.delete('resetvalue')
 end
 
+function test_tp()
+  -- Validate inputs.
+  local ok, e = pcall(_yottadb.tp, true)
+  assert(not ok)
+  assert(e:find('function expected'))
+
+  ok, e = pcall(_yottadb.tp, function() return true end)
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_TPCALLBACKINVRETVAL)
+
+  local function simple_transaction() return _yottadb.YDB_OK end
+
+  ok, e = pcall(_yottadb.tp, {true}, simple_transaction)
+  assert(not ok)
+  assert(e:find('varnames must be strings'))
+
+  local varnames = {}
+  for i = 1, _yottadb.YDB_MAX_NAMES do varnames[i] = 'test' .. i end
+  ok, e = pcall(_yottadb.tp, varnames, simple_transaction)
+  assert(ok)
+
+  varnames[#varnames + 1] = 'test' .. (#varnames + 1)
+  ok, e = pcall(_yottadb.tp, varnames, simple_transaction)
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_NAMECOUNT2HI)
+
+  ok, e = pcall(_yottadb.tp, {string.rep('b', _yottadb.YDB_MAX_IDENT)}, simple_transaction)
+  assert(ok)
+
+  ok, e = pcall(_yottadb.tp, {string.rep('b', _yottadb.YDB_MAX_IDENT + 1)}, simple_transaction)
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_VARNAME2LONG)
+end
+
 function test_subscript_next()
   simple_data()
   assert(_yottadb.subscript_next('^%') == '^Test5')
@@ -558,6 +753,10 @@ function test_subscript_next()
   ok, e = pcall(_yottadb.subscript_next, '^test7', {'sub4\x80'})
   assert(not ok)
   assert(e.code == _yottadb.YDB_ERR_NODEEND)
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.subscript_next)
+  validate_subsarray_inputs(_yottadb.subscript_next)
 end
 
 function test_subscript_next_long()
@@ -595,6 +794,10 @@ function test_subscript_previous()
   local ok, e = pcall(_yottadb.subscript_previous, '^test4', {'sub3', 'subsub1'})
   assert(not ok)
   assert(e.code == _yottadb.YDB_ERR_NODEEND)
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.subscript_previous)
+  validate_subsarray_inputs(_yottadb.subscript_previous)
 end
 
 function test_subscript_previous_long()
@@ -616,6 +819,10 @@ function test_node_next()
   assert(#node == 2)
   assert(node[1] == 'sub6')
   assert(node[2] == 'subsub6')
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.node_next)
+  validate_subsarray_inputs(_yottadb.node_next)
 end
 
 function test_node_next_many_subscripts()
@@ -644,6 +851,10 @@ function test_node_previous()
   node = _yottadb.node_previous('^test3', {'sub1', 'sub2'})
   assert(#node == 1)
   assert(node[1] == 'sub1')
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.node_previous)
+  validate_subsarray_inputs(_yottadb.node_previous)
 end
 
 function test_node_previous_long_subscripts()
@@ -669,6 +880,33 @@ function test_delete_excl()
   assert(not ok)
   assert(e.code == _yottadb.YDB_ERR_LVUNDEF)
   assert(_yottadb.get('testdeleteexclexception', {'sub1'}) == '3')
+
+  -- Validate inputs.
+  local ok, e = pcall(_yottadb.delete_excl, true)
+  assert(not ok)
+  assert(e:find('table of varnames expected'))
+
+  ok, e = pcall(_yottadb.delete_excl, {true})
+  assert(not ok)
+  print(e)
+  assert(e:find('varnames must be strings'))
+
+  local names = {}
+  for i = 1, _yottadb.YDB_MAX_NAMES do names[i] = 'test' .. i end
+  ok, e = pcall(_yottadb.delete_excl, names)
+  assert(ok)
+
+  names[#names + 1] = 'test' .. (#names + 1)
+  ok, e = pcall(_yottadb.delete_excl, names)
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_NAMECOUNT2HI)
+
+  ok, e = pcall(_yottadb.delete_excl, {string.rep('b', _yottadb.YDB_MAX_IDENT)})
+  assert(ok)
+
+  ok, e = pcall(_yottadb.delete_excl, {string.rep('b', _yottadb.YDB_MAX_IDENT + 1)})
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_VARNAME2LONG)
 end
 
 -- Initial, increment, result.
@@ -767,6 +1005,18 @@ function test_incr()
       teardown()
     end
   end
+
+  -- Validate inputs.
+  validate_varname_inputs(_yottadb.incr)
+  validate_subsarray_inputs(_yottadb.incr)
+
+  local ok, e = pcall(_yottadb.incr, 'test', {'b'}, true)
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  ok, e = pcall(_yottadb.incr, 'test', {'b'}, string.rep('1', _yottadb.YDB_MAX_STR + 1))
+  assert(not ok)
+  assert(e.code == _yottadb.YDB_ERR_NUMOFLOW)
 end
 
 function test_incr_errors()
@@ -796,6 +1046,18 @@ function test_str2zwr()
     print('test_str2zwr:', input, output1, output2)
     assert(_yottadb.str2zwr(input) == (os.getenv('ydb_chset') == 'UTF-8' and output2 or output1))
   end
+
+  -- Validate inputs.
+  local ok, e = pcall(_yottadb.str2zwr, true)
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  ok, e = pcall(_yottadb.str2zwr, string.rep('b', _yottadb.YDB_MAX_STR - 2)) -- return is quoted
+  assert(ok)
+
+  ok, e = pcall(_yottadb.str2zwr, string.rep('b', _yottadb.YDB_MAX_STR - 1))
+  assert(not ok)
+  assert(e.code ~= _yottadb.YDB_OK)
 end
 
 function test_zwr2str()
@@ -805,6 +1067,18 @@ function test_zwr2str()
     print('test_zwr2str:', input, output)
     assert(_yottadb.zwr2str(input) == output)
   end
+
+  -- Validate inputs.
+  local ok, e = pcall(_yottadb.zwr2str, true)
+  assert(not ok)
+  assert(e:find('string expected'))
+
+  ok, e = pcall(_yottadb.zwr2str, string.rep('b', _yottadb.YDB_MAX_STR))
+  assert(ok)
+
+  ok, e = pcall(_yottadb.zwr2str, string.rep('b', _yottadb.YDB_MAX_STR + 1))
+  assert(ok)
+  assert(e.code ~= _yottadb.YDB_OK)
 end
 
 -- Run tests.
