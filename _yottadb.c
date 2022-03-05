@@ -384,7 +384,7 @@ static int node_next(lua_State *L) {
 // varname: string
 // subs: optional table of subscripts
 // return: table of subscripts for the node
-static int node_prev(lua_State *L) {
+static int node_previous(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
   get_key_info(L, &varname, &subs_used);
@@ -615,7 +615,7 @@ static const luaL_Reg yottadb_functions[] = {
   {"subscript_next", subscript_next},
   {"subscript_previous", subscript_previous},
   {"node_next", node_next},
-  {"node_prev", node_prev},
+  {"node_previous", node_previous},
   {"lock", lock},
   {"delete_excl", delete_excl},
   {"incr", incr},
