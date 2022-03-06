@@ -44,13 +44,15 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
   ASSERT_STACK_TOP(L);
 }
 
+static const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
+
 // Raises a Lua error with most recent error message reported by YDB.
 static int error(lua_State *L, int code) {
   ydb_buffer_t message;
-  YDB_MALLOC_BUFFER(&message, 2048); // docs say 2048 is a safe size
-  *message.buf_addr = '\0';
+  YDB_MALLOC_BUFFER(&message, 2049); // docs say 2048 is a safe size
   ydb_message(code, &message);
-  lua_pushfstring(L, "YDB Error: %d: %s", code, message.buf_addr);
+  message.buf_addr[message.len_used] = '\0';
+  lua_pushfstring(L, "%s%d: %s", LUA_YDB_ERR_PREFIX, code, message.buf_addr);
   YDB_FREE_BUFFER(&message);
   lua_error(L);
 }
@@ -131,7 +133,7 @@ static int delete(lua_State *L) {
 // return: _yottadb.YDB_DATA_UNDEF (no value or subtree) or
 //   _yottadb.YDB_DATA_VALUE_NODESC (value, no subtree) or
 //   _yottadb.YDB_DATA_NOVALUE_DESC (no value, subtree) or
-//   _yottadb.YDB_DATA_VALUE_NODESC (value and subtree)
+//   _yottadb.YDB_DATA_VALUE_DESC (value and subtree)
 static int data(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -203,6 +205,9 @@ static int tpfn(void *tpfnparm) {
   int status;
   if (lua_pcall(L, n - 1, 1, 0) != LUA_OK) {
     const char *s = lua_tostring(L, -1);
+    if (strstr(s, LUA_YDB_ERR_PREFIX)) {
+      s += strlen(LUA_YDB_ERR_PREFIX);
+    }
     char *endp;
     status = strtol(s, &endp, 10);
     if (endp == s) {
