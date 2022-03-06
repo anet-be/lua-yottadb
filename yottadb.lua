@@ -232,7 +232,7 @@ end
 -- @param reverse Optional flag that indicates whether to iterate backwards. The default value is
 --   `false`.
 -- @return iterator
--- @usage for node_subscripts in M.nodes(varname, subsarray) do ... end
+-- @usage for node_subscripts in yottadb.nodes(varname, subsarray) do ... end
 -- @name nodes
 function M.nodes(varname, subsarray, reverse)
   assert_type(varname, 'string', 1)
@@ -336,7 +336,7 @@ end
 -- @param reverse Optional flag that indicates whether to iterate backwards. The default value is
 --   `false`.
 -- @return iterator
--- @usage for name in M.subscripts(varname, subsarray) do ... end
+-- @usage for name in yottadb.subscripts(varname, subsarray) do ... end
 -- @name subscripts
 function M.subscripts(varname, subsarray, reverse)
   assert_type(varname, 'string', 1)

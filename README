@@ -1,8 +1,23 @@
 # Overview
 
-Work-in-progress Lua bindings for YottaDB.
+Lua bindings for YottaDB.
 
-# Developer Notes
+Build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install*
+is the path to your installation of YottaDB that contains its header and shared library files.
+
+Copy the newly built *_yottadb.so* and *yottadb.lua* files to somewhere in your Lua path. Then
+you can use `local yottadb = require('yottadb')` from your Lua scripts to communicate with YottaDB.
+
+Please see the documentation in *docs/* as well as the `test_module_*` tests in *tests/test.lua*
+for examples of how to use these Lua bindings. These bindings were developed with reference to
+YottaDB's Python bindings.
+
+## Developer Notes
+
+The following notes build and install a local copy of YottaDB to *YDB/install* in the current
+working directory. The only admin privileges required are to change ownership of *gtmsecshr*
+to root, which YottaDB requires to run. (Normally, YottaDB's install script requires admin
+privileges.)
 
     # Install dependencies.
     sudo apt-get install --no-install-recommends {libconfig,libelf,libgcrypt,libgpgme,libgpg-error,libssl}-dev
@@ -28,7 +43,7 @@ Work-in-progress Lua bindings for YottaDB.
     # may need to fix yottadb.pc
     cd ../..
     chmod ug+w install/ydb_env_set # change '. $ydb_tmp_env/out' to 'source $ydb_tmp_env/out'
-    sudo chown root.root install/gtmssecshr
+    sudo chown root.root install/gtmsecshr
     sudo chmod a+s install/gtmsecshr
 
     # Setup env.
