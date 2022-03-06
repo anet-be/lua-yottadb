@@ -1,14 +1,14 @@
 --
 
-local _yottadb = require('_yottadb')
-
 local M = {}
 
-for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
+--[[ This comment is for LuaDoc.
+---
+-- Lua-bindings for YottaDB.
+module('yottadb')]]
 
--- Object that represents a YDB key.
--- @class table
-local key = {}
+local _yottadb = require('_yottadb')
+for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
 
 -- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
@@ -233,6 +233,7 @@ end
 --   `false`.
 -- @return iterator
 -- @usage for node_subscripts in M.nodes(varname, subsarray) do ... end
+-- @name nodes
 function M.nodes(varname, subsarray, reverse)
   assert_type(varname, 'string', 1)
   if reverse == nil then
@@ -303,6 +304,7 @@ function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts.
 -- @return string subscript name or nil
+-- @name subscript_next
 function M.subscript_next(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
@@ -317,6 +319,7 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts.
 -- @return string subscript name or nil
+-- @name subscript_previous
 function M.subscript_previous(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
@@ -334,6 +337,7 @@ end
 --   `false`.
 -- @return iterator
 -- @usage for name in M.subscripts(varname, subsarray) do ... end
+-- @name subscripts
 function M.subscripts(varname, subsarray, reverse)
   assert_type(varname, 'string', 1)
   if reverse == nil then
@@ -365,6 +369,7 @@ end
 --   yottadb.YDB_OK, restarted if the function returns yottadb.YDB_TP_RESTART (f will be called
 --   again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
 -- @param ... Optional arguments to pass to f.
+-- @name tp
 function M.tp(id, varnames, f, ...)
   if not varnames and not f then
     assert_type(id, 'function', 1)
@@ -388,6 +393,7 @@ end
 --   called again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
 -- @return transaction-safe function.
 -- @see tp
+-- @name transaction
 function M.transaction(f)
   return function(...)
     local args = {...}
