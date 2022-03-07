@@ -316,7 +316,7 @@ function test__lock_incr()
   assert(not ok)
   assert(e:find('number expected'))
 end
-skip(test__lock_incr) -- for speed
+--skip(test__lock_incr) -- for speed
 
 function test_lock()
   -- Validate inputs.
