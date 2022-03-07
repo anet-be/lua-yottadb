@@ -64,6 +64,11 @@ function M.get_error_code(message)
   return tonumber(assert_type(message, 'string', 1):match('YDB Error: (%-?%d+):'))
 end
 
+-- Object that represents a YDB key.
+-- @class table
+-- @name
+local key = {}
+
 ---
 -- Returns information about a variable/node (except intrinsic variables).
 -- @param varname String variable name.
@@ -256,13 +261,13 @@ function M.nodes(varname, subsarray, reverse)
           return subsarray_copy
         end
       else
-        if status > 0 then subsarray_copy[#subsarray_copy + 1] = '' end
+        if status > 0 then table.insert(subsarray_copy, '') end
         while not initialized do
           local sub_prev = M.subscript_previous(varname, subsarray_copy)
           if sub_prev then
             table.insert(subsarray_copy, #subsarray_copy, sub_prev)
           else
-            subsarray_copy[#subsarray_copy] = nil -- pop
+            table.remove(subsarray_copy) -- pop
             initialized = true
           end
         end
@@ -418,5 +423,169 @@ end
 -- @return string
 -- @name zwr2str
 function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
+
+---
+-- Creates and returns a new YottaDB key object.
+-- This key has all of the linked methods below as well as the following fields:
+--   * name (this key's subscript or variable name)
+--   * value (this key's value in the YottaDB database)
+--   * data (see data())
+--   * has_value (whether or not this key has a value)
+--   * has_tree (whether or not this key has a subtree)
+-- Calling the key with a string value returns a subscripted key.
+-- @param varname String variable name.
+-- @param subsarray Used internally. Do not set manually. Call the returned key instead to
+--   use subscripts.
+-- @return key
+-- @name key
+-- @usage yottadb.key('varname')
+-- @usage yottadb.key('varname')('subscript')
+-- @see delete_node
+-- @see delete_tree
+-- @see get
+-- @see incr
+-- @see lock
+-- @see lock_incr
+-- @see lock_decr
+-- @see set
+-- @see subscript_next
+-- @see subscript_previous
+-- @see subscripts
+function M.key(varname, subsarray)
+  assert_type(varname, 'string', 1)
+  assert_type(subsarray, 'table/nil', 2)
+  assert_strings(subsarray, 'subsarray', 2)
+
+  local subsarray_copy = {}
+  if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = sub end end
+
+  -- For use with subscript_next() and subscript_previous().
+  local next_subsarray = {}
+  for i = 1, #subsarray_copy - 1 do next_subsarray[i] = subsarray_copy[i] end
+  table.insert(next_subsarray, '')
+
+  return setmetatable({
+    varname = varname,
+    subsarray = subsarray_copy,
+    _next_subsarray = next_subsarray
+  }, key)
+end
+
+-- @see get
+function key:get() return M.get(self.varname, self.subsarray) end
+
+-- @see set
+function key:set(value) M.set(self.varname, self.subsarray, assert_type(value, 'string/number', 1)) end
+
+-- @see delete_node
+function key:delete_node() M.delete_node(self.varname, self.subsarray) end
+
+-- @see delete_tree
+function key:delete_tree() M.delete_tree(self.varname, self.subsarray_copy) end
+
+-- @see incr
+function key:incr(value)
+  return M.incr(self.varname, self.subsarray, assert_type(value, 'string/number/nil', 1))
+end
+
+-- @see lock
+function key:lock(timeout) return M.lock({self}, assert_type('number/nil', 1)) end
+
+-- @see lock_incr
+function key:lock_incr(timeout) return M.lock_incr(self.varname, self.subsarray, assert_type(timeout, 'number/nil', 1)) end
+
+-- @see lock_decr
+function key:lock_decr() return M.lock_decr(self.varname, self.subsarray) end
+
+-- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
+--   or subscript_previous()
+-- @see subscript_next
+function key:subscript_next(reset)
+  if reset then self._next_subsarray[#self._next_subsarray] = '' end
+  local next_sub = M.subscript_next(self.varname, self._next_subsarray)
+  if next_sub then self._next_subsarray[#self._next_subsarray] = next_sub end
+  return next_sub
+end
+
+-- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
+--   or subscript_previous()
+-- @see subscript_previous
+function key:subscript_previous(reset)
+  if reset then self._next_subsarray[#self._next_subsarray] = '' end
+  local prev_sub = M.subscript_previous(self.varname, self._next_subsarray)
+  if prev_sub then self._next_subsarray[#self._next_subsarray] = prev_sub end
+  return prev_sub
+end
+
+-- @see subscripts
+function key:subscripts(reverse)
+  return M.subscripts(self.varname, self.subsarray, reverse)
+end
+
+-- Creates and returns a new key with the given subscript.
+-- @param name String subscript name.
+function key:__call(name)
+  local new_key = M.key(self.varname, self.subsarray)
+  table.insert(new_key.subsarray, assert_type(name, 'string', 1))
+  return new_key
+end
+
+-- Returns whether this key is equal to the given object.
+-- This is value equality, not reference equality.
+function key:__eq(other)
+  if getmetatable(self) ~= getmetatable(other) then return false end
+  if self.varname ~= other.varname then return false end
+  if #self.subsarray ~= #other.subsarray then return false end
+  for i, value in ipairs(self.subsarray) do
+    if value ~= other.subsarray[i] then return false end
+  end
+  return true
+end
+
+-- @see incr
+function key:__add(value)
+  self:incr(assert_type(value, 'string/number', 1))
+  return self
+end
+
+-- @see incr
+function key:__sub(value)
+  self:incr(-assert_type(value, 'string/number', 1))
+  return self
+end
+
+-- Returns the string representation of this key.
+function key:__tostring()
+  local subs = {}
+  for i, name in ipairs(self.subsarray) do subs[i] = M.str2zwr(name) end
+  local subscripts = table.concat(subs, ',')
+  return subscripts ~= '' and string.format('%s(%s)', self.varname, subscripts) or self.varname
+end
+
+-- Returns various key properties.
+function key:__index(k)
+  if k == 'name' then
+    return self.subsarray[#self.subsarray] or self.varname
+  elseif k == 'value' then
+    return self:get()
+  elseif k == 'data' then
+    return M.data(self.varname, self.subsarray)
+  elseif k == 'has_value' then
+    return self.data == _yottadb.YDB_DATA_VALUE_NODESC or self.data == _yottadb.YDB_DATA_VALUE_DESC
+  elseif k == 'has_tree' then
+    return self.data == _yottadb.YDB_DATA_NOVALUE_DESC or self.data == _yottadb.YDB_DATA_VALUE_DESC
+  end
+  return rawget(self, k) or key[k]
+end
+
+-- Sets key properties if possible.
+function key:__newindex(k, v)
+  if k == 'value' then
+    self:set(v)
+  else
+    assert(k ~= 'name' and k ~= 'data' and k ~= 'has_value' and k ~= 'has_tree', 'read-only property')
+    rawset(self, k, v)
+  end
+end
 
 return M

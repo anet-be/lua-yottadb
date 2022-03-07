@@ -103,6 +103,11 @@
     </tr>
 
     <tr>
+    <td class="name" nowrap><a href="#key">key</a>&nbsp;(varname, subsarray)</td>
+    <td class="summary">Creates and returns a new YottaDB key object.</td>
+    </tr>
+
+    <tr>
     <td class="name" nowrap><a href="#lock">lock</a>&nbsp;(keys, timeout)</td>
     <td class="summary">Releases all locks held and attempts to acquire all requested locks, waiting if requested.</td>
     </tr>
@@ -375,6 +380,97 @@ Increments the numeric value of a variable/node.<br/>Raises an error on overflow
 the new value
 
 
+
+</dd>
+
+
+
+
+<dt><a name="key"></a><strong>key</strong>&nbsp;(varname, subsarray)</dt>
+<dd>
+Creates and returns a new YottaDB key object.<br/>This key has all of the linked methods below as well as the following fields:<br/>&nbsp&nbsp* name (this key's subscript or variable name)<br/>&nbsp&nbsp* value (this key's value in the YottaDB database)<br/>&nbsp&nbsp* data (see data())<br/>&nbsp&nbsp* has_value (whether or not this key has a value)<br/>&nbsp&nbsp* has_tree (whether or not this key has a subtree)<br/>Calling the key with a string value returns a subscripted key.
+
+
+<h3>Parameters</h3>
+<ul>
+	
+	<li>
+	  varname: String variable name.
+	</li>
+	
+	<li>
+	  subsarray: Used internally. Do not set manually. Call the returned key instead to<br/>&nbsp&nbspuse subscripts.
+	</li>
+	
+</ul>
+
+
+
+
+<h3>Usage</h3>
+<ul>
+	
+	<li>yottadb.key('varname')
+	
+	<li>yottadb.key('varname')('subscript')
+	
+</ul>
+
+
+
+<h3>Return value:</h3>
+key
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<li><a href="../modules/yottadb.html#delete_node">
+		delete_node
+	</a>
+	
+	<li><a href="../modules/yottadb.html#delete_tree">
+		delete_tree
+	</a>
+	
+	<li><a href="../modules/yottadb.html#get">
+		get
+	</a>
+	
+	<li><a href="../modules/yottadb.html#incr">
+		incr
+	</a>
+	
+	<li><a href="../modules/yottadb.html#lock">
+		lock
+	</a>
+	
+	<li><a href="../modules/yottadb.html#lock_incr">
+		lock_incr
+	</a>
+	
+	<li><a href="../modules/yottadb.html#lock_decr">
+		lock_decr
+	</a>
+	
+	<li><a href="../modules/yottadb.html#set">
+		set
+	</a>
+	
+	<li><a href="../modules/yottadb.html#subscript_next">
+		subscript_next
+	</a>
+	
+	<li><a href="../modules/yottadb.html#subscript_previous">
+		subscript_previous
+	</a>
+	
+	<li><a href="../modules/yottadb.html#subscripts">
+		subscripts
+	</a>
+	
+</ul>
 
 </dd>
 

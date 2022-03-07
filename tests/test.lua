@@ -1393,11 +1393,245 @@ function test_module_all_nodes()
   end
 end
 
+function test_module_lock()
+  -- Validate inputs.
+  local ok, e = pcall(yottadb.lock, true)
+  assert(not ok)
+  assert(e:find('table/number/nil expected'))
+
+  ok, e = pcall(yottadb.lock, {true})
+  assert(not ok)
+  assert(e:find('table expected'))
+end
+
+function test_key()
+  simple_data()
+
+  local key = yottadb.key('^test1')
+  assert(key.varname == '^test1')
+  assert(#key.subsarray == 0)
+  assert(key.name == '^test1')
+  assert(key.value == 'test1value')
+
+  key = yottadb.key('^test2')('sub1')
+  assert(key.varname == '^test2')
+  assert(#key.subsarray == 1)
+  assert(key.subsarray[1] == 'sub1')
+  assert(key.name == 'sub1')
+  assert(key.value == 'test2value')
+  assert(key == yottadb.key('^test2')('sub1'))
+
+  key = yottadb.key('test3local')('sub1')
+  key.value = 'smoketest3local'
+  assert(rawget(key, 'value') == nil)
+  assert(key.value == 'smoketest3local')
+
+  --key = yottadb.key('^myglobal')('sub1')('sub2')
+  --key = yottadb.key('sub3', key)
+  --assert(tostring(key) == '^myglobal("sub1","sub2","sub3")')
+
+  key = yottadb.key('^nonexistent')
+  assert(key.value == nil)
+  key = yottadb.key('nonexistent')
+  assert(key.value == nil)
+
+  key = yottadb.key('localincr')
+  assert(key:incr() == '1')
+  assert(key:incr(-1) == '0')
+  assert(key:incr('2') == '2')
+  assert(key:incr('testeroni') == '2') -- unchanged
+  local ok, e = pcall(key.incr, key, true)
+  assert(not ok)
+  assert(e:find('string/number/nil expected'))
+
+  key = yottadb.key('testeroni')('sub1')
+  local key_copy = yottadb.key('testeroni')('sub1')
+  local key2 = yottadb.key('testeroni')('sub2')
+  assert(key == key_copy)
+  assert(key ~= key2)
+
+  key = yottadb.key('iadd')
+  key = key + 1
+  assert(tonumber(key.value) == 1)
+  key = key - 1
+  assert(tonumber(key.value) == 0)
+  key = key + '2'
+  assert(tonumber(key.value) == 2)
+  key = key - '3'
+  assert(tonumber(key.value) == -1)
+  key = key + 0.5
+  assert(tonumber(key.value) == -0.5)
+  key = key - -1.5
+  assert(tonumber(key.value) == 1)
+  key = key + 'testeroni'
+  assert(tonumber(key.value) == 1) -- unchanged
+  ok, e = pcall(function() key = key + {} end)
+  assert(not ok)
+  assert(e:find('string/number expected'))
+
+  -- Validate input.
+  ok, e = pcall(yottadb.key, 1)
+  assert(not ok)
+  assert(e:find('string expected'))
+  ok, e = pcall(yottadb.key, '^test1', 'not a key object')
+  assert(not ok)
+  assert(e:find('table/nil expected'))
+  -- TODO: error subscripting ISV
+  -- TODO: error creating more than YDB_MAX_SUBS subscripts
+
+  -- String output.
+  assert(tostring(yottadb.key('test')) == 'test')
+  assert(tostring(yottadb.key('test')('sub1')) == 'test("sub1")')
+  assert(tostring(yottadb.key('test')('sub1')('sub2')) == 'test("sub1","sub2")')
+
+  -- Get values.
+  assert(yottadb.key('^test1').value == 'test1value')
+  assert(yottadb.key('^test2')('sub1').value == 'test2value')
+  assert(yottadb.key('^test3').value == 'test3value1')
+  assert(yottadb.key('^test3')('sub1').value == 'test3value2')
+  assert(yottadb.key('^test3')('sub1')('sub2').value == 'test3value3')
+
+  -- Subsarray.
+  assert(#yottadb.key('^test3').subsarray == 0)
+  local subsarray = yottadb.key('^test3')('sub1').subsarray
+  assert(#subsarray == 1)
+  assert(subsarray[1] == 'sub1')
+  local subsarray = yottadb.key('^test3')('sub1')('sub2').subsarray
+  assert(#subsarray == 2)
+  assert(subsarray[1] == 'sub1')
+  assert(subsarray[2] == 'sub2')
+  for subscript in yottadb.key('^test3'):subscripts() do end -- confirm no error
+
+  -- Varname.
+  assert(yottadb.key('^test3').varname == '^test3')
+  assert(yottadb.key('^test3')('sub1').varname == '^test3')
+  assert(yottadb.key('^test3')('sub1')('sub2').varname == '^test3')
+
+  -- Data.
+  assert(yottadb.key('nodata').data == yottadb.YDB_DATA_UNDEF)
+  assert(yottadb.key('^test1').data == yottadb.YDB_DATA_VALUE_NODESC)
+  assert(yottadb.key('^test2').data == yottadb.YDB_DATA_NOVALUE_DESC)
+  assert(yottadb.key('^test2')('sub1').data == yottadb.YDB_DATA_VALUE_NODESC)
+  assert(yottadb.key('^test3').data == yottadb.YDB_DATA_VALUE_DESC)
+  assert(yottadb.key('^test3')('sub1').data == yottadb.YDB_DATA_VALUE_DESC)
+  assert(yottadb.key('^test3')('sub1')('sub2').data == yottadb.YDB_DATA_VALUE_NODESC)
+  ok, e = pcall(function() return yottadb.key('\x80').data end)
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
+
+  -- Has value.
+  assert(not yottadb.key('nodata').has_value)
+  assert(yottadb.key('^test1').has_value)
+  assert(not yottadb.key('^test2').has_value)
+  assert(yottadb.key('^test2')('sub1').has_value)
+  assert(yottadb.key('^test3').has_value)
+  assert(yottadb.key('^test3')('sub1').has_value)
+  assert(yottadb.key('^test3')('sub1')('sub2').has_value)
+  ok, e = pcall(function() return yottadb.key('\x80').has_value end)
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
+
+  -- Has tree.
+  assert(not yottadb.key('nodata').has_tree)
+  assert(not yottadb.key('^test1').has_tree)
+  assert(yottadb.key('^test2').has_tree)
+  assert(not yottadb.key('^test2')('sub1').has_tree)
+  assert(yottadb.key('^test3').has_tree)
+  assert(yottadb.key('^test3')('sub1').has_tree)
+  assert(not yottadb.key('^test3')('sub1')('sub2').has_tree)
+  ok, e = pcall(function() return yottadb.key('\x80').has_tree end)
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
+
+  -- Subscript next.
+  key = yottadb.key('testsubsnext')
+  key('sub1').value = '1'
+  key('sub2').value = '2'
+  key('sub3').value = '3'
+  key('sub4').value = '4'
+  assert(key:subscript_next() == 'sub1')
+  assert(key:subscript_next() == 'sub2')
+  assert(key:subscript_next() == 'sub3')
+  assert(key:subscript_next() == 'sub4')
+  assert(not key:subscript_next())
+  assert(key:subscript_next(true) == 'sub1')
+  assert(key:subscript_next() == 'sub2')
+  assert(key:subscript_next() == 'sub3')
+  assert(key:subscript_next() == 'sub4')
+  ok, e = pcall(function() yottadb.key('^\x80'):subscript_next() end)
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
+
+  -- Subscript previous.
+  key = yottadb.key('testsubsprev')
+  key('sub1').value = '1'
+  key('sub2').value = '2'
+  key('sub3').value = '3'
+  key('sub4').value = '4'
+  assert(key:subscript_previous() == 'sub4')
+  assert(key:subscript_previous() == 'sub3')
+  assert(key:subscript_next() == 'sub4') -- confirm capatibility with subscript_next
+  assert(key:subscript_previous() == 'sub3')
+  assert(key:subscript_previous() == 'sub2')
+  assert(key:subscript_previous() == 'sub1')
+  assert(not key:subscript_previous())
+  assert(key:subscript_previous(true) == 'sub4')
+  assert(key:subscript_previous() == 'sub3')
+  assert(key:subscript_previous() == 'sub2')
+  assert(key:subscript_previous() == 'sub1')
+  ok, e = pcall(function() yottadb.key('^\x80'):subscript_previous() end)
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
+end
+
+function test_key_set()
+  local testkey = yottadb.key('test4')
+  testkey.value = 'test4value'
+  assert(testkey:get() == 'test4value')
+
+  testkey = yottadb.key('test5')('sub1')
+  testkey:set('test5value')
+  assert(testkey.value == 'test5value')
+  assert(yottadb.key('test5')('sub1').value == 'test5value')
+end
+
+function test_key_delete()
+  local testkey = yottadb.key('test6')
+  local subkey = testkey('sub1')
+  testkey.value = 'test6value'
+  subkey.value = 'test6 subvalue'
+  assert(testkey:get() == 'test6value')
+  assert(subkey:get() == 'test6 subvalue')
+  testkey:delete_node()
+  assert(not testkey.value)
+  assert(subkey:get() == 'test6 subvalue')
+
+  testkey = yottadb.key('test7')
+  subkey = testkey('sub1')
+  testkey.value = 'test7value'
+  subkey.value = 'test7 subvalue'
+  assert(testkey:get() == 'test7value')
+  assert(subkey:get() == 'test7 subvalue')
+  testkey:delete_tree()
+  assert(not testkey.value)
+  assert(not subkey.value)
+  assert(testkey.data == 0)
+end
+
+function test_key_lock()
+  local key = yottadb.key('test1')('sub1')('sub2')
+  local t1 = os.clock()
+  key:lock_incr()
+  local t2 = os.clock()
+  assert(t2 - t1 < 0.1)
+  key:lock_decr()
+end
+
 function test_module_transactions()
   -- Simple transaction.
   local simple_transaction = yottadb.transaction(function(key1, value1, key2, value2, n)
-    yottadb.set(key1[1], key1[2], value1)
-    yottadb.set(key2[1], key2[2], value2)
+    key1:set(value1)
+    key2:set(value2)
     if n == 1 then
       yottadb.get('\x80') -- trigger an error
     elseif n == 2 then
@@ -1407,91 +1641,91 @@ function test_module_transactions()
       -- Returning nothing will return YDB_OK.
     end
   end)
-  local key1, value1 = {'^TransactionTests', {'test1', 'key1'}}, 'v1'
-  local key2, value2 = {'^TransactionTests', {'test1', 'key2'}}, 'v2'
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
+  local key1, value1 = yottadb.key('^TransactionTests')('test1')('key1'), 'v1'
+  local key2, value2 = yottadb.key('^TransactionTests')('test1')('key2'), 'v2'
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
 
   -- YDB error.
   local ok, e = pcall(simple_transaction, key1, value1, key2, value2, 1)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
 
   -- Handled and returned YDB error code.
   ok, e = pcall(simple_transaction, key1, value1, key2, value2, 2)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
 
   -- No error.
   simple_transaction(key1, value1, key2, value2, 3)
-  assert(yottadb.get(key1[1], key1[2]) == value1)
-  assert(yottadb.get(key2[1], key2[2]) == value2)
+  assert(key1.value == value1)
+  assert(key2.value == value2)
 
-  yottadb.delete_tree(key1[1], {'test1'})
+  yottadb.delete_tree('^TransactionTests', {'test1'})
 
   -- Rollback.
   local simple_rollback_transaction = yottadb.transaction(function(key1, value1, key2, value2, n)
-    yottadb.set(key1[1], key1[2], value1)
-    yottadb.set(key2[1], key2[2], value2)
+    key1:set(value1)
+    key2:set(value2)
     return yottadb.YDB_TP_ROLLBACK
   end)
-  key1 = {'^TransactionTests', {'test2', 'key1'}}
-  key2 = {'^TransactionTests', {'test2', 'key2'}}
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
+  key1 = yottadb.key('^TransactionTests')('test2')('key1')
+  key2 = yottadb.key('^TransactionTests')('test2')('key2')
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
 
   local ok, e = pcall(simple_rollback_transaction, key1, value1, key2, value2)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_TP_ROLLBACK)
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
 
-  yottadb.delete_tree(key1[1], {'test2'})
+  yottadb.delete_tree('^TransactionTests', {'test2'})
 
   -- Restart.
   local simple_restart_transaction = yottadb.transaction(function(key1, value1, key2, value2, trackerkey)
-    if yottadb.data(trackerkey[1], trackerkey[2]) == yottadb.YDB_DATA_UNDEF then
-      yottadb.set(key1[1], key1[2], value1)
-      yottadb.set(trackerkey[1], trackerkey[2], '1')
+    if trackerkey.data == yottadb.YDB_DATA_UNDEF then
+      key1:set(value1)
+      trackerkey:set('1')
       return yottadb.YDB_TP_RESTART
     else
-      yottadb.set(key2[1], key2[2], value2)
+      key2:set(value2)
     end
   end)
-  key1 = {'^TransactionTests', {'test3', 'key1'}}
-  key2 = {'^TransactionTests', {'test3', 'key2'}}
-  local trackerkey = {'TransactionTests', {'test3', 'restart tracker'}}
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(trackerkey[1], trackerkey[2]) == yottadb.YDB_DATA_UNDEF)
+  key1 = yottadb.key('^TransactionTests')('test3')('key1')
+  key2 = yottadb.key('^TransactionTests')('test3')('key2')
+  local trackerkey = yottadb.key('TransactionTests')('test3')('restart tracker')
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
+  assert(trackerkey.data == yottadb.YDB_DATA_UNDEF)
 
   simple_restart_transaction(key1, value1, key2, value2, trackerkey)
-  assert(not yottadb.get(key1[1], key1[2]))
-  assert(yottadb.get(key2[1], key2[2]) == value2)
-  assert(yottadb.get(trackerkey[1], trackerkey[2]) == '1')
+  assert(not key1.value)
+  assert(key2.value == value2)
+  assert(trackerkey.value == '1')
 
-  yottadb.delete_tree(key1[1], {'test3'})
-  yottadb.delete_tree(trackerkey[1], trackerkey[2])
+  yottadb.delete_tree('^TransactionTests', {'test3'})
+  trackerkey:delete_tree()
 
   -- Nested.
   local nested_set_transaction = yottadb.transaction(yottadb.set)
   local simple_nested_transaction = yottadb.transaction(function(key1, value1, key2, value2)
-    yottadb.set(key1[1], key1[2], value1)
-    nested_set_transaction(key2[1], key2[2], value2)
+    key1:set(value1)
+    nested_set_transaction(key2.varname, key2.subsarray, value2)
   end)
-  key1 = {'^TransactionTests', {'test4', 'key1'}}
-  key2 = {'^TransactionTests', {'test4', 'key2'}}
-  assert(yottadb.data(key1[1], key1[2]) == yottadb.YDB_DATA_UNDEF)
-  assert(yottadb.data(key2[1], key2[2]) == yottadb.YDB_DATA_UNDEF)
+  key1 = yottadb.key('^TransactionTests')('test4')('key1')
+  key2 = yottadb.key('^TransactionTests')('test4')('key2')
+  assert(key1.data == yottadb.YDB_DATA_UNDEF)
+  assert(key2.data == yottadb.YDB_DATA_UNDEF)
 
   simple_nested_transaction(key1, value1, key2, value2)
-  assert(yottadb.get(key1[1], key1[2]) == value1)
-  assert(yottadb.get(key2[1], key2[2]) == value2)
-  yottadb.delete_tree(key1[1], {'test4'})
+  assert(key1.value == value1)
+  assert(key2.value == value2)
+  yottadb.delete_tree('^TransactionTests', {'test4'})
 end
 
 -- Run tests.
