@@ -4,7 +4,7 @@ local M = {}
 
 --[[ This comment is for LuaDoc.
 ---
--- Lua-bindings for YottaDB.
+-- Lua-bindings for YottaDB, sponsored by the Library of UAntwerpen, http://www.uantwerpen.be/.
 module('yottadb')]]
 
 local _yottadb = require('_yottadb')
