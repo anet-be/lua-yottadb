@@ -1,4 +1,4 @@
-//
+// Copyright 2021-2022 Mitchell. See LICENSE.
 
 #include <assert.h>
 #include <stdint.h> // intptr_t

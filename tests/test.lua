@@ -1,4 +1,4 @@
---
+-- Copyright 2021-2022 Mitchell. See LICENSE.
 
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
