@@ -1,6 +1,6 @@
 # Overview
 
-Lua bindings for YottaDB.
+Lua bindings for YottaDB, sponsored by the [Library of UAntwerpen][].
 
 Build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install*
 is the path to your installation of YottaDB that contains its header and shared library files.
@@ -15,6 +15,8 @@ for examples of how to use these Lua bindings. These bindings were developed wit
 YottaDB's Python bindings.
 
 Note: these bindings are single-threaded and do not utilize YottaDB's multithreaded capabilities.
+
+[Library of UAntwerpen]: http://www.uantwerpen.be/
 
 ## Requirements
 
