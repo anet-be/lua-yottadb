@@ -2,7 +2,7 @@
 
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
-local cwd = arg[0]:match('^.+/')
+local cwd = arg[0]:match('^.+/') or '.'
 local gbldir = os.getenv('ydb_gbldir')
 local gbldat = gbldir:gsub('[^.]+$', 'dat')
 
