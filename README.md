@@ -5,10 +5,11 @@ Lua bindings for YottaDB, sponsored by the [Library of UAntwerpen][].
 Build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install*
 is the path to your installation of YottaDB that contains its header and shared library files.
 
-Copy the newly built *_yottadb.so* and *yottadb.lua* files to somewhere in your Lua path. Then you
-can use `local yottadb = require('yottadb')` from your Lua scripts to communicate with YottaDB.
-Then set up your YDB environment as usual (i.e. source /path/to/YDB/install/ydb_env_set) before
-running your Lua scripts.
+Install the bindings by running `make install` or `sudo make install`, or copy the newly built
+*_yottadb.so* and *yottadb.lua* files to somewhere in your Lua path. You can then use `local
+yottadb = require('yottadb')` from your Lua scripts to communicate with YottaDB.  Then set up
+your YDB environment as usual (i.e. source /path/to/YDB/install/ydb_env_set) before running
+your Lua scripts.
 
 Please see the documentation in *docs/* as well as the `test_module_*` tests in *tests/test.lua*
 for examples of how to use these Lua bindings. These bindings were developed with reference to
