@@ -2,7 +2,7 @@
 
 SHELL:=/bin/bash
 
-ydb_dist=$(shell pwd)/YDB/install
+ydb_dist=$$(pkg-config --variable=prefix yottadb)
 ydb_gbldir=/tmp/lua-yottadb.gld
 
 CFLAGS=-std=c99 -I$(ydb_dist) -I/usr/include/lua5.3 -Wno-discarded-qualifiers
