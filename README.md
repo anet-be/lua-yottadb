@@ -131,7 +131,7 @@ privileges.)
     source YDB/install/ydb_env_set
 
     # Run tests with gdb.
-    ydb_gbldir=/tmp/lydb.gld gdb lua5.3
+    ydb_gbldir=/tmp/lydb.gld gdb lua
     b set
     y
     r -llydb tests/test.lua

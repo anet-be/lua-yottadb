@@ -24,4 +24,4 @@ install: yottadb.lua _yottadb.so
 
 test:
 	rm -f $(ydb_gbldir)
-	source $(ydb_dist)/ydb_env_set && ydb_gbldir=$(ydb_gbldir) lua5.3 -l_yottadb -lyottadb tests/test.lua
+	source $(ydb_dist)/ydb_env_set && ydb_gbldir=$(ydb_gbldir) lua -l_yottadb -lyottadb tests/test.lua

@@ -1,4 +1,4 @@
-#!/usr/bin/lua5.3
+#!/usr/bin/env lua
 -- Test helper for locking keys in a separate process.
 
 local _yottadb = require('_yottadb')
