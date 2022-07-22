@@ -22,6 +22,9 @@ install: yottadb.lua _yottadb.so
 	install _yottadb.so $(DESTDIR)$(lib_dir)
 	install yottadb.lua $(DESTDIR)$(share_dir)
 
+clean:
+	rm *.so
+
 test:
 	rm -f $(ydb_gbldir)
 	source $(ydb_dist)/ydb_env_set && ydb_gbldir=$(ydb_gbldir) lua -l_yottadb -lyottadb tests/test.lua

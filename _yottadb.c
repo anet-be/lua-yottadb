@@ -495,7 +495,11 @@ static int lock(lua_State *L) {
     args[arg_i++] = (void *)(uintptr_t)keys[i].subs_used;
     args[arg_i++] = (void *)keys[i].subsarray;
   }
-  int status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, (uintptr_t)args);
+  #if YDB_RELEASE < 134	/* this interface changed in ydb release here: https://gitlab.com/YottaDB/DB/YDB/-/issues/836 */
+    int status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, (uintptr_t)args);
+  #else
+    int status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, (gparam_list *)args);
+  #endif
   for (int i = 0; i < num_keys; i++) {
     YDB_FREE_BUFFER(&keys[i].varname);
     for (int j = 0; j < keys[i].subs_used; j++) {
