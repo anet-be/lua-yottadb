@@ -1034,7 +1034,7 @@ local str2zwr_tests = {
   {"X\0ABC", '"X"_$C(0)_"ABC"', '"X"_$C(0)_"ABC"'},
   {
     "你好世界",
-    '"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xb8"_$C{150}_"\xe7"_$C{149,140}',
+    '"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xb8"_$C(150)_"\xe7"_$C(149,140)',
     '"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xb8\x96\xe7\x95\x8c"',
   },
 }
