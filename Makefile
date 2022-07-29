@@ -14,6 +14,9 @@ LDFLAGS=-L$(ydb_dist) -lyottadb #-Wl,rpath,YDB/install
 _yottadb.so: _yottadb.c
 	gcc -g $(CFLAGS) -shared -fPIC -o $@ $< $(LDFLAGS)
 
+clean:
+	rm -f *.so
+
 PREFIX=/usr/local
 share_dir=$(PREFIX)/share/lua/5.3
 lib_dir=$(PREFIX)/lib/lua/5.3
