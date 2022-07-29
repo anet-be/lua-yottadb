@@ -462,13 +462,13 @@ static int lock(lua_State *L) {
   }
   unsigned long long timeout = luaL_optnumber(L, 2, 0) * 1000000000;
   int num_args = 2 + (num_keys * 3); // timeout, num_keys, {varname, subs_used, subsarray}*
-  void **args = malloc((1 + num_args) * sizeof(void *)); // include num_args itself
+  gparam_list params;
+  params.n = num_args;
   int arg_i = 0;
-  args[arg_i++] = (void *)(uintptr_t)num_args;
-  args[arg_i++] = (void *)timeout;
-  args[arg_i++] = (void *)(uintptr_t)num_keys;
+  params.arg[arg_i++] = (void *)timeout;
+  params.arg[arg_i++] = (void *)(uintptr_t)num_keys;
   ydb_key_t keys[num_keys];
-  for (int i = 0; i < num_keys; i++) {
+  for (int i = 0; i < num_keys && i < MAX_ACTUALS; i++) {
     lua_geti(L, 1, i + 1);
     lua_geti(L, -1, 1);
     YDB_MALLOC_BUFFER(&keys[i].varname, luaL_len(L, -1));
@@ -491,18 +491,17 @@ static int lock(lua_State *L) {
       keys[i].subsarray = NULL;
     }
     lua_pop(L, 1); // key
-    args[arg_i++] = (void *)&keys[i].varname;
-    args[arg_i++] = (void *)(uintptr_t)keys[i].subs_used;
-    args[arg_i++] = (void *)keys[i].subsarray;
+    params.arg[arg_i++] = (void *)&keys[i].varname;
+    params.arg[arg_i++] = (void *)(uintptr_t)keys[i].subs_used;
+    params.arg[arg_i++] = (void *)keys[i].subsarray;
   }
-  int status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, (uintptr_t)args);
+  int status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, &params);
   for (int i = 0; i < num_keys; i++) {
     YDB_FREE_BUFFER(&keys[i].varname);
     for (int j = 0; j < keys[i].subs_used; j++) {
       YDB_FREE_BUFFER(&keys[i].subsarray[j]);
     }
   }
-  free(args);
   if (status != YDB_OK) {
     error(L, status);
   }

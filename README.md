@@ -24,7 +24,7 @@ Note: these bindings are single-threaded and do not utilize YottaDB's multithrea
 * Lua 5.2 or greater. These bindings were built and tested with Lua 5.3. The *Makefile* assumes
   you have your Lua headers installed at */usr/include/lua5.3*. If your Lua headers are elsewhere,
   you can either modify *Makefile* or pass `CFLAGS=-I/path/to/your/lua` to `make`.
-* YottaDB 1.32 or later.
+* YottaDB 1.34 or later.
 
 ## Sample Usage
 
