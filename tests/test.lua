@@ -1728,6 +1728,52 @@ function test_module_transactions()
   yottadb.delete_tree('^TransactionTests', {'test4'})
 end
 
+function test_readme()
+  -- Create key objects for conveniently accessing and manipulating database nodes.
+  local key1 = yottadb.key('^hello')
+  assert(key1.name == '^hello')
+  assert(not key1.value)
+  key1.value = 'Hello World' -- set '^hello' to 'Hello World!'
+  assert(key1.value == 'Hello World')
+
+  -- Add a 'cowboy' subscript to the global variable '^hello', creating a new key.
+  local key2 = yottadb.key('^hello')('cowboy')
+  key2.value = 'Howdy partner!' -- set '^hello('cowboy') to 'Howdy partner!'
+  assert(key2.name == 'cowboy')
+  assert(key2.value == 'Howdy partner!')
+
+  -- Add a second subscript to '^hello', creating a third key.
+  local key3 = yottadb.key('^hello')('chinese')
+  key3.value = '你好世界!' -- the value can be set to anything, including UTF-8
+  assert(key3.name == 'chinese')
+  assert(key3.value == '你好世界!')
+
+  assert(key1:subscripts()() ~= nil)
+  local values = {[key2.name] = key2.value, [key3.name] = key3.value}
+
+  for subscript in key1:subscripts() do -- loop through all subscripts of a key
+    local sub_key = key1(subscript)
+    assert(sub_key.name == subscript)
+    assert(sub_key.value == values[subscript])
+  end
+
+  key1:delete_node() -- delete the value of '^hello', but not any of its child nodes
+
+  assert(not key1.value)
+
+  for subscript in key1:subscripts() do -- the values of the child node are still in the database
+    local sub_key = key1(subscript)
+    assert(sub_key.name == subscript)
+    assert(sub_key.value == values[subscript])
+  end
+
+  key1.value = 'Hello World' -- reset the value of '^hello'
+  assert(key1.value == 'Hello World')
+  key1:delete_tree() -- delete both the value at the '^hello' node and all of its children
+  assert(not key1.value)
+  assert(not key1:subscripts()())
+end
+
 -- Run tests.
 print('Starting test suite.')
 local tests = {}
