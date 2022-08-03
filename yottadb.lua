@@ -354,7 +354,6 @@ function M.subscripts(varname, subsarray, reverse)
   end
   local subsarray_copy = {}
   if type(subsarray) == 'table' then for i, v in ipairs(subsarray) do subsarray_copy[i] = v end end
-  if #subsarray_copy == 0 then subsarray_copy[1] = '' end
   local f = not reverse and M.subscript_next or M.subscript_previous
   return function()
     local next_or_prev = f(varname, subsarray_copy)
@@ -520,7 +519,7 @@ end
 
 -- @see subscripts
 function key:subscripts(reverse)
-  return M.subscripts(self.varname, self.subsarray, reverse)
+  return M.subscripts(self.varname, #self.subsarray > 0 and self.subsarray or {''}, reverse)
 end
 
 -- Creates and returns a new key with the given subscript.
