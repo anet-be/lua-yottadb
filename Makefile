@@ -31,6 +31,3 @@ install: yottadb.lua _yottadb.so
 test:
 	rm -f $(ydb_gbldir)
 	source $(ydb_dist)/ydb_env_set && ydb_gbldir=$(ydb_gbldir) $(lua) -l_yottadb -lyottadb tests/test.lua $(TESTS)
-
-vars:
-	@echo -e $(foreach v,$(.VARIABLES),$(if $(filter file, $(origin $(v)) ), '\n$(v)=$(value $(v))') )
