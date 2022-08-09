@@ -21,10 +21,14 @@ Note: these bindings are single-threaded and do not utilize YottaDB's multithrea
 
 ## Requirements
 
-* Lua 5.2 or greater. These bindings were built and tested with Lua 5.3. The *Makefile* assumes
-  you have your Lua headers installed at */usr/include/lua5.3*. If your Lua headers are elsewhere,
-  you can either modify *Makefile* or pass `CFLAGS=-I/path/to/your/lua` to `make`.
+* Lua 5.2 or greater. These bindings were built and tested with Lua 5.3. The Makefile will use
+  your system's lua version by default. To override this, run `make lua=/path/to/lua`.
 * YottaDB 1.34 or later.
+
+The *Makefile* looks for Lua header files either in your compiler's default include path such
+as /usr/local/include (the lua install default) and also in */usr/include/luaX.Y*. Where *X.Y*
+is the lua version installed on your system. If your Lua headers are elsewhere, run
+`make lua_include=/path/to/your/lua/headers`.
 
 ## Sample Usage
 
