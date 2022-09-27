@@ -6,6 +6,10 @@ lua:=lua
 lua_version:=$(shell $(lua) -e 'print(string.match(_VERSION, " ([0-9]+[.][0-9]+)"))')
 lua_include=/usr/include/lua$(lua_version)
 
+#Ensure tests use our own build of yottadb, not the system one
+export LUA_PATH:=./?.lua;../?.lua;;
+export LUA_CPATH:=./?.so;../?.so;;
+
 ydb_dist=$(shell pkg-config --variable=prefix yottadb --silence-errors)
 ifeq (, $(ydb_dist))
 ydb_dist=$(shell pwd)/YDB/install
@@ -29,6 +33,6 @@ install: yottadb.lua _yottadb.so
 	install _yottadb.so $(DESTDIR)$(lib_dir)
 	install yottadb.lua $(DESTDIR)$(share_dir)
 
-test:
+test: _yottadb.so
 	rm -f $(ydb_gbldir)
 	source $(ydb_dist)/ydb_env_set && ydb_gbldir=$(ydb_gbldir) $(lua) -l_yottadb -lyottadb tests/test.lua $(TESTS)
