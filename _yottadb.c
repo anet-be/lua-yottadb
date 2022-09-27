@@ -99,7 +99,9 @@ static int set(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   ydb_buffer_t value;
-  YDB_STRING_TO_BUFFER(luaL_optstring(L, !lua_isstring(L, 2) ? 3 : 2, ""), &value);
+  size_t length;
+  value.buf_addr = luaL_optlstring(L, !lua_isstring(L, 2) ? 3 : 2, "", &length);
+  value.len_used = value.len_alloc = (unsigned int)length;
   int status = ydb_set_s(&varname, subs_used, subsarray, &value);
   if (status != YDB_OK) {
     error(L, status);
