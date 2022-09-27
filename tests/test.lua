@@ -163,6 +163,11 @@ function test_set()
   _yottadb.set('testchinese', '你好世界')
   assert(_yottadb.get('testchinese') == '你好世界')
 
+  -- strings with NULs
+  local name, value = 'testnulstring', 'testnul\0string'
+  _yottadb.set(name, value)
+  assert(_yottadb.get(name) == value)
+
   -- Validate inputs.
   validate_varname_inputs(_yottadb.set)
   validate_subsarray_inputs(_yottadb.set)
