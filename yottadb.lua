@@ -7,6 +7,8 @@ local M = {}
 -- Lua-bindings for YottaDB, sponsored by the Library of UAntwerpen, http://www.uantwerpen.be/.
 module('yottadb')]]
 
+local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
+
 local _yottadb = require('_yottadb')
 for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
 M._VERSION = _yottadb._VERSION
@@ -55,6 +57,38 @@ local function assert_strings(t, name, narg)
   return t
 end
 
+-- create isinteger(n) that also works in Lua < 5.3 but is fast in Lua >=5.3
+local isinteger
+if lua_version >= 5.3 then
+  function isinteger(n)
+    return math.type(n) == 'integer'
+  end
+else
+  function isinteger(n)
+    return not (tostring(n):find(".", 1, true))
+  end
+end
+
+-- Asserts that all items in table *t* are strings or integers, as befits subscripts;
+-- otherwise calls `error()` with an error message
+-- that implicates function argument number *narg* named *name*.
+-- Like `assert_type()`, this is intended for improved readability of API input errors.
+-- @param t Table to check. If it is not a table, the assertion passes.
+-- @param name String argument name to use in error messages.
+-- @param narg The position argument number *t* is associated with.
+-- @usage assert_strings_integers(subsarray, 'subsarray', 2)
+-- @see assert_type
+local function assert_subscripts(t, name, narg)
+  if type(t) ~= 'table' then return t end
+  for i, v in ipairs(t) do
+    local kind = type(v)
+    if kind ~= 'string' and (kind ~= 'number' or not isinteger(v)) then
+      error(string.format("bad argument #%s to '%s' (string or integer subscript expected at index %s, got %s)", narg, debug.getinfo(2, 'n').name or '?', i, kind), 3)
+    end
+  end
+  return t
+end
+
 ---
 -- Returns the YDB error code (if any) for the given error message.
 -- Returns `nil` if the message is not a YDB error.
@@ -82,7 +116,7 @@ local key = {}
 function M.data(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.data(varname, subsarray)
 end
 
@@ -94,7 +128,7 @@ end
 function M.delete_node(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_NODE)
 end
 
@@ -106,7 +140,7 @@ end
 function M.delete_tree(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_TREE)
 end
 
@@ -119,7 +153,7 @@ end
 function M.get(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   local ok, value = pcall(_yottadb.get, varname, subsarray)
   if ok then return value end
   local code = M.get_error_code(value)
@@ -143,7 +177,7 @@ function M.incr(varname, subsarray, increment)
     assert_type(subsarray, 'table', 2)
     assert_type(increment, 'string/number/nil', 3)
   end
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.incr(varname, subsarray, increment)
 end
 
@@ -185,7 +219,7 @@ function M.lock_incr(varname, subsarray, timeout)
     assert_type(subsarray, 'table', 2)
     assert_type(timeout, 'number/nil', 3)
   end
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.lock_incr(varname, subsarray, timeout)
 end
 
@@ -197,7 +231,7 @@ end
 function M.lock_decr(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.lock_decr(varname, subsarray)
 end
 
@@ -210,7 +244,7 @@ end
 function M.node_next(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   local ok, node_next = pcall(_yottadb.node_next, varname, subsarray)
   assert(ok or M.get_error_code(node_next) == _yottadb.YDB_ERR_NODEEND, node_next)
   return ok and node_next or nil
@@ -225,7 +259,7 @@ end
 function M.node_previous(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   local ok, node_prev = pcall(_yottadb.node_previous, varname, subsarray)
   assert(ok or M.get_error_code(node_prev) == _yottadb.YDB_ERR_NODEEND, node_prev)
   return ok and node_prev or nil
@@ -248,7 +282,7 @@ function M.nodes(varname, subsarray, reverse)
   else
     assert_type(subsarray, 'table', 2)
   end
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   local subsarray_copy = {}
   for i, v in ipairs(subsarray) do subsarray_copy[i] = v end
   local f = not reverse and M.node_next or M.node_previous
@@ -292,7 +326,7 @@ function M.set(varname, subsarray, value)
     assert_type(subsarray, 'string/number', 2) -- value
   else
     assert_type(subsarray, 'table', 2)
-    assert_strings(subsarray, 'subsarray', 2)
+    assert_subscripts(subsarray, 'subsarray', 2)
     assert_type(value, 'string/number', 3)
   end
   _yottadb.set(varname, subsarray, value)
@@ -314,7 +348,7 @@ function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
 function M.subscript_next(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   local ok, sub_next = pcall(_yottadb.subscript_next, varname, subsarray)
   assert(ok or M.get_error_code(sub_next) == _yottadb.YDB_ERR_NODEEND, sub_next)
   return ok and sub_next or nil
@@ -329,7 +363,7 @@ end
 function M.subscript_previous(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
   local ok, sub_prev = pcall(_yottadb.subscript_previous, varname, subsarray)
   assert(ok or M.get_error_code(sub_prev) == _yottadb.YDB_ERR_NODEEND, sub_prev)
   return ok and sub_prev or nil
@@ -351,7 +385,7 @@ function M.subscripts(varname, subsarray, reverse)
     if type(subsarray) ~= 'table' then subsarray, reverse = {}, subsarray end
   else
     assert_type(subsarray, 'table', 2)
-    assert_strings(subsarray, 'subsarray', 2)
+    assert_subscripts(subsarray, 'subsarray', 2)
   end
   local subsarray_copy = {}
   if type(subsarray) == 'table' then for i, v in ipairs(subsarray) do subsarray_copy[i] = v end end
@@ -455,7 +489,7 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 function M.key(varname, subsarray)
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
-  assert_strings(subsarray, 'subsarray', 2)
+  assert_subscripts(subsarray, 'subsarray', 2)
 
   local subsarray_copy = {}
   if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = sub end end
