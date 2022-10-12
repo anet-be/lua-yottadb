@@ -6,6 +6,10 @@
 
 #include <libyottadb.h>
 #include <lua.h>
+
+// Enable build against Lua older than 5.3
+#include "compat-5.3.h"
+
 #include <lauxlib.h>
 #include "_yottadb.h"
 
@@ -20,17 +24,6 @@
 static const int LUA_YDB_BUFSIZ = 128;
 static const int LUA_YDB_SUBSIZ = 16;
 static const int LUA_YDB_ERR = -200000000; // arbitrary
-
-// Support Lua older than 5.3
-#if LUA_VERSION_NUM < 503
-  static int lua_geti(lua_State *L, int idx, lua_Integer n) {
-    lua_rawgeti(L, idx, n);
-    return lua_type(L, -1);
-  }
-  static void lua_seti(lua_State *L, int idx, lua_Integer n) {
-    lua_rawseti(L, idx, n);
-  }
-#endif
 
 #define YDB_REALLOC_BUFFER(BUFFERP) { \
   int len_used = (BUFFERP)->len_used; \

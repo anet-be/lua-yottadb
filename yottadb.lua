@@ -48,9 +48,9 @@ end
 local function assert_strings(t, name, narg)
   if type(t) ~= 'table' then return t end
   for i, v in ipairs(t) do
-    if type(v) == 'string' then goto continue end
-    error(string.format("bad argument #%s to '%s' (string expected at index %s, got %s)", narg, debug.getinfo(2, 'n').name or '?', i, type(v)), 3)
-    ::continue::
+    if type(v) ~= 'string' then
+      error(string.format("bad argument #%s to '%s' (string expected at index %s, got %s)", narg, debug.getinfo(2, 'n').name or '?', i, type(v)), 3)
+    end
   end
   return t
 end
