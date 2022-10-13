@@ -492,7 +492,7 @@ function M.key(varname, subsarray)
   assert_subscripts(subsarray, 'subsarray', 2)
 
   local subsarray_copy = {}
-  if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = sub end end
+  if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = tostring(sub) end end
 
   -- For use with subscript_next() and subscript_previous().
   local next_subsarray = {}
@@ -561,7 +561,11 @@ end
 -- @param name String subscript name.
 function key:__call(name)
   local new_key = M.key(self.varname, self.subsarray)
-  table.insert(new_key.subsarray, assert_type(name, 'string', 1))
+  local kind = type(name)
+  if kind ~= 'string' and (kind ~= 'number' or not isinteger(name)) then
+    error(string.format("bad subscript added '%s' (string or integer expected, got %s)", self, type(name)))
+  end
+  table.insert(new_key.subsarray, tostring(name))
   return new_key
 end
 
