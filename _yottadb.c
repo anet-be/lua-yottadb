@@ -152,7 +152,7 @@ static int data(lua_State *L) {
   if (status != YDB_OK) {
     error(L, status);
   }
-  lua_pushnumber(L, ret_value);
+  lua_pushinteger(L, ret_value);
   return 1;
 }
 
@@ -677,7 +677,7 @@ static const const_Reg yottadb_constants[] = {
 int luaopen__yottadb(lua_State *L) {
   luaL_newlib(L, yottadb_functions);
   for (const_Reg *c = &yottadb_constants[0]; c->name; c++) {
-    lua_pushnumber(L, c->value), lua_setfield(L, -2, c->name);
+    lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
   }
   lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
   return 1;
