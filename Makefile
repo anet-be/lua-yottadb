@@ -7,8 +7,8 @@ lua_version:=$(shell $(lua) -e 'print(string.match(_VERSION, " ([0-9]+[.][0-9]+)
 lua_include=/usr/include/lua$(lua_version)
 
 #Ensure tests use our own build of yottadb, not the system one
-export LUA_PATH:=./?.lua;;
-export LUA_CPATH:=./?.so;;
+export LUA_PATH:=./?.lua;$(LUA_PATH);;
+export LUA_CPATH:=./?.so;$(LUA_CPATH);;
 
 ydb_dist=$(shell pkg-config --variable=prefix yottadb --silence-errors)
 ifeq (, $(ydb_dist))
