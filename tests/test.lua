@@ -1615,6 +1615,10 @@ function test_key_delete()
   subkey = testkey('sub1')
   testkey.value = 'test7value'
   subkey.value = 'test7 subvalue'
+  subkey:delete_tree()
+  assert(testkey:get() == 'test7value')
+  assert(not subkey.value)
+  subkey.value = 'test7 subvalue'
   assert(testkey:get() == 'test7value')
   assert(subkey:get() == 'test7 subvalue')
   testkey:delete_tree()
