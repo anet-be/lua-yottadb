@@ -515,14 +515,14 @@ function node:_get() return M.get(self._varname, self._subsarray) end
 function node:_set(value) M.set(self._varname, self._subsarray, assert_type(value, 'string/number', 1)) end
 
 -- @see delete_node
-function node:_delete_node() M._delete_node(self._varname, self._subsarray) end
+function node:_delete_node() M.delete_node(self._varname, self._subsarray) end
 
 -- @see delete_tree
-function node:_delete_tree() M._delete_tree(self._varname, self._subsarray_copy) end
+function node:_delete_tree() M.delete_tree(self._varname, self._subsarray_copy) end
 
 -- @see incr
-function node:incr(value)
-  return M._incr(self._varname, self._subsarray, assert_type(value, 'string/number/nil', 1))
+function node:_incr(value)
+  return M.incr(self._varname, self._subsarray, assert_type(value, 'string/number/nil', 1))
 end
 
 -- @see lock
@@ -651,13 +651,15 @@ end
 function M.key(varname, subsarray)
   local new_key = M.node(varname, subsarray)
   setmetatable(new_key, key)
+  new_key.varname = new_key._varname
+  new_key.subsarray = new_key._subsarray
   return new_key
 end
 
 -- Make target table inherit all the attributes of origin table
 -- PLUS copies of attributes starting with '_', renamed to be without '_'
 -- return target
-function inherit_plus(target, origin)
+local function inherit_plus(target, origin)
   for k, v in pairs(origin) do
     target[k] = v
     local attr = k:match('^_(%w[_%w]*)')
@@ -696,10 +698,11 @@ function key:__newindex(k, v)
 end
 
 -- handy for debugging
---~ M.key_properties = key_properties
---~ M.node_properties = node_properties
---~ M.k = key
---~ M.n = node
+M.key_properties = key_properties
+M.node_properties = node_properties
+M.k = key
+M.n = node
+M.inherit_plus = inherit_plus
 
 
 return M
