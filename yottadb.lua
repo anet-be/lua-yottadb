@@ -590,13 +590,13 @@ end
 
 -- @see incr
 function node:__add(value)
-  self:incr(assert_type(value, 'string/number', 1))
+  self:_incr(assert_type(value, 'string/number', 1))
   return self
 end
 
 -- @see incr
 function node:__sub(value)
-  self:incr(-assert_type(value, 'string/number', 1))
+  self:_incr(-assert_type(value, 'string/number', 1))
   return self
 end
 
