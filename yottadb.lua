@@ -518,7 +518,7 @@ function node:_set(value) M.set(self._varname, self._subsarray, assert_type(valu
 function node:_delete_node() M.delete_node(self._varname, self._subsarray) end
 
 -- @see delete_tree
-function node:_delete_tree() M.delete_tree(self._varname, self._subsarray_copy) end
+function node:_delete_tree() M.delete_tree(self._varname, self._subsarray) end
 
 -- @see incr
 function node:_incr(value)
