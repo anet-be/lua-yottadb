@@ -98,7 +98,7 @@ local function validate_subsarray_inputs(f)
   local subs = {}
   for i = 1, _yottadb.YDB_MAX_SUBS do subs[i] = 'b' end
   if f == _yottadb.get then _yottadb.set('test', subs, 'val') end -- avoid YDB_ERR_LVUNDEF
-  ok, e = pcall(f, 'test', subs)
+  local ok, e = pcall(f, 'test', subs)
   assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
 
   subs[#subs + 1] = 'b'
@@ -1085,10 +1085,16 @@ function test_zwr2str()
 end
 
 function test_get_error_code()
+  -- if user is using strict.lua, allow the following pcall to work without creating an error
+  local mt = getmetatable(_G)
+  setmetatable(_G, nil)
+  -- capture error code
   local ok, e = pcall(f_does_not_exist)
   assert(not ok)
   local code = yottadb.get_error_code(e)
   assert(code == nil)
+  -- restore _G metatable
+  setmetatable(_G, mt)
 end
 
 function test_module_node_next()
