@@ -562,11 +562,11 @@ end
 -- Creates and returns a new node with the given subscript added.
 -- @param name String subscript name.
 function node:__call(name)
-  local new_node = self.___new(self._varname, self._subsarray)
   local kind = type(name)
   if kind ~= 'string' and (kind ~= 'number' or not isinteger(name)) then
     error(string.format("bad subscript added '%s' (string or integer expected, got %s)", self, type(name)))
   end
+  local new_node = self.___new(self._varname, self._subsarray)
   table.insert(new_node._subsarray, tostring(name))
   return new_node
 end
@@ -697,12 +697,13 @@ function key:__newindex(k, v)
   end
 end
 
--- handy for debugging
-M.key_properties = key_properties
-M.node_properties = node_properties
-M.k = key
-M.n = node
-M.inherit_plus = inherit_plus
-
+-- Handy for debugging
+if os.getenv('developer_mode') then
+  M._key_properties = key_properties
+  M._node_properties = node_properties
+  M._key = key
+  M._node = node
+  M._inherit_plus = inherit_plus
+end
 
 return M
