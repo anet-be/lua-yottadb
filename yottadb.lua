@@ -186,7 +186,7 @@ end
 ---
 -- Releases all locks held and attempts to acquire all requested locks, waiting if requested.
 -- Raises an error if a lock could not be acquired.
--- @param nodes Optional list of {varname[, subs]} variable/nodes to lock.
+-- @param nodes Optional list containing {varname[, subs]} or node objects that specify the lock names to lock.
 -- @param timeout Optional timeout in seconds to wait for the lock.
 -- @name lock
 function M.lock(nodes, timeout)
@@ -199,7 +199,8 @@ function M.lock(nodes, timeout)
   local nodes_copy = {}
   if type(nodes) == 'table' then
     for i, v in ipairs(nodes) do
-      nodes[i] = getmetatable(v) == node and {v.varname, v.subsarray} or assert_type(v, 'table', 'nodes[' .. i .. ']')
+      local mt = getmetatable(v)
+      nodes[i] = (mt==node or mt==key) and {v._varname, v._subsarray} or assert_type(v, 'table', 'nodes[' .. i .. ']')
     end
     nodes = nodes_copy
   end
@@ -207,7 +208,7 @@ function M.lock(nodes, timeout)
 end
 
 ---
--- Attempts to acquire or increment a lock on a variable/node, waiting if requested.
+-- Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
 -- Raises an error if a lock could not be acquired.
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts.
@@ -226,7 +227,8 @@ function M.lock_incr(varname, subsarray, timeout)
 end
 
 ---
--- Decrements a lock on a variable/node, releasing it if possible.
+-- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
+-- Returns 0 (always)
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts.
 -- @name lock_decr
