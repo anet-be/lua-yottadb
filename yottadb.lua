@@ -109,13 +109,14 @@ local key = {}
 ---
 -- Returns information about a variable/node (except intrinsic variables).
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @name data
 -- @return yottadb.YDB_DATA_UNDEF (no value or subtree) or
 --   yottadb.YDB_DATA_VALUE_NODESC (value, no subtree) or
 --   yottadb.YDB_DATA_NOVALUE_DESC (no value, subtree) or
 --   yottadb.YDB_DATA_VALUE_NODESC (value and subtree)
-function M.data(varname, subsarray)
+function M.data(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -125,9 +126,10 @@ end
 ---
 -- Deletes a single variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @name delete_node
-function M.delete_node(varname, subsarray)
+function M.delete_node(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -137,9 +139,10 @@ end
 ---
 -- Deletes a variable/node tree/subtree.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @name delete_tree
-function M.delete_tree(varname, subsarray)
+function M.delete_tree(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -149,10 +152,11 @@ end
 ---
 -- Gets and returns the value of a variable/node, or `nil` if the variable/node does not exist.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray ... Optional list of subscripts or table {subscripts}
 -- @return string value or `nil`
 -- @name get
-function M.get(varname, subsarray)
+function M.get(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -167,11 +171,20 @@ end
 -- Increments the numeric value of a variable/node.
 -- Raises an error on overflow.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
--- @param increment Optional string or number amount to increment by.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param increment String or number amount to increment by.
+--     Optional only if subsarray is a table. Default is 0
 -- @return the new value
 -- @name incr
-function M.incr(varname, subsarray, increment)
+function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR  sub1, sub2, ..., increment
+  local subsarray, increment
+  if ... and type(...)=='table' then
+    subsarray, increment = ...
+  else
+    subsarray = {...}
+    increment = table.remove(subsarray) -- pop
+  end
+
   assert_type(varname, 'string', 1)
   if not increment then
     assert_type(subsarray, 'table/string/number/nil', 2)
@@ -211,10 +224,19 @@ end
 -- Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
 -- Raises an error if a lock could not be acquired.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
--- @param timeout Optional timeout in seconds to wait for the lock.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param timeout Seconds to wait for the lock.
+--          Optional only if subscripts is a table. Default is 0
 -- @name lock_incr
-function M.lock_incr(varname, subsarray, timeout)
+function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout  OR  sub1, sub2, ..., timeout
+  local subsarray, timeout
+  if ... and type(...)=='table' then
+    subsarray, timeout = ...
+  else
+    subsarray = {...}
+    timeout = table.remove(subsarray) -- pop
+  end
+
   assert_type(varname, 'string', 1)
   if not timeout then
     assert_type(subsarray, 'table/number/nil', 2)
@@ -230,9 +252,10 @@ end
 -- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
 -- Returns 0 (always)
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @name lock_decr
-function M.lock_decr(varname, subsarray)
+function M.lock_decr(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -242,10 +265,11 @@ end
 ---
 -- Returns the next node for a variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil
 -- @name node_next
-function M.node_next(varname, subsarray)
+function M.node_next(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -257,10 +281,11 @@ end
 ---
 -- Returns the previous node for a variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil
 -- @name node_previous
-function M.node_previous(varname, subsarray)
+function M.node_previous(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -272,13 +297,21 @@ end
 ---
 -- Returns an iterator for iterating over all nodes in a variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts
--- @param reverse Optional flag that indicates whether to iterate backwards. The default value is
---   `false`.
+-- @param subsarray Optional list of subscripts or table {subscripts}
+-- @param reverse Flag that indicates whether to iterate backwards.
+--          Optional only if subscripts is a table. Default is `false`.
 -- @return iterator
 -- @usage for node_subscripts in yottadb.nodes(varname, subsarray) do ... end
 -- @name nodes
-function M.nodes(varname, subsarray, reverse)
+function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
+  local subsarray, reverse
+  if ... and type(...)=='table' then
+    subsarray, reverse = ...
+  else
+    subsarray = {...}
+    reverse = table.remove(subsarray) -- pop
+  end
+
   assert_type(varname, 'string', 1)
   if reverse == nil then
     assert_type(subsarray, 'table/boolean/nil', 2)
@@ -321,10 +354,18 @@ end
 ---
 -- Sets the value of a variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @param value String value to set. If this is a number, it is converted to a string.
 -- @name set
-function M.set(varname, subsarray, value)
+function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  sub1, sub2, ..., value
+  local subsarray, value
+  if ... and type(...)=='table' then
+    subsarray, value = ...
+  else
+    subsarray = {...}
+    value = table.remove(subsarray) -- pop
+  end
+
   assert_type(varname, 'string', 1)
   if not value then
     assert_type(subsarray, 'string/number', 2) -- value
@@ -346,10 +387,11 @@ function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
 ---
 -- Returns the next subscript for a variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return string subscript name or nil
 -- @name subscript_next
-function M.subscript_next(varname, subsarray)
+function M.subscript_next(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -361,10 +403,11 @@ end
 ---
 -- Returns the previous subscript for a variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return string subscript name or nil
 -- @name subscript_previous
-function M.subscript_previous(varname, subsarray)
+function M.subscript_previous(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -376,13 +419,21 @@ end
 ---
 -- Returns an iterator for iterating over all subscripts in a variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts
--- @param reverse Optional flag that indicates whether to iterate backwards. The default value is
---   `false`.
+-- @param subsarray Optional list of subscripts or table {subscripts}
+-- @param reverse Flag that indicates whether to iterate backwards. 
+--          Optional only if subscripts is a table. The default value is `false`.
 -- @return iterator
 -- @usage for name in yottadb.subscripts(varname, subsarray) do ... end
 -- @name subscripts
-function M.subscripts(varname, subsarray, reverse)
+function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
+  local subsarray, reverse
+  if ... and type(...)=='table' then
+    subsarray, reverse = ...
+  else
+    subsarray = {...}
+    reverse = table.remove(subsarray) -- pop
+  end
+
   assert_type(varname, 'string', 1)
   if reverse == nil then
     assert_type(subsarray, 'table/boolean/nil', 2)
@@ -465,7 +516,7 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 
 ---
 -- Creates and returns a new YottaDB node object.
--- This node has all of the linked methods below as well as the following properties:
+-- This node has all of the class methods defined below it as well as the following properties:
 --   * _name (this node's subscript or variable name)
 --   * _value (this node's value in the YottaDB database)
 --   * _data (see data())
@@ -473,24 +524,13 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 --   * _has_tree (whether or not this node has a subtree)
 -- Calling the node with a string value returns a new node further subscripted by string.
 -- @param varname String variable name.
--- @param subsarray Used internally. Do not set manually. Call the returned node instead to
---   use subscripts.
+-- @param subsarray Optional list of subscripts or table {subscripts}
 -- @return node
 -- @name node
 -- @usage yottadb.node('varname')
 -- @usage yottadb.node('varname')('subscript')
--- @see delete_node
--- @see delete_tree
--- @see get
--- @see incr
--- @see lock
--- @see lock_incr
--- @see lock_decr
--- @see set
--- @see subscript_next
--- @see subscript_previous
--- @see subscripts
-function M.node(varname, subsarray)
+function M.node(varname, ...)
+  local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
@@ -651,6 +691,7 @@ end
 -- attribute behaviour and property names (without '_' prefix) for backward compatibility
 -- @see M.node
 function M.key(varname, subsarray)
+  assert_type(subsarray, 'table/nil', 2)
   local new_key = M.node(varname, subsarray)
   setmetatable(new_key, key)
   new_key.varname = new_key._varname
