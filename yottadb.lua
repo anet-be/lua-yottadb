@@ -173,7 +173,7 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @param increment String or number amount to increment by.
---     Optional only if subsarray is a table. Default is 0
+--     Optional only if subsarray is a table.
 -- @return the new value
 -- @name incr
 function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR  sub1, sub2, ..., increment
@@ -181,6 +181,8 @@ function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR
   if ... and type(...)=='table' then
     subsarray, increment = ...
   else
+    -- Additional check last param is not nil before turning into a table, which loses the last element
+    if ... then  assert_type(select(-1, ...), 'string/number', '<last>')  end
     subsarray = {...}
     increment = table.remove(subsarray) -- pop
   end
@@ -190,7 +192,7 @@ function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR
     assert_type(subsarray, 'table/string/number/nil', 2)
   else
     assert_type(subsarray, 'table', 2)
-    assert_type(increment, 'string/number/nil', 3)
+    assert_type(increment, 'string/number/nil', '<last>')
   end
   assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.incr(varname, subsarray, increment)
@@ -198,7 +200,8 @@ end
 
 ---
 -- Releases all locks held and attempts to acquire all requested locks, waiting if requested.
--- Raises an error if a lock could not be acquired.
+-- Returns 0 (always)
+-- Raises a error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
 -- @param nodes Optional list containing {varname[, subs]} or node objects that specify the lock names to lock.
 -- @param timeout Optional timeout in seconds to wait for the lock.
 -- @name lock
@@ -222,17 +225,20 @@ end
 
 ---
 -- Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
--- Raises an error if a lock could not be acquired.
+-- Returns 0 (always)
+-- Raises a error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @param timeout Seconds to wait for the lock.
---          Optional only if subscripts is a table. Default is 0
+--          Optional only if subscripts is a table.
 -- @name lock_incr
 function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout  OR  sub1, sub2, ..., timeout
   local subsarray, timeout
   if ... and type(...)=='table' then
     subsarray, timeout = ...
   else
+    -- Additional check last parameter is not nil before turning into a table, which loses the last element
+    if ... then  assert_type(select(-1, ...), 'number', '<last>') end
     subsarray = {...}
     timeout = table.remove(subsarray) -- pop
   end
@@ -242,7 +248,7 @@ function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout 
     assert_type(subsarray, 'table/number/nil', 2)
   else
     assert_type(subsarray, 'table', 2)
-    assert_type(timeout, 'number/nil', 3)
+    assert_type(timeout, 'number/nil', '<last>')
   end
   assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.lock_incr(varname, subsarray, timeout)
@@ -251,6 +257,7 @@ end
 ---
 -- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
 -- Returns 0 (always)
+-- Releasing a lock cannot create an error unless the varname/subsarray names are invalid
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @name lock_decr
@@ -299,7 +306,7 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}
 -- @param reverse Flag that indicates whether to iterate backwards.
---          Optional only if subscripts is a table. Default is `false`.
+--          Optional only if subscripts is a table.
 -- @return iterator
 -- @usage for node_subscripts in yottadb.nodes(varname, subsarray) do ... end
 -- @name nodes
@@ -308,6 +315,8 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
   if ... and type(...)=='table' then
     subsarray, reverse = ...
   else
+    -- Additional check last param is not nil before turning into a table, which loses the last element
+    if ... then  assert_type(select(-1, ...), 'number/boolean', '<last>')  end
     subsarray = {...}
     reverse = table.remove(subsarray) -- pop
   end
@@ -362,6 +371,8 @@ function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  su
   if ... and type(...)=='table' then
     subsarray, value = ...
   else
+    -- Additional check last param is not nil before turning into a table, which loses the last element
+    if ... then  assert_type(select(-1, ...), 'string/number', '<last>')  end
     subsarray = {...}
     value = table.remove(subsarray) -- pop
   end
@@ -372,7 +383,7 @@ function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  su
   else
     assert_type(subsarray, 'table', 2)
     assert_subscripts(subsarray, 'subsarray', 2)
-    assert_type(value, 'string/number', 3)
+    assert_type(value, 'string/number', '<last>')
   end
   _yottadb.set(varname, subsarray, value)
 end
@@ -421,7 +432,7 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}
 -- @param reverse Flag that indicates whether to iterate backwards. 
---          Optional only if subscripts is a table. The default value is `false`.
+--          Optional only if subscripts is a table.
 -- @return iterator
 -- @usage for name in yottadb.subscripts(varname, subsarray) do ... end
 -- @name subscripts
@@ -430,6 +441,8 @@ function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, revers
   if ... and type(...)=='table' then
     subsarray, reverse = ...
   else
+    -- Additional check last param is not nil before turning into a table, which loses the last element
+    if ... then  assert_type(select(-1, ...), 'number/boolean', '<last>')  end
     subsarray = {...}
     reverse = table.remove(subsarray) -- pop
   end
