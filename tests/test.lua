@@ -1731,9 +1731,6 @@ function test_node()
   ok, e = pcall(yottadb.node, 1)
   assert(not ok)
   assert(e:find('string expected'))
-  ok, e = pcall(yottadb.node, '^test1', 'not a node object')
-  assert(not ok)
-  assert(e:find('table/nil expected'))
   -- TODO: error subscripting ISV
   -- TODO: error creating more than YDB_MAX_SUBS subscripts
 

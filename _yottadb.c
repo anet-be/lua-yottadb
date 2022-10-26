@@ -541,10 +541,10 @@ static int delete_excl(lua_State *L) {
 
 // Increments the numeric value of a variable/node.
 // Raises an error on overflow.
-// _yottadb.incr(varname[, subs][, increment='1'])
+// _yottadb.incr(varname[, subs][, increment=n])
 // varname: string
 // subs: optional table of subscripts
-// increment: string amount to increment by (should be a canonical number)
+// increment: amount to increment by = number, or string-of-a-canonical-number
 static int incr(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
