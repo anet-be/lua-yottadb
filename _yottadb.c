@@ -51,15 +51,50 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
 
 static const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
-// Raises a Lua error with most recent error message reported by YDB.
+// Returns an error message to match the supplied YDB error code
+// _yottadb.message(code)
+static int message(lua_State *L) {
+  ydb_buffer_t buf;
+  char *msg;
+
+  int code = luaL_checkinteger(L, -1);
+  lua_pop(L, 1);
+  YDB_MALLOC_BUFFER(&buf, 2049); // docs say 2048 is a safe size
+  // Decode the special return values that come with libyottadb's C interface
+  if (code == YDB_LOCK_TIMEOUT)
+    msg = "YDB_LOCK_TIMEOUT";
+  else if (code == YDB_TP_ROLLBACK)
+    msg = "YDB_TP_ROLLBACK";
+  else if (code == YDB_TP_RESTART)
+    msg = "YDB_TP_RESTART";
+  else if (code == YDB_NOTOK)
+    msg = "YDB_NOTOK";
+  else {
+    ydb_message(code, &buf);
+    msg = buf.buf_addr;
+    buf.buf_addr[buf.len_used] = '\0';
+    if (!msg[0]) msg = "Unknown system error";
+  }
+  lua_pushfstring(L, "%s%d: %s", LUA_YDB_ERR_PREFIX, code, msg);
+  YDB_FREE_BUFFER(&buf);
+  return 1;
+}
+
+// Raises a Lua error with the YDB error code supplied
 static int error(lua_State *L, int code) {
-  ydb_buffer_t message;
-  YDB_MALLOC_BUFFER(&message, 2049); // docs say 2048 is a safe size
-  ydb_message(code, &message);
-  message.buf_addr[message.len_used] = '\0';
-  lua_pushfstring(L, "%s%d: %s", LUA_YDB_ERR_PREFIX, code, message.buf_addr);
-  YDB_FREE_BUFFER(&message);
+  lua_pushinteger(L, code);
+  message(L);
   lua_error(L);
+  return 0;
+}
+
+// Call ydb_init()
+// Return YDB_OK on success, and >0 on error (with message in ZSTATUS)
+// If users wish to set their own signal handlers for signals not used by YDB
+// they may do so after caling ydb_init() -- which sets ydb's signal handlers
+static int _ydb_init(lua_State *L) {
+  lua_pushinteger(L, ydb_init());
+  return 1;
 }
 
 // Gets the value of a variable/node.
@@ -636,6 +671,8 @@ static const luaL_Reg yottadb_functions[] = {
   {"incr", incr},
   {"str2zwr", str2zwr},
   {"zwr2str", zwr2str},
+  {"message", message},
+  {"init", _ydb_init},
   {NULL, NULL}
 };
 

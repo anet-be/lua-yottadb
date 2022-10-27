@@ -34,9 +34,19 @@ local SIMPLE_DATA = {
   {{'^test7', {'sub4\x80', 'sub7'}}, 'test7sub4value'},
 }
 
-local function setup()
+-- Remove database temporary directories
+local function cleanup()
   os.remove(gbldir)
   os.remove(gbldat)
+end
+
+-- Create database in temporary directories using GDE
+already_setup = false
+local function setup()
+  assert(not already_setup, "You can only call setup() once, and it must be before the database is used. See the warning when you run 'gde help overview'. If you really want to refresh the dbase, try using transactions")
+  already_setup = true
+  print("Setting up temporary database")
+  cleanup()  -- in case last test quit without cleanup
   os.execute(string.format('%s/createdb.sh %s %s', cwd, os.getenv('ydb_dist'), gbldat))
 end
 
@@ -58,8 +68,6 @@ local function teardown()
     end
     has_simple_data = false
   end
-  os.remove(gbldir)
-  os.remove(gbldat)
 end
 
 -- Skips the given test when running the test suite.
@@ -129,6 +137,7 @@ function test_get()
   assert(_yottadb.get('^test3') == 'test3value1')
   assert(_yottadb.get('^test3', {'sub1'}) == 'test3value2')
   assert(_yottadb.get('^test3', {'sub1', 'sub2'}) == 'test3value3')
+  assert(yottadb.get('^test3', 'sub1', 'sub2') == 'test3value3')
 
   -- Error handling.
   local gvns = {{'^testerror'}, {'^testerror', {'sub1'}}}
@@ -158,6 +167,8 @@ function test_set()
   assert(_yottadb.get('test4') == 'test4value')
   _yottadb.set('test6', {'sub1'}, 'test6value')
   assert(_yottadb.get('test6', {'sub1'}) == 'test6value')
+  yottadb.set('test6', 'sub1', 'test7value')
+  assert(_yottadb.get('test6', {'sub1'}) == 'test7value')
 
   -- Unicode/i18n value.
   _yottadb.set('testchinese', '你好世界')
@@ -195,6 +206,13 @@ function test_delete()
   _yottadb.set('test10', {'sub1'}, 'test10value')
   assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
   _yottadb.delete('test10', {'sub1'})
+  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+
+  _yottadb.set('test10', {'sub1'}, 'test10value')
+  assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
+  yottadb.delete_node('test10', 'sub1')
   ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
@@ -237,6 +255,7 @@ function test_data()
   assert(_yottadb.data('^test3') == _yottadb.YDB_DATA_VALUE_DESC)
   assert(_yottadb.data('^test3', {'sub1'}) == _yottadb.YDB_DATA_VALUE_DESC)
   assert(_yottadb.data('^test3', {'sub1', 'sub2'}) == _yottadb.YDB_DATA_VALUE_NODESC)
+  assert(yottadb.data('^test3', 'sub1', 'sub2') == _yottadb.YDB_DATA_VALUE_NODESC)
 
   -- Validate inputs.
   validate_varname_inputs(_yottadb.data)
@@ -244,7 +263,7 @@ function test_data()
 end
 
 -- Note: for some reason, this test must be run first to pass.
-function test__lock_incr()
+function test_lock_incr()
   -- Varname only.
   local t1 = os.clock()
   _yottadb.lock_incr('test1')
@@ -997,7 +1016,6 @@ function test_incr()
     for j = 1, #increment_tests do
       local t = increment_tests[j]
       local initial, increment, result = t[1], t[2], t[3]
-      if not (i == 1 and j == 1) then setup() end
       local args = {table.unpack(key)}
       args[#args + 1] = initial
       _yottadb.set(table.unpack(args))
@@ -1007,7 +1025,6 @@ function test_incr()
       assert(_yottadb.get(table.unpack(key)) == result)
       args[#args] = _yottadb.YDB_DEL_TREE
       _yottadb.delete(table.unpack(args))
-      teardown()
     end
   end
 
@@ -1652,6 +1669,10 @@ end
 function test_node_features()
   local node = yottadb.node('test21', {'abc', 'def'})
   assert(node == yottadb.node('test21').abc.def)
+
+  node = yottadb.node('test20', 1, 'abc', 2)
+  assert(node == yottadb.node('test20', '1', 'abc', '2'))
+  assert(node == yottadb.node('test20')(1)('abc')(2))
 end
 
 function test_node()
@@ -1663,7 +1684,7 @@ function test_node()
   assert(node._name == '^test1')
   assert(node._value == 'test1value')
 
-  node = yottadb.node('^test2')('sub1')
+  node = yottadb.node('^test2', 'sub1')
   assert(node._varname == '^test2')
   assert(#node._subsarray == 1)
   assert(node._subsarray[1] == 'sub1')
@@ -1671,19 +1692,19 @@ function test_node()
   assert(node._value == 'test2value')
   assert(node == yottadb.node('^test2')('sub1'))
 
-  node = yottadb.node('^test2')('sub1')
+  node = yottadb.node('^test2', 'sub1')
   assert(node.varname == node('varname'))
   assert(#node.subsarray == 0)
   assert(node.name == node('name'))
   assert(node.value == node('value'))
-  assert(node == yottadb.node('^test2')('sub1'))
+  assert(node == yottadb.node('^test2').sub1)
 
-  node = yottadb.node('test3local')('sub1')
+  node = yottadb.node('test3local', 'sub1')
   node._value = 'smoketest3local'
   assert(rawget(node, '_value') == nil)
   assert(node._value == 'smoketest3local')
 
-  node = yottadb.node('test3local')('sub1')
+  node = yottadb.node('test3local', 'sub1')
   node._ = 'smoketest4local'
   assert(rawget(node, '_') == nil)
   assert(node._ == 'smoketest4local')
@@ -1702,9 +1723,9 @@ function test_node()
   assert(not ok)
   assert(e:find('string/number/nil expected'))
 
-  node = yottadb.node('testeroni')('sub1')
-  local node_copy = yottadb.node('testeroni')('sub1')
-  local node2 = yottadb.node('testeroni')('sub2')
+  node = yottadb.node('testeroni', 'sub1')
+  local node_copy = yottadb.node('testeroni').sub1
+  local node2 = yottadb.node('testeroni').sub2
   assert(node == node_copy)
   assert(node ~= node2)
 
@@ -1736,22 +1757,22 @@ function test_node()
 
   -- String output.
   assert(tostring(yottadb.node('test')) == 'test')
-  assert(tostring(yottadb.node('test')('sub1')) == 'test("sub1")')
+  assert(tostring(yottadb.node('test', 'sub1')) == 'test("sub1")')
   assert(tostring(yottadb.node('test')('sub1')('sub2')) == 'test("sub1","sub2")')
 
   -- Get values.
   assert(yottadb.node('^test1')._value == 'test1value')
-  assert(yottadb.node('^test2')('sub1')._value == 'test2value')
+  assert(yottadb.node('^test2', 'sub1')._value == 'test2value')
   assert(yottadb.node('^test3')._value == 'test3value1')
-  assert(yottadb.node('^test3')('sub1')._value == 'test3value2')
-  assert(yottadb.node('^test3')('sub1')('sub2')._value == 'test3value3')
+  assert(yottadb.node('^test3', 'sub1')._value == 'test3value2')
+  assert(yottadb.node('^test3', 'sub1', 'sub2')._value == 'test3value3')
 
   -- Subsarray.
   assert(#yottadb.node('^test3')._subsarray == 0)
-  local subsarray = yottadb.node('^test3')('sub1')._subsarray
+  local subsarray = yottadb.node('^test3').sub1._subsarray
   assert(#subsarray == 1)
   assert(subsarray[1] == 'sub1')
-  local subsarray = yottadb.node('^test3')('sub1')('sub2')._subsarray
+  local subsarray = yottadb.node('^test3', 'sub1', 'sub2')._subsarray
   assert(#subsarray == 2)
   assert(subsarray[1] == 'sub1')
   assert(subsarray[2] == 'sub2')
@@ -1759,17 +1780,17 @@ function test_node()
 
   -- Varname.
   assert(yottadb.node('^test3')._varname == '^test3')
-  assert(yottadb.node('^test3')('sub1')._varname == '^test3')
-  assert(yottadb.node('^test3')('sub1')('sub2')._varname == '^test3')
+  assert(yottadb.node('^test3', 'sub1')._varname == '^test3')
+  assert(yottadb.node('^test3', 'sub1', 'sub2')._varname == '^test3')
 
   -- Data.
   assert(yottadb.node('nodata')._data == yottadb.YDB_DATA_UNDEF)
   assert(yottadb.node('^test1')._data == yottadb.YDB_DATA_VALUE_NODESC)
   assert(yottadb.node('^test2')._data == yottadb.YDB_DATA_NOVALUE_DESC)
-  assert(yottadb.node('^test2')('sub1')._data == yottadb.YDB_DATA_VALUE_NODESC)
+  assert(yottadb.node('^test2', 'sub1')._data == yottadb.YDB_DATA_VALUE_NODESC)
   assert(yottadb.node('^test3')._data == yottadb.YDB_DATA_VALUE_DESC)
-  assert(yottadb.node('^test3')('sub1')._data == yottadb.YDB_DATA_VALUE_DESC)
-  assert(yottadb.node('^test3')('sub1')('sub2')._data == yottadb.YDB_DATA_VALUE_NODESC)
+  assert(yottadb.node('^test3','sub1')._data == yottadb.YDB_DATA_VALUE_DESC)
+  assert(yottadb.node('^test3','sub1','sub2')._data == yottadb.YDB_DATA_VALUE_NODESC)
   ok, e = pcall(function() return yottadb.node('\x80')._data end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
@@ -1778,10 +1799,10 @@ function test_node()
   assert(not yottadb.node('nodata')._has_value)
   assert(yottadb.node('^test1')._has_value)
   assert(not yottadb.node('^test2')._has_value)
-  assert(yottadb.node('^test2')('sub1')._has_value)
+  assert(yottadb.node('^test2','sub1')._has_value)
   assert(yottadb.node('^test3')._has_value)
-  assert(yottadb.node('^test3')('sub1')._has_value)
-  assert(yottadb.node('^test3')('sub1')('sub2')._has_value)
+  assert(yottadb.node('^test3','sub1')._has_value)
+  assert(yottadb.node('^test3','sub1','sub2')._has_value)
   ok, e = pcall(function() return yottadb.node('\x80')._has_value end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
@@ -1790,10 +1811,10 @@ function test_node()
   assert(not yottadb.node('nodata')._has_tree)
   assert(not yottadb.node('^test1')._has_tree)
   assert(yottadb.node('^test2')._has_tree)
-  assert(not yottadb.node('^test2')('sub1')._has_tree)
+  assert(not yottadb.node('^test2','sub1')._has_tree)
   assert(yottadb.node('^test3')._has_tree)
-  assert(yottadb.node('^test3')('sub1')._has_tree)
-  assert(not yottadb.node('^test3')('sub1')('sub2')._has_tree)
+  assert(yottadb.node('^test3','sub1')._has_tree)
+  assert(not yottadb.node('^test3','sub1','sub2')._has_tree)
   ok, e = pcall(function() return yottadb.node('\x80')._has_tree end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
@@ -1844,10 +1865,10 @@ function test_node_set()
   testnode._value = 'test4value'
   assert(testnode:_get() == 'test4value')
 
-  testnode = yottadb.node('test5')('sub1')
+  testnode = yottadb.node('test5','sub1')
   testnode:_set('test5value')
   assert(testnode._value == 'test5value')
-  assert(yottadb.node('test5')('sub1')._value == 'test5value')
+  assert(yottadb.node('test5','sub1')._value == 'test5value')
 end
 
 function test_node_delete()
@@ -1873,13 +1894,29 @@ function test_node_delete()
   assert(testnode._data == 0)
 end
 
+function test_aaa()
+  simple_data()
+end
+
 function test_node_lock()
-  local node = yottadb.node('test1')('sub1')('sub2')
-  local t1 = os.clock()
+--!!! remove next line:
+  _yottadb.set('^Test5', 'test5value')
+
+  local node = yottadb.node('testlock').sub1
+  local command = [=[lua -l yottadb -e "pcall(yottadb.lock_incr, 'testlock', 'sub1', 1)"]=]
+  local start, diff
+  -- lock and make sure a subprocess can't access it
   node:_lock_incr()
-  local t2 = os.clock()
-  assert(t2 - t1 < 0.1)
+  start = os.time()
+  os.execute(command)
+  diff = os.difftime(os.time(), start)
+  assert(diff >= 1)
+  -- unlock and test again
   node:_lock_decr()
+  start = os.time()
+  os.execute(command)
+  diff = os.difftime(os.time(), start)
+  assert(diff < 1)
 end
 
 function test_module_transactions()
@@ -2053,14 +2090,15 @@ else
 end
 table.sort(tests)
 local failed = 0
+setup()
 for i = 1, #tests do
   print(string.format('Running %s.', tests[i]))
-  setup()
   local ok, e = xpcall(_G[tests[i]], function(e)
     print(string.format('Failed!\n%s', debug.traceback(type(e) == 'string' and e or e.message, 3)))
     failed = failed + 1
   end)
-  if ok then teardown() end
+  teardown()
 end
+cleanup()
 print(string.format('%d/%d tests passed (%d skipped)', #tests - failed, #tests, skipped))
 os.exit(failed == 0 and 0 or 1)
