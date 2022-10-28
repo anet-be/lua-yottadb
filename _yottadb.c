@@ -244,16 +244,16 @@ static int tpfn(void *tpfnparm) {
   for (int i = 1; i <= n; i++) {
     lua_geti(L, top, i);
   }
-  int status;
-  if (lua_pcall(L, n - 1, 1, 0) != LUA_OK) {
-    const char *s = lua_tostring(L, -1);
-    if (strstr(s, LUA_YDB_ERR_PREFIX)) {
-      s += strlen(LUA_YDB_ERR_PREFIX);
-    }
+  int status, nargs=n-1, nresults=1, msg_handler=0;
+  if (lua_pcall(L, nargs, nresults, msg_handler) != LUA_OK) {
+    char *s = strstr(lua_tostring(L, -1), LUA_YDB_ERR_PREFIX);
     char *endp;
-    status = strtol(s, &endp, 10);
-    if (endp == s) {
-      lua_pushvalue(L, -1), lua_setfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error");
+    if (s) {
+      s += strlen(LUA_YDB_ERR_PREFIX);
+      status = strtol(s, &endp, 10);
+    }
+    if (!s || endp == s) {
+      lua_pushvalue(L, -1), lua_setfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error"); // TODO: this is not thread-safe. It should be returned using luaL_ref()
       status = LUA_YDB_ERR;
     }
   } else if (lua_isnil(L, -1)) {
@@ -271,13 +271,15 @@ static int tpfn(void *tpfnparm) {
 // Initiates a transaction.
 // _yottadb.tp([transid,] [varnames,] f[, ...])
 // transid: optional string transaction id
-// varnames: optional table of varnames to restore on transaction restart
+// varnames: optional table of local M varnames to restore on transaction restart
+//   (or {'*'} for all locals) -- restoration does apply to rollback
 // f: Lua function to call (can have nested _yottadb.tp() calls for nested transactions)
-//   If f returns nothing or _yottadb.YDB_OK, the transaction is committed.
+//   If f returns nothing or _yottadb.YDB_OK, the transaction's affected globals are committed.
 //   If f returns _yottadb.YDB_TP_RESTART or _yottadb.YDB_TP_ROLLBACK, the transaction is
 //     restarted (f will be called again) or not committed, respectively.
 //   If f errors, the transaction is not committed and the error propagated up the stack.
 // ...: optional arguments to pass to f
+//   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
 static int tp(lua_State *L) {
   const char *transid = lua_isstring(L, 1) ? lua_tostring(L, 1) : "";
   int npos = lua_isstring(L, 1) ? 2 : 1;

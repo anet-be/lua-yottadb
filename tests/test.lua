@@ -1899,9 +1899,6 @@ function test_aaa()
 end
 
 function test_node_lock()
---!!! remove next line:
-  _yottadb.set('^Test5', 'test5value')
-
   local node = yottadb.node('testlock').sub1
   local command = [=[lua -l yottadb -e "pcall(yottadb.lock_incr, 'testlock', 'sub1', 1)"]=]
   local start, diff
