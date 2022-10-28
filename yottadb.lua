@@ -471,38 +471,50 @@ end
 
 ---
 -- Initiates a transaction.
--- @param id Optional string transaction id.
--- @param varnames Optional list of variable names to restore on transaction restart.
--- @param f Function to call. The transaction is committed if the function returns nothing or
+-- @param id Optional string transaction id. See ydb docs for special ids 'BA' or 'BATCH':
+--   https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing
+-- @param varnames Optional table of local M variable names to restore on transaction restart
+--   (or {'*'} for all locals) -- restoration does apply to rollback
+-- @param f Function to call. The transaction's affected globals are committed if the function returns nothing or
 --   yottadb.YDB_OK, restarted if the function returns yottadb.YDB_TP_RESTART (f will be called
 --   again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
+--   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
 -- @param ... Optional arguments to pass to f.
 -- @name tp
-function M.tp(id, varnames, f, ...)
-  if not varnames and not f then
-    assert_type(id, 'function', 1)
-  elseif not f then
-    assert_type(id, 'string/table', 1)
-    assert_type(varnames, 'function', 2)
-  else
-    assert_type(id, 'string', 1)
-    assert_type(varnames, 'table', 2)
-    assert_type(f, 'function', 3)
-  end
-  assert_strings(varnames, 'varnames', 2)
-  _yottadb.tp(id, varnames, f, ...)
+function M.tp(id, varnames, f, ...) -- optional: id, varnames
+  -- fill in missing inputs if necessary
+  local args={id, varnames, f, ...}
+  local inserted = 0
+  if type(args[1]) ~= 'string' then  table.insert(args, 1, "")  inserted = inserted+1 end
+  if type(args[2]) ~= 'table' then  table.insert(args, 2, {})  inserted = inserted+1 end
+  id, varnames, f = args[1], args[2], args[3]
+
+  assert_type(id, 'string', 1)
+  assert_type(varnames, 'table', 2-inserted)
+  assert_strings(varnames, 'varnames', 2-inserted)
+  assert_type(f, 'function', 3-inserted)
+  _yottadb.tp(id, varnames, f, table.unpack(args, 4))
 end
 
 ---
--- Returns a transaction-safe version of the given function such that it can be called with
--- YottaDB Transaction Processing.
--- @param f Function to convert. The transaction is committed if the function returns nothing
+-- Returns a transaction-safed version of the given function such that it will be called within
+--   a yottadb transaction and the dbase globals restored on error or rollback()
+-- @param id Optional string transaction id. See ydb docs for special ids 'BA' or 'BATCH':
+--   https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing
+-- @param varnames Optional table of local M variable names to restore on transaction restart
+--   (or {'*'} for all locals) -- restoration does apply to rollback
+-- @param f Function to convert. The transaction's affected globals are committed if the function returns nothing
 --   or yottadb.YDB_OK, restarted if the function returns yottadb.YDB_TP_RESTART (f will be
 --   called again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
--- @return transaction-safe function.
+--   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
+-- @return transaction-safed function.
 -- @see tp
 -- @name transaction
-function M.transaction(f)
+function M.transaction(id, varnames, f) -- optional: id, varnames
+  -- fill in missing inputs if necessary
+  if type(id) ~= 'string' then  id, varnames, f = "", id, varnames  end
+  if type(varnames) ~= 'table' then  varnames, f = {}, varnames  end
+
   return function(...)
     local args = {...}
     local function wrapped_transaction()
@@ -511,13 +523,25 @@ function M.transaction(f)
         result = _yottadb.YDB_OK
       elseif not ok and M.get_error_code(result) == _yottadb.YDB_TP_RESTART then
         result = _yottadb.YDB_TP_RESTART
+      elseif not ok and M.get_error_code(result) == _yottadb.YDB_TP_ROLLBACK then
+        result = _yottadb.YDB_TP_ROLLBACK
       elseif not ok then
         error(result, 2)
       end
       return result
     end
-    return _yottadb.tp(wrapped_transaction, ...)
+    return _yottadb.tp(id, varnames, wrapped_transaction, ...)
   end
+end
+
+-- Make the currently running transaction function restart immediately.
+function M.trestart()
+  error(_yottadb.message(_yottadb.YDB_TP_RESTART))
+end
+
+-- Make the currently running transaction function rollback immediately and produce a rollback error.
+function M.trollback()
+  error(_yottadb.message(_yottadb.YDB_TP_ROLLBACK))
 end
 
 ---
