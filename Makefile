@@ -14,7 +14,6 @@ ydb_dist=$(shell pkg-config --variable=prefix yottadb --silence-errors)
 ifeq (, $(ydb_dist))
 ydb_dist=$(shell pwd)/YDB/install
 endif
-ydb_gbldir=/tmp/lua-yottadb.gld
 
 CFLAGS=-std=c99 -I$(ydb_dist) -I/usr/include/lua5.3 -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb #-Wl,rpath,YDB/install
@@ -34,5 +33,4 @@ install: yottadb.lua _yottadb.so
 	install yottadb.lua $(DESTDIR)$(share_dir)
 
 test: _yottadb.so
-	rm -f $(ydb_gbldir)
-	source $(ydb_dist)/ydb_env_set && ydb_gbldir=$(ydb_gbldir) $(lua) -l_yottadb -lyottadb tests/test.lua $(TESTS)
+	source $(ydb_dist)/ydb_env_set && $(lua) -l_yottadb -lyottadb tests/test.lua $(TESTS)

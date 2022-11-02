@@ -3,8 +3,7 @@
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
 local cwd = arg[0]:match('^.+/') or '.'
-local gbldir = os.getenv('ydb_gbldir')
-local gbldat = gbldir:gsub('[^.]+$', 'dat')
+local gbldir_prefix = (os.getenv('TMPDIR') or '/tmp') .. '/lua-yottadb-'
 
 local SIMPLE_DATA = {
   {{'^Test5', {}}, 'test5value'},
@@ -36,18 +35,38 @@ local SIMPLE_DATA = {
 
 -- Remove database temporary directories
 local function cleanup()
-  os.remove(gbldir)
-  os.remove(gbldat)
+  os.execute(string.format('bash -c "rm -f %s*.gld %s*.dat*"', gbldir_prefix, gbldir_prefix))
+end
+
+-- Execute shell command with the environment settings we need
+local Zgbldir   -- our current database file
+local function env_execute(command)
+  local env = string.format('ydb_gbldir="%s"', Zgbldir)
+  return os.execute('env '..env..' '..command)
+end
+
+-- Run shell command in the background (using bash &)
+-- Beware that you must not use single quotes in the supplied string
+local function background_execute(command)
+  return env_execute("bash -c '"..command.." &'")
 end
 
 -- Create database in temporary directories using GDE
-already_setup = false
-local function setup()
-  assert(not already_setup, "You can only call setup() once, and it must be before the database is used. See the warning when you run 'gde help overview'. If you really want to refresh the dbase, try using transactions")
-  already_setup = true
-  print("Setting up temporary database")
-  cleanup()  -- in case last test quit without cleanup
-  os.execute(string.format('%s/createdb.sh %s %s', cwd, os.getenv('ydb_dist'), gbldat))
+-- unique_name specifies a filename suffix for the global directory and datafile
+local function setup(unique_name)
+  local gbldir = gbldir_prefix .. unique_name .. '.gld'
+  local gbldat = gbldir_prefix .. unique_name .. '.dat'
+  -- verify that these files do not yet exist
+  for _, fname in ipairs({gbldir, gbldat}) do
+    local f, msg = io.open(fname, 'r')
+    if f then f:close() end
+    assert(not f, string.format("File already exists trying to create database %s. Run 'gde help overview' for details", fname))
+  end
+  Zgbldir=gbldir
+  local command = string.format('bash -c "%s/createdb.sh %s %s 2>/dev/null >/dev/null"', cwd, os.getenv('ydb_dist'), gbldat)
+  local ok = env_execute(command)
+  assert(ok, string.format("Failed to create database %s with command:\n  %s", Zgbldir, command))
+  yottadb.set('$ZGBLDIR', Zgbldir)
 end
 
 local has_simple_data = false
@@ -279,7 +298,7 @@ function test_lock_incr()
   _yottadb.lock_decr('test2', {'sub1'})
 
   -- Timeout, varname only.
-  os.execute('tests/lock.sh "^test1"')
+  background_execute('tests/lock.lua "^test1"')
   os.execute('sleep 0.1')
   local t1 = os.time()
   local ok, e = pcall(_yottadb.lock_incr, '^test1', 1)
@@ -288,7 +307,7 @@ function test_lock_incr()
   local t2 = os.time()
   assert(t2 - t1 >= 1)
   -- Varname and subscript
-  os.execute('tests/lock.sh "^test2" "sub1"')
+  background_execute('tests/lock.lua "^test2" "sub1"')
   os.execute('sleep 0.1')
   t1 = os.time()
   ok, e = pcall(_yottadb.lock_incr, '^test2', {'sub1'}, 1)
@@ -299,7 +318,7 @@ function test_lock_incr()
   os.execute('sleep 1')
 
   -- No timeout.
-  os.execute('tests/lock.sh "^test2" "sub1"')
+  background_execute('tests/lock.lua "^test2" "sub1"')
   os.execute('sleep 2')
   local t1 = os.clock()
   _yottadb.lock_incr('^test2', {'sub1'})
@@ -315,18 +334,18 @@ function test_lock_incr()
   _yottadb.lock(keys)
   for i = 1, #keys do
     local cmd = string.format('tests/lock.lua "%s" %s', keys[i][1], table.concat(keys[i][2] or {}, ' '))
-    local _, _, status = os.execute(cmd)
+    local _, _, status = env_execute(cmd)
     assert(status == 1)
   end
   _yottadb.lock() -- release all locks
   for i = 1, #keys do
     local cmd = string.format('tests/lock.lua "%s" %s', keys[i][1], table.concat(keys[i][2] or {}, ' '))
-    local _, _, status = os.execute(cmd)
+    local _, _, status = env_execute(cmd)
     assert(status == 0)
   end
 
   -- Test lock being blocked.
-  os.execute('tests/lock.sh "^test1"')
+  background_execute('tests/lock.lua "^test1"')
   os.execute('sleep 0.1')
   local ok, e = pcall(_yottadb.lock, {{"^test1"}})
   assert(not ok)
@@ -1014,6 +1033,7 @@ function test_incr()
   for i = 1, #increment_keys do
     local key = increment_keys[i]
     for j = 1, #increment_tests do
+      setup('test_incr_' .. tostring(i) .. '_' .. tostring(j))
       local t = increment_tests[j]
       local initial, increment, result = t[1], t[2], t[3]
       local args = {table.unpack(key)}
@@ -1025,6 +1045,7 @@ function test_incr()
       assert(_yottadb.get(table.unpack(key)) == result)
       args[#args] = _yottadb.YDB_DEL_TREE
       _yottadb.delete(table.unpack(args))
+      teardown()
     end
   end
 
@@ -1905,13 +1926,13 @@ function test_node_lock()
   -- lock and make sure a subprocess can't access it
   node:_lock_incr()
   start = os.time()
-  os.execute(command)
+  env_execute(command)
   diff = os.difftime(os.time(), start)
   assert(diff >= 1)
   -- unlock and test again
   node:_lock_decr()
   start = os.time()
-  os.execute(command)
+  env_execute(command)
   diff = os.difftime(os.time(), start)
   assert(diff < 1)
 end
@@ -2087,9 +2108,10 @@ else
 end
 table.sort(tests)
 local failed = 0
-setup()
+cleanup()
 for i = 1, #tests do
   print(string.format('Running %s.', tests[i]))
+  setup(tests[i])
   local ok, e = xpcall(_G[tests[i]], function(e)
     print(string.format('Failed!\n%s', debug.traceback(type(e) == 'string' and e or e.message, 3)))
     failed = failed + 1
