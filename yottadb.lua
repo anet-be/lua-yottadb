@@ -613,31 +613,6 @@ function node:_lock_incr(timeout) return M.lock_incr(self._varname, self._subsar
 -- @see lock_decr
 function node:_lock_decr() return M.lock_decr(self._varname, self._subsarray) end
 
--- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
---   or subscript_previous()
--- @see subscript_next
-function node:_subscript_next(reset)
-  if reset then self._next_subsarray[#self._next_subsarray] = '' end
-  local next_sub = M.subscript_next(self._varname, self._next_subsarray)
-  if next_sub then self._next_subsarray[#self._next_subsarray] = next_sub end
-  return next_sub
-end
-
--- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
---   or subscript_previous()
--- @see subscript_previous
-function node:_subscript_previous(reset)
-  if reset then self._next_subsarray[#self._next_subsarray] = '' end
-  local prev_sub = M.subscript_previous(self._varname, self._next_subsarray)
-  if prev_sub then self._next_subsarray[#self._next_subsarray] = prev_sub end
-  return prev_sub
-end
-
--- @see subscripts
-function node:_subscripts(reverse)
-  return M.subscripts(self._varname, #self._subsarray > 0 and self._subsarray or {''}, reverse)
-end
-
 -- Creates and returns a new node with the given subscript added.
 -- @param name String subscript name.
 function node:__call(name)
@@ -678,6 +653,24 @@ function node:__sub(value)
   self:_incr(-assert_type(value, 'string/number', 1))
   return self
 end
+
+-- Makes pairs() work
+-- @param ... = reverse Optional set to true to iterate in reverse order
+-- @usage: for k,v in pairs(node) do ...
+-- @usage in forward or reverse: for k,v in node:_pairs(false/true) -- default is reverse=false
+function node:__pairs(...)  -- optional param: reverse
+  local reverse = ...
+  local actuator = not reverse and M.subscript_next or M.subscript_previous
+  local child = self('')  -- empty subscript is starting point for iterating all subscripts
+  local subsarray = child._subsarray
+  local function iterator(node, index)
+    local next_or_prev = actuator(node._varname, subsarray)
+    subsarray[#subsarray] = next_or_prev
+    return next_or_prev, node._value
+  end
+  return iterator, child, ''
+end
+node._pairs = node.__pairs
 
 -- Returns the string representation of this node.
 function node:__tostring()
@@ -776,6 +769,43 @@ function key:__newindex(k, v)
     rawset(self, k, v)
   end
 end
+
+-- ~~~ Deprecated functionality for M.key() as not Lua-esque: use pairs() instead ~~~
+
+-- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
+--   or subscript_previous()
+-- @see subscript_next
+-- @deprecated because:
+--   a) it keeps dangerous state in the object: causes bugs where old references to it think it's still original
+--   b) it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
+--   c) if this is a common use-case, it should be reimplemented for node:_subscript_next() by
+--      returning a fresh node object (after node efficiency improvement to avoid subsarray duplication)
+function key:_subscript_next(reset)
+  if reset then self._next_subsarray[#self._next_subsarray] = '' end
+  local next_sub = M.subscript_next(self._varname, self._next_subsarray)
+  if next_sub then self._next_subsarray[#self._next_subsarray] = next_sub end
+  return next_sub
+end
+
+-- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
+--   or subscript_previous()
+-- @see subscript_previous
+-- @deprecated because: see key:_subscript_next()
+function key:_subscript_previous(reset)
+  if reset then self._next_subsarray[#self._next_subsarray] = '' end
+  local prev_sub = M.subscript_previous(self._varname, self._next_subsarray)
+  if prev_sub then self._next_subsarray[#self._next_subsarray] = prev_sub end
+  return prev_sub
+end
+
+-- @see subscripts
+-- @deprecated because:
+--   a) pairs() is more Lua-esque
+--   b) it was is non-intuitive that k:_subscripts() only iterates subsequent subscripts, not all subscripts
+function key:_subscripts(reverse)
+  return M.subscripts(self._varname, #self._subsarray > 0 and self._subsarray or {''}, reverse)
+end
+
 
 -- Handy for debugging
 if os.getenv('developer_mode') then
