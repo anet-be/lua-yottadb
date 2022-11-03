@@ -2131,7 +2131,7 @@ if #arg == 0 then
   end
 else
   for i = 1, #arg do
-    if type(_G[arg[i]]) == 'function' then
+    if type(rawget(_G, arg[i])) == 'function' then
       tests[#tests + 1] = arg[i]
     else
       for k, v in pairs(_G) do
