@@ -1797,7 +1797,6 @@ function test_node()
   assert(#subsarray == 2)
   assert(subsarray[1] == 'sub1')
   assert(subsarray[2] == 'sub2')
-  for subscript in yottadb.node('^test3'):_subscripts() do end -- confirm no error
 
   -- Varname.
   assert(yottadb.node('^test3')._varname == '^test3')
@@ -1837,46 +1836,6 @@ function test_node()
   assert(yottadb.node('^test3','sub1')._has_tree)
   assert(not yottadb.node('^test3','sub1','sub2')._has_tree)
   ok, e = pcall(function() return yottadb.node('\x80')._has_tree end)
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
-
-  -- Subscript next.
-  node = yottadb.node('testsubsnext')
-  node('sub1')._value = '1'
-  node('sub2')._value = '2'
-  node('sub3')._value = '3'
-  node('sub4')._value = '4'
-  assert(node:_subscript_next() == 'sub1')
-  assert(node:_subscript_next() == 'sub2')
-  assert(node:_subscript_next() == 'sub3')
-  assert(node:_subscript_next() == 'sub4')
-  assert(not node:_subscript_next())
-  assert(node:_subscript_next(true) == 'sub1')
-  assert(node:_subscript_next() == 'sub2')
-  assert(node:_subscript_next() == 'sub3')
-  assert(node:_subscript_next() == 'sub4')
-  ok, e = pcall(function() yottadb.node('^\x80'):_subscript_next() end)
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
-
-  -- Subscript previous.
-  node = yottadb.node('testsubsprev')
-  node('sub1')._value = '1'
-  node('sub2')._value = '2'
-  node('sub3')._value = '3'
-  node('sub4')._value = '4'
-  assert(node:_subscript_previous() == 'sub4')
-  assert(node:_subscript_previous() == 'sub3')
-  assert(node:_subscript_next() == 'sub4') -- confirm capatibility with subscript_next
-  assert(node:_subscript_previous() == 'sub3')
-  assert(node:_subscript_previous() == 'sub2')
-  assert(node:_subscript_previous() == 'sub1')
-  assert(not node:_subscript_previous())
-  assert(node:_subscript_previous(true) == 'sub4')
-  assert(node:_subscript_previous() == 'sub3')
-  assert(node:_subscript_previous() == 'sub2')
-  assert(node:_subscript_previous() == 'sub1')
-  ok, e = pcall(function() yottadb.node('^\x80'):_subscript_previous() end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 end
