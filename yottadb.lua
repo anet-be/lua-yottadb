@@ -65,7 +65,7 @@ if lua_version >= 5.3 then
   end
 else
   function isinteger(n)
-    return not (tostring(n):find(".", 1, true))
+    return type(n) == 'number' and not (tostring(n):find(".", 1, true))
   end
 end
 
@@ -82,7 +82,7 @@ local function assert_subscripts(t, name, narg)
   if type(t) ~= 'table' then return t end
   for i, v in ipairs(t) do
     local kind = type(v)
-    if kind ~= 'string' and (kind ~= 'number' or not isinteger(v)) then
+    if kind ~= 'string' and not isinteger(v) then
       error(string.format("bad argument #%s to '%s' (string or integer subscript expected at index %s, got %s)", narg, debug.getinfo(2, 'n').name or '?', i, kind), 3)
     end
   end
@@ -617,7 +617,7 @@ function node:_lock_decr() return M.lock_decr(self._varname, self._subsarray) en
 -- @param name String subscript name.
 function node:__call(name)
   local kind = type(name)
-  if kind ~= 'string' and (kind ~= 'number' or not isinteger(name)) then
+  if kind ~= 'string' and not isinteger(name) then
     error(string.format("bad subscript added '%s' (string or integer expected, got %s)", self, type(name)))
   end
   local new_node = self.___new(self._varname, self._subsarray)
@@ -658,6 +658,9 @@ end
 -- @param ... = reverse Optional set to true to iterate in reverse order
 -- @usage: for k,v in pairs(node) do ...
 -- @usage in forward or reverse: for k,v in node:_pairs(false/true) -- default is reverse=false
+-- @Note that pairs() order is guaranteed to equal the M collation sequence order
+--   (even though pairs() order is not normally guaranteed for Lua tables)
+--   This means that pairs() is a reasonable substitute for ipairs -- see ipairs() below
 function node:__pairs(...)  -- optional param: reverse
   local reverse = ...
   local actuator = not reverse and M.subscript_next or M.subscript_previous
@@ -670,6 +673,19 @@ function node:__pairs(...)  -- optional param: reverse
   end
   return iterator, child, ''
 end
+
+-- Note on ipairs(): not implemented
+-- Instead use pairs() as follows:
+--    for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
+-- (this works since standard M sequence is: numbers first -- unless your db specified another collation)
+-- Alternative, to ensure integer keys: use a numeric loop as follows:
+--    for i=1,1/0 do   v=node[i]._  if not v break then   <do_your_stuff with k,v>   end
+-- Reason:
+--  Lua >=5.3 implements ipairs to invoke __index()
+--  This would mean that __index() would have to treat integer subscript lookup specially, so:
+--    node['abc']  => produces a new node so that node.abc.def.ghi works
+--    but node[1]  => would have to produce value note(1)._value so ipairs() works
+--  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation
 
 -- Returns the string representation of this node.
 function node:__tostring()
