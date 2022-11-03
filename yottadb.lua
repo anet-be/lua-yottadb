@@ -670,7 +670,6 @@ function node:__pairs(...)  -- optional param: reverse
   end
   return iterator, child, ''
 end
-node._pairs = node.__pairs
 
 -- Returns the string representation of this node.
 function node:__tostring()
