@@ -1915,10 +1915,6 @@ function test_node_delete()
   assert(testnode._data == 0)
 end
 
-function test_aaa()
-  simple_data()
-end
-
 function test_node_lock()
   local node = yottadb.node('testlock').sub1
   local command = [=[lua -l yottadb -e "pcall(yottadb.lock_incr, 'testlock', 'sub1', 1)"]=]
