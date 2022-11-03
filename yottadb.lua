@@ -779,7 +779,7 @@ end
 --   b) it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
 --   c) if this is a common use-case, it should be reimplemented for node:_subscript_next() by
 --      returning a fresh node object (after node efficiency improvement to avoid subsarray duplication)
-function key:_subscript_next(reset)
+function key:subscript_next(reset)
   if reset then self._next_subsarray[#self._next_subsarray] = '' end
   local next_sub = M.subscript_next(self._varname, self._next_subsarray)
   if next_sub then self._next_subsarray[#self._next_subsarray] = next_sub end
@@ -790,7 +790,7 @@ end
 --   or subscript_previous()
 -- @see subscript_previous
 -- @deprecated because: see key:_subscript_next()
-function key:_subscript_previous(reset)
+function key:subscript_previous(reset)
   if reset then self._next_subsarray[#self._next_subsarray] = '' end
   local prev_sub = M.subscript_previous(self._varname, self._next_subsarray)
   if prev_sub then self._next_subsarray[#self._next_subsarray] = prev_sub end
@@ -801,7 +801,7 @@ end
 -- @deprecated because:
 --   a) pairs() is more Lua-esque
 --   b) it was is non-intuitive that k:_subscripts() only iterates subsequent subscripts, not all subscripts
-function key:_subscripts(reverse)
+function key:subscripts(reverse)
   return M.subscripts(self._varname, #self._subsarray > 0 and self._subsarray or {''}, reverse)
 end
 
