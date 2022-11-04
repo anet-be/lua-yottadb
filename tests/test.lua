@@ -1728,7 +1728,8 @@ function test_node()
   node = yottadb.node('test3local', 'sub1')
   node._ = 'smoketest4local'
   assert(rawget(node, '_') == nil)
-  assert(node._ == 'smoketest4local')
+  assert(node() == 'smoketest4local')
+  assert(node() == 'smoketest4local')
 
   node = yottadb.node('^nonexistent')
   assert(node._value == nil)

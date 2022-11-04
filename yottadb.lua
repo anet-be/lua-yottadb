@@ -616,6 +616,7 @@ function node:_lock_decr() return M.lock_decr(self._varname, self._subsarray) en
 -- Creates and returns a new node with the given subscript added.
 -- @param name String subscript name.
 function node:__call(name)
+  if not name then  return M.get(self._varname, self._subsarray)  end
   local kind = type(name)
   if kind ~= 'string' and not isinteger(name) then
     error(string.format("bad subscript added '%s' (string or integer expected, got %s)", self, type(name)))
