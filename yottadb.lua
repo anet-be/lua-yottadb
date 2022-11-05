@@ -13,6 +13,9 @@ local _yottadb = require('_yottadb')
 for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
 M._VERSION = _yottadb._VERSION
 
+_string_number = {string=true, number=true}
+_string_number_nil = {string=true, number=true, ['nil']=true}
+
 -- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
 -- This is intended to be used with API function arguments so users receive more helpful error
@@ -124,7 +127,7 @@ function M.data(varname, ...)
 end
 
 ---
--- Deletes a single variable/node.
+-- Deletes the value of a single variable/node.
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @name delete_node
@@ -613,13 +616,85 @@ function node:_lock_incr(timeout) return M.lock_incr(self._varname, self._subsar
 -- @see lock_decr
 function node:_lock_decr() return M.lock_decr(self._varname, self._subsarray) end
 
+-- Populate db from tbl. In its simpest form:
+--    > node._settree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=nil})
+-- @param tbl is the table to store into the databse
+--    special field name _ sets the value of the node itself, as opposed to a subnode
+--    assign nil to _ to delete the _value of a node. You cannot delete the whole subtree
+-- @param type_caster(node, key, value)
+--    Optional function that casts supplied types to string/number/nil
+--    it must return the same or altered: key, value
+--    if supplied, it is called to convert every key/value to string/number/nil;
+--    type errors can be handled (or ignored) using this function, too.
+--    if type_caster returns itself (function type_caster) as key,
+--        _settree will simply not update the current database value
+-- @param seen is for internal use only (to prevent accidental recursion)
+function node:_settree(tbl, type_caster, seen)
+  seen = seen or {}
+  for k,v in pairs(tbl) do
+    if type_caster then  k,v = type_caster(self,k,v)  end
+    if k ~= type_caster then  -- type_caster = special do-nothing flag
+      assert(_string_number[type(k)], string.format("Cannot set %s subscript of type %s: must be string/number", self, type(k)))
+      local child = k=='_' and self or self(k)
+      assert(not seen(str(child), string.format("Table to update database contains two data values for node %s", child), 2))
+      seen[str(child)] = true
+      if type(v) == 'table' then
+        self:_settree(v, type_caster, seen)  -- recurse into sub-table
+      end
+      assert(_string_number_nil[type(v)], string.format("Cannot set node node %s to type %s", child, v))
+      if v == nil then  child._delete_node()  else  child:_set(v)  end
+    end
+  end
+end
+
+-- Fetch database node and subtree and return a Lua table of it. But be aware that order is not preserved by Lua tables.
+-- In its simplest form:
+--    > node:_gettree()
+--    {_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=49}
+--  Note: special field name _ indicates the value of the node itself
+-- @param maxdepth Optional subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
+-- @param filter Optional function(node, value, recurse, depth) or nil
+--    if filter is nil, all values are fetched unfiltered
+--    if filter is a function(node, value, recurse, depth) it is invoked on every subscript
+--        to allow it to cast/alter every _value and recurse flag
+--    it must return the same or an altered _value (string/number/nil) and recurse flag
+--    if filter returns a nil _value then _gettree will store nothing in the table for that database value
+--    if filter return false recurse flag, it will prevent recursion deeper into that particular subscript
+-- @param value is for internal use only (to avoid duplicate value fetches, for speed)
+-- @param depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
+function node:_gettree(maxdepth, filter, value, depth)
+  if not depth then  -- i.e. if this is the first time the function is called
+    depth = depth or 0
+    maxdepth = maxdepth or 1/0  -- or infinity
+    value = self._value
+    if filter then  value = filter(self, value, true, depth)  end
+  end
+  local tbl = {}
+  if value then  tbl._ = value  end
+  depth = depth+1
+  for k,v in pairs(self) do
+    local child = self(k)
+    local recurse = depth <= maxdepth and child._data >= 10
+    if filter then  v, recurse = filter(child, v, recurse, depth)  end
+    if recurse then
+      v = child:_gettree(maxdepth, filter, v, depth)
+    end
+    if v then  tbl[k] = v  end
+  end
+  return tbl
+end
+
 -- Creates and returns a new node with the given subscript added.
 -- @param name String subscript name.
 function node:__call(name)
   if not name then  return M.get(self._varname, self._subsarray)  end
   local kind = type(name)
   if kind ~= 'string' and not isinteger(name) then
-    error(string.format("bad subscript added '%s' (string or integer expected, got %s)", self, type(name)))
+    local message = string.format("bad subscript added to '%s' (string or integer expected, got %s)", self, type(name))
+    -- Provide more helpful error in the case where someone invoke a node method without the _ prefix
+    local _name = '_'..self._subsarray[#self._subsarray]
+    if node[_name] then  message = message.."; did you mean ".._name.."()?"  end
+    error(message )
   end
   local new_node = self.___new(self._varname, self._subsarray)
   table.insert(new_node._subsarray, tostring(name))
@@ -656,14 +731,13 @@ function node:__sub(value)
 end
 
 -- Makes pairs() work
--- @param ... = reverse Optional set to true to iterate in reverse order
+-- @param reverse Optional set to true to iterate in reverse order
 -- @usage: for k,v in pairs(node) do ...
 -- @usage in forward or reverse: for k,v in node:_pairs(false/true) -- default is reverse=false
 -- @Note that pairs() order is guaranteed to equal the M collation sequence order
 --   (even though pairs() order is not normally guaranteed for Lua tables)
 --   This means that pairs() is a reasonable substitute for ipairs -- see ipairs() below
-function node:__pairs(...)  -- optional param: reverse
-  local reverse = ...
+function node:__pairs(reverse)
   local actuator = not reverse and M.subscript_next or M.subscript_previous
   local child = self('')  -- empty subscript is starting point for iterating all subscripts
   local subsarray = child._subsarray
@@ -721,13 +795,15 @@ end
 
 -- Sets node's value if k='_' or '_value'
 -- otherwise sets the value of dbase sub-node self(k)
+-- It's tempting to implement db assignment node.subnode = 3
+-- but that would not work consistently, e.g. node = 3 would set lua local
 function node:__newindex(k, v)
   if k=='_value' or k=='_' then
     self:_set(v)
   else
     -- set sub-node[k] equal to value
     assert(not node_properties[k], 'read-only property')
-    self(k):_set(v)
+    assert(false, string.format("Tried to set node object %s. Did you mean to set %s._value instead?", self(k), self(k)))
   end
 end
 
