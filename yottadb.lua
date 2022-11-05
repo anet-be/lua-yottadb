@@ -17,6 +17,9 @@ _string_number = {string=true, number=true}
 _string_number_nil = {string=true, number=true, ['nil']=true}
 _table_string_number = {table=true, string=true, number=true}
 
+_string_number = {string=true, number=true}
+_string_number_nil = {string=true, number=true, ['nil']=true}
+
 -- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
 -- This is intended to be used with API function arguments so users receive more helpful error
