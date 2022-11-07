@@ -15,6 +15,7 @@ M._VERSION = _yottadb._VERSION
 
 _string_number = {string=true, number=true}
 _string_number_nil = {string=true, number=true, ['nil']=true}
+_table_string_number = {table=true, string=true, number=true}
 
 -- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
@@ -616,33 +617,38 @@ function node:_lock_incr(timeout) return M.lock_incr(self._varname, self._subsar
 -- @see lock_decr
 function node:_lock_decr() return M.lock_decr(self._varname, self._subsarray) end
 
+M.delete = function() end   -- just a value that does not overlap with any string/number
+
 -- Populate db from tbl. In its simpest form:
---    > node._settree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=nil})
+--    > node._settree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=yottadb.delete})
 -- @param tbl is the table to store into the databse
 --    special field name _ sets the value of the node itself, as opposed to a subnode
---    assign nil to _ to delete the _value of a node. You cannot delete the whole subtree
+--    assign special value yottadb.delete to a node to delete the _value of the node. You cannot delete the whole subtree
 -- @param type_caster(node, key, value)
---    Optional function that casts supplied types to string/number/nil
---    it must return the same or altered: key, value
---    if supplied, it is called to convert every key/value to string/number/nil;
+--    Optional function called on every key, value to produce strings/numbers
+--    if supplied it must return the same or altered: key, value
 --    type errors can be handled (or ignored) using this function, too.
---    if type_caster returns itself (function type_caster) as key,
+--    if type_caster returns nil as key,
 --        _settree will simply not update the current database value
--- @param seen is for internal use only (to prevent accidental recursion)
+-- @param seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
 function node:_settree(tbl, type_caster, seen)
   seen = seen or {}
   for k,v in pairs(tbl) do
     if type_caster then  k,v = type_caster(self,k,v)  end
-    if k ~= type_caster then  -- type_caster = special do-nothing flag
+    if k then  -- if type_caster returned nil as k => special do-nothing flag
       assert(_string_number[type(k)], string.format("Cannot set %s subscript of type %s: must be string/number", self, type(k)))
       local child = k=='_' and self or self(k)
-      assert(not seen(str(child), string.format("Table to update database contains two data values for node %s", child), 2))
-      seen[str(child)] = true
-      if type(v) == 'table' then
-        self:_settree(v, type_caster, seen)  -- recurse into sub-table
+      if v==M.delete then
+        assert(not seen[tostring(child)], string.format("Node already updated (when trying to delete node %s)", child, v), 2)
+        child:_delete_node()
+      elseif type(v) == 'table' then
+        child:_settree(v, type_caster, seen)  -- recurse into sub-table
+      else
+        assert(not seen[tostring(child)], string.format("Node already updated (when trying to set node %s to %s)", child, v), 2)
+        seen[tostring(child)] = true
+        assert(_table_string_number[type(v)], string.format("Cannot set node %s to type %s", child, v))
+        child:_set(v)
       end
-      assert(_string_number_nil[type(v)], string.format("Cannot set node node %s to type %s", child, v))
-      if v == nil then  child._delete_node()  else  child:_set(v)  end
     end
   end
 end
