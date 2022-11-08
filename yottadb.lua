@@ -690,20 +690,69 @@ function node:_gettree(maxdepth, filter, value, depth)
   return tbl
 end
 
--- Creates and returns a new node with the given subscript added.
--- @param name String subscript name.
-function node:__call(name)
-  if not name then  return M.get(self._varname, self._subsarray)  end
-  local kind = type(name)
-  if kind ~= 'string' and not isinteger(name) then
-    local message = string.format("bad subscript added to '%s' (string or integer expected, got %s)", self, type(name))
-    -- Provide more helpful error in the case where someone invoke a node method without the _ prefix
+-- Return iterator over the child subscripts of a node (in M terms, collate from "" to "")
+-- Unlike the old key:subscripts() this returns all *child* subscripts, not all subsequent subscripts in the same level
+-- @param reverse Optional set to true to iterate in reverse order
+-- @usage: for subscript in node:_subscripts() do ...
+-- @Note that subscripts() order is guaranteed to equal the M collation sequence order
+function node:_subscripts(reverse)
+  local actuator = not reverse and M.subscript_next or M.subscript_previous
+  local child = self('')  -- empty subscript is starting point for iterating all subscripts
+  local subsarray = child._subsarray
+  local function iterator()
+    local next_or_prev = actuator(child._varname, subsarray)
+    subsarray[#subsarray] = next_or_prev
+    return next_or_prev
+  end
+  return iterator, child, ''  -- iterate using child from ''
+end
+
+-- Makes pairs() work - iterate over the child subscripts, values of given node
+-- If you need to iterate in reverse, use node:__pairs(reverse) instead of pairs(node)
+-- @usage: for k,v in pairs(node) do ...
+-- @Note that pairs() order is guaranteed to equal the M collation sequence order
+--   (even though pairs() order is not normally guaranteed for Lua tables)
+--   This means that pairs() is a reasonable substitute for ipairs -- see ipairs() below
+function node:__pairs(reverse)
+  local sub_iter, child, start = self:_subscripts(reverse)
+  local function iterator()  return sub_iter(), child._value  end
+  return iterator, child, start
+end
+
+-- ipairs() -- not implemented
+-- Instead use pairs() as follows:
+--    for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
+-- (this works since standard M sequence is: numbers first -- unless your db specified another collation)
+-- Alternative, to ensure integer keys: use a numeric loop as follows:
+--    for i=1,1/0 do   v=node[i]._  if not v break then   <do_your_stuff with k,v>   end
+-- Reason:
+--  Lua >=5.3 implements ipairs to invoke __index()
+--  This would mean that __index() would have to treat integer subscript lookup specially, so:
+--    node['abc']  => produces a new node so that node.abc.def.ghi works
+--    but node[1]  => would have to produce value note(1)._value so ipairs() works
+--  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation
+
+-- Creates and returns a new node with the given subscript(s) ... added.
+-- If no subscripts supplied, return the value of the node
+-- @param ... subscript array
+function node:__call(...)
+  if not ... then  return M.get(self._varname, self._subsarray)  end
+  -- Provide more helpful error when someone does, e.g. node:get() instead of node:_get() -- or some other node method
+  if type(...) == 'table' then
     local _name = '_'..self._subsarray[#self._subsarray]
-    if node[_name] then  message = message.."; did you mean ".._name.."()?"  end
-    error(message )
+    if node[_name] then  error(string.format("cannot add table as a subscript added to '%s' -- did you mean %s()?", self, type(name), _name))  end
   end
   local new_node = self.___new(self._varname, self._subsarray)
-  table.insert(new_node._subsarray, tostring(name))
+  for i = 1, select('#', ...) do
+    local name = select(i, ...)
+    if type(name) ~= 'string' and not isinteger(name) then
+      error(string.format("bad subscript added to '%s' (string or integer expected, got %s)", self, type(name)))
+    end
+    table.insert(new_node._subsarray, tostring(name))
+  end
+  -- also add to _next_subsarray so that _subscript_next() works
+  for i = #new_node._next_subsarray, #new_node._subsarray-1 do  new_node._next_subsarray[i] = new_node._subsarray[i] end
+  table.insert(new_node._next_subsarray, '')
   return new_node
 end
 
@@ -735,38 +784,6 @@ function node:__sub(value)
   self:_incr(-assert_type(value, 'string/number', 1))
   return self
 end
-
--- Makes pairs() work
--- @param reverse Optional set to true to iterate in reverse order
--- @usage: for k,v in pairs(node) do ...
--- @usage in forward or reverse: for k,v in node:_pairs(false/true) -- default is reverse=false
--- @Note that pairs() order is guaranteed to equal the M collation sequence order
---   (even though pairs() order is not normally guaranteed for Lua tables)
---   This means that pairs() is a reasonable substitute for ipairs -- see ipairs() below
-function node:__pairs(reverse)
-  local actuator = not reverse and M.subscript_next or M.subscript_previous
-  local child = self('')  -- empty subscript is starting point for iterating all subscripts
-  local subsarray = child._subsarray
-  local function iterator(node, index)
-    local next_or_prev = actuator(node._varname, subsarray)
-    subsarray[#subsarray] = next_or_prev
-    return next_or_prev, node._value
-  end
-  return iterator, child, ''
-end
-
--- Note on ipairs(): not implemented
--- Instead use pairs() as follows:
---    for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
--- (this works since standard M sequence is: numbers first -- unless your db specified another collation)
--- Alternative, to ensure integer keys: use a numeric loop as follows:
---    for i=1,1/0 do   v=node[i]._  if not v break then   <do_your_stuff with k,v>   end
--- Reason:
---  Lua >=5.3 implements ipairs to invoke __index()
---  This would mean that __index() would have to treat integer subscript lookup specially, so:
---    node['abc']  => produces a new node so that node.abc.def.ghi works
---    but node[1]  => would have to produce value note(1)._value so ipairs() works
---  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation
 
 -- Returns the string representation of this node.
 function node:__tostring()
@@ -899,10 +916,47 @@ end
 -- @see subscripts
 -- @deprecated because:
 --   a) pairs() is more Lua-esque
---   b) it was is non-intuitive that k:_subscripts() only iterates subsequent subscripts, not all subscripts
+--   b) it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts
+-- Note that key:_subscripts is the version inherited from node
 function key:subscripts(reverse)
   return M.subscripts(self._varname, #self._subsarray > 0 and self._subsarray or {''}, reverse)
 end
+
+
+-- ~~~ High level utility functions ~~~
+
+-- Dump the specified node and its children
+-- @usage: ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
+-- @param node: Either a node object with `...` subscripts or varname with `...` subsarray
+-- @param maxlines: maximum number of lines to output before stopping dump
+-- return dump as a string
+function M.dump(node, ...)
+  -- check whether maxlines was supplied
+  local subs, maxlines
+  if select('#',...)>0 and type(...)=='table' then  subs=... maxlines=select(2, ...)
+  else  subs={...} maxlines=30  end
+  -- check if its already a node/key object
+  if node._varname then  if #subs>0 then  node = node(subs)  end
+  else  node = M.node(node, subs)  end
+  local function _dump(node, value, output)
+    if #output >= maxlines then  return  end
+    if value then
+      local subscripts = #node._subsarray==0 and '' or string.format('("%s")', table.concat(node._subsarray, '","'))
+      table.insert(output, string.format('%s%s=%q', node._varname, subscripts, value))
+    end
+    for k,v in pairs(node) do
+      _dump(node(k), v, output)
+    end
+  end
+  local value = node._value
+  local output = {}
+  _dump(node, value, output)
+  if #output >= maxlines then
+    table.insert(output, string.format("...etc.   -- stopped at %s lines; to show more use yottadb.dump(node, {subscripts}, maxlines)", maxlines))
+  end
+  return table.concat(output, '\n')
+end
+
 
 
 -- Handy for debugging
