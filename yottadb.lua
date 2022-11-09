@@ -670,11 +670,11 @@ end
 --    {_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=49}
 --  Note: special field name _ indicates the value of the node itself
 -- @param maxdepth Optional subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
--- @param filter Optional function(node, key, value, recurse, depth) or nil
+-- @param filter Optional function(node, node_subscript, value, recurse, depth) or nil
 --    if filter is nil, all values are fetched unfiltered
---    if filter is a function(node, key, value, recurse, depth) it is invoked on every subscript
+--    if filter is a function(node, node_subscript, value, recurse, depth) it is invoked on every subscript
 --        to allow it to cast/alter every _value and recurse flag
---        note that at node root (depth=0), key passed to filter is ''
+--        note that at node root (depth=0), subscript passed to filter is ''
 --    it must return the same or an altered _value (string/number/nil) and recurse flag
 --    if filter returns a nil _value then _gettree will store nothing in the table for that database value
 --    if filter return false recurse flag, it will prevent recursion deeper into that particular subscript
@@ -690,14 +690,14 @@ function node:_gettree(maxdepth, filter, _value, _depth)
   local tbl = {}
   if _value then  tbl._ = _value  end
   _depth = _depth + 1
-  for k,v in pairs(self) do
-    local child = self(k)
-    local recurse = _depth <= maxdepth and child._data >= 10
-    if filter then  v, recurse = filter(child, k, v, recurse, _depth)  end
+  for subscript, subnode in pairs(self) do
+    local recurse = _depth <= maxdepth and subnode._data >= 10
+    _value = subnode._value
+    if filter then  _value, recurse = filter(subnode, subscript, _value, recurse, _depth)  end
     if recurse then
-      v = child:_gettree(maxdepth, filter, v, _depth)
+      _value = subnode:_gettree(maxdepth, filter, _value, _depth)
     end
-    if v then  tbl[k] = v  end
+    if _value then  tbl[subscript] = _value  end
   end
   return tbl
 end
@@ -709,26 +709,31 @@ end
 -- @Note that subscripts() order is guaranteed to equal the M collation sequence order
 function node:_subscripts(reverse)
   local actuator = not reverse and M.subscript_next or M.subscript_previous
-  local child = self('')  -- empty subscript is starting point for iterating all subscripts
-  local subsarray = child._subsarray
+  local subsarray = table.move(self._subsarray, 1, #self._subsarray, 1, {})
+  table.insert(subsarray, '')  -- empty subscript is starting point for iterating all subscripts
   local function iterator()
-    local next_or_prev = actuator(child._varname, subsarray)
+    local next_or_prev = actuator(self._varname, subsarray)
     subsarray[#subsarray] = next_or_prev
     return next_or_prev
   end
-  return iterator, child, ''  -- iterate using child from ''
+  return iterator, subsarray, ''  -- iterate using child from ''
 end
 
 -- Makes pairs() work - iterate over the child subscripts, values of given node
 -- If you need to iterate in reverse, use node:__pairs(reverse) instead of pairs(node)
--- @usage: for k,v in pairs(node) do ...
--- @Note that pairs() order is guaranteed to equal the M collation sequence order
+-- @usage: for subscript,subnode in pairs(node) do ...
+--     where subnode is a node/key object. If you need its value use node._value
+-- @Note2 that pairs() order is guaranteed to equal the M collation sequence order
 --   (even though pairs() order is not normally guaranteed for Lua tables)
 --   This means that pairs() is a reasonable substitute for ipairs -- see ipairs() below
 function node:__pairs(reverse)
-  local sub_iter, child, start = self:_subscripts(reverse)
-  local function iterator()  return sub_iter(), child._value  end
-  return iterator, child, start
+  local sub_iter, state, start = self:_subscripts(reverse)
+  local function iterator()
+    local sub=sub_iter()
+    if sub==nil then return nil end
+    return sub, self(sub)
+  end
+  return iterator, state, start
 end
 
 -- ipairs() -- not implemented
@@ -898,7 +903,7 @@ function key:__newindex(k, v)
   end
 end
 
--- ~~~ Deprecated functionality for M.key() as not Lua-esque: use pairs() instead ~~~
+-- ~~~ Deprecated functionality for M.key() as not Lua-esque: use pairs(key) instead ~~~
 
 -- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
@@ -940,30 +945,28 @@ end
 
 -- Dump the specified node and its children
 -- @usage: ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
--- @param node: Either a node object with `...` subscripts or varname with `...` subsarray
+-- @param node: Either a node object with `...` subscripts or glvn varname with `...` subsarray
 -- @param maxlines: maximum number of lines to output before stopping dump
 -- return dump as a string
 function M.dump(node, ...)
-  -- check whether maxlines was supplied
+  -- check whether maxlines was supplied as last parameter
   local subs, maxlines
-  if select('#',...)>0 and type(...)=='table' then  subs=... maxlines=select(2, ...)
-  else  subs={...} maxlines=30  end
-  -- check if its already a node/key object
-  if node._varname then  if #subs>0 then  node = node(subs)  end
-  else  node = M.node(node, subs)  end
-  local function _dump(node, value, output)
+  if select('#',...)>0 and type(...)=='table' then  subs=...  maxlines=select(2, ...)
+  else  subs, maxlines = {...}, 30  end
+  node = M.node(node, subs)  -- ensure it's a node object, not a varname
+  local function _dump(node, output)
     if #output >= maxlines then  return  end
+    local value = node._value
     if value then
       local subscripts = #node._subsarray==0 and '' or string.format('("%s")', table.concat(node._subsarray, '","'))
       table.insert(output, string.format('%s%s=%q', node._varname, subscripts, value))
     end
-    for k,v in pairs(node) do
-      _dump(node(k), v, output)
+    for subscript, subnode in pairs(node) do
+      _dump(subnode, output)
     end
   end
-  local value = node._value
   local output = {}
-  _dump(node, value, output)
+  _dump(node, output)
   if #output >= maxlines then
     table.insert(output, string.format("...etc.   -- stopped at %s lines; to show more use yottadb.dump(node, {subscripts}, maxlines)", maxlines))
   end

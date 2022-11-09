@@ -2008,38 +2008,38 @@ function test_pairs()
   
   local test4 = yottadb.node('^test4')
   local subs = {}
-  local i = 0  for k,v in pairs(test4) do  subs[k] = v  i = i+1  end
+  local i = 0  for k,subnode in pairs(test4) do  subs[k] = subnode._value  i = i+1  end
   assert(i == 3)
   assert(subs['sub1'] == 'test4sub1')
   assert(subs['sub2'] == 'test4sub2')
   assert(subs['sub3'] == 'test4sub3')
   subs = {}
-  i = 0  for k,v in pairs(test4.sub2) do  subs[k] = v  i = i+1  end
+  i = 0  for k,subnode in pairs(test4.sub2) do  subs[k] = subnode._value  i = i+1  end
   assert(i == 3)
   assert(subs['subsub1'] == 'test4sub2subsub1')
   assert(subs['subsub2'] == 'test4sub2subsub2')
   assert(subs['subsub3'] == 'test4sub2subsub3')
   -- check order of pairs:
   local keys = {}
-  i = 0  for k,v in pairs(test4) do  keys[#keys+1] = k  i = i+1  end
+  i = 0  for k,subnode in pairs(test4) do  keys[#keys+1] = k  i = i+1  end
   assert(i == 3)
   assert(keys[1] == 'sub1')
   assert(keys[2] == 'sub2')
   assert(keys[3] == 'sub3')
   keys = {}
-  i = 0  for k,v in test4:__pairs(true) do  keys[#keys+1] = k  i = i+1  end
+  i = 0  for k,subnode in test4:__pairs(true) do  keys[#keys+1] = k  i = i+1  end
   assert(i == 3)
   assert(keys[1] == 'sub3')
   assert(keys[2] == 'sub2')
   assert(keys[3] == 'sub1')
-  i = 0  for k,v in pairs(test4.sub2.test4sub2) do  i = i+1  end
+  i = 0  for k,subnode in pairs(test4.sub2.test4sub2) do  i = i+1  end
   assert(i == 0)
   -- test pairs on a local var 'testPairsTest' that has no value
   local local_node = yottadb.node('testPairsTest')
   local_node.subfield._ = 'junk'
-  i = 0  for k,v in pairs(local_node) do  i = i+1 end
+  i = 0  for k,subnode in pairs(local_node) do  i = i+1 end
   assert(i == 1)
-  i = 0  for k,v in pairs(local_node.subfield) do  i = i+1 end
+  i = 0  for k,subnode in pairs(local_node.subfield) do  i = i+1 end
   assert(i == 0)
 end
 
