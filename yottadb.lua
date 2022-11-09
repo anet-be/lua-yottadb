@@ -624,28 +624,31 @@ M.delete = function() end   -- just a value that does not overlap with any strin
 -- @param tbl is the table to store into the databse
 --    special field name _ sets the value of the node itself, as opposed to a subnode
 --    assign special value yottadb.delete to a node to delete the _value of the node. You cannot delete the whole subtree
--- @param type_caster(node, key, value)
---    Optional function called on every key, value to produce strings/numbers
---    if supplied it must return the same or altered: key, value
+-- @param filter Optional function(node, key, value) or nil
+--    if filter is nil, all values are set unfiltered
+--    if filter is a function(node, key, value) it is invoked on every node
+--        to allow it to cast/alter every key name and value
+--    it must return the same or altered: key, value
 --    type errors can be handled (or ignored) using this function, too.
---    if type_caster returns nil as key,
+--    if filter returns yottadb.delete as value, the 
+--    if filter returns nil as key or value,
 --        _settree will simply not update the current database value
--- @param seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
-function node:_settree(tbl, type_caster, seen)
-  seen = seen or {}
+-- @param _seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
+function node:_settree(tbl, filter, _seen)
+  _seen = _seen or {}
   for k,v in pairs(tbl) do
-    if type_caster then  k,v = type_caster(self,k,v)  end
-    if k then  -- if type_caster returned nil as k => special do-nothing flag
+    if filter then  k,v = filter(self,k,v)  end
+    if k and v~=nil then  -- if filter returned nil as k or v, => special do-nothing flag
       assert(_string_number[type(k)], string.format("Cannot set %s subscript of type %s: must be string/number", self, type(k)))
       local child = k=='_' and self or self(k)
       if v==M.delete then
-        assert(not seen[tostring(child)], string.format("Node already updated (when trying to delete node %s)", child, v), 2)
+        assert(not _seen[tostring(child)], string.format("Node already updated (when trying to delete node %s)", child, v), 2)
         child:_delete_node()
       elseif type(v) == 'table' then
-        child:_settree(v, type_caster, seen)  -- recurse into sub-table
+        child:_settree(v, filter, _seen)  -- recurse into sub-table
       else
-        assert(not seen[tostring(child)], string.format("Node already updated (when trying to set node %s to %s)", child, v), 2)
-        seen[tostring(child)] = true
+        assert(not _seen[tostring(child)], string.format("Node already updated (when trying to set node %s to %s)", child, v), 2)
+        _seen[tostring(child)] = true
         assert(_table_string_number[type(v)], string.format("Cannot set node %s to type %s", child, v))
         child:_set(v)
       end
@@ -659,31 +662,32 @@ end
 --    {_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=49}
 --  Note: special field name _ indicates the value of the node itself
 -- @param maxdepth Optional subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
--- @param filter Optional function(node, value, recurse, depth) or nil
+-- @param filter Optional function(node, key, value, recurse, depth) or nil
 --    if filter is nil, all values are fetched unfiltered
---    if filter is a function(node, value, recurse, depth) it is invoked on every subscript
+--    if filter is a function(node, key, value, recurse, depth) it is invoked on every subscript
 --        to allow it to cast/alter every _value and recurse flag
+--        note that at node root (depth=0), key passed to filter is ''
 --    it must return the same or an altered _value (string/number/nil) and recurse flag
 --    if filter returns a nil _value then _gettree will store nothing in the table for that database value
 --    if filter return false recurse flag, it will prevent recursion deeper into that particular subscript
--- @param value is for internal use only (to avoid duplicate value fetches, for speed)
--- @param depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
-function node:_gettree(maxdepth, filter, value, depth)
-  if not depth then  -- i.e. if this is the first time the function is called
-    depth = depth or 0
+-- @param _value is for internal use only (to avoid duplicate value fetches, for speed)
+-- @param _depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
+function node:_gettree(maxdepth, filter, _value, _depth)
+  if not _depth then  -- i.e. if this is the first time the function is called
+    _depth = _depth or 0
     maxdepth = maxdepth or 1/0  -- or infinity
-    value = self._value
-    if filter then  value = filter(self, value, true, depth)  end
+    _value = self._value
+    if filter then  _value = filter(self, '', _value, true, _depth)  end
   end
   local tbl = {}
-  if value then  tbl._ = value  end
-  depth = depth+1
+  if _value then  tbl._ = _value  end
+  _depth = _depth + 1
   for k,v in pairs(self) do
     local child = self(k)
-    local recurse = depth <= maxdepth and child._data >= 10
-    if filter then  v, recurse = filter(child, v, recurse, depth)  end
+    local recurse = _depth <= maxdepth and child._data >= 10
+    if filter then  v, recurse = filter(child, k, v, recurse, _depth)  end
     if recurse then
-      v = child:_gettree(maxdepth, filter, v, depth)
+      v = child:_gettree(maxdepth, filter, v, _depth)
     end
     if v then  tbl[k] = v  end
   end
