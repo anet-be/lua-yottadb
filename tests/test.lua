@@ -1,5 +1,7 @@
 -- Copyright 2021-2022 Mitchell. See LICENSE.
 
+table_dump = require('table_dump')
+
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
 local cwd = arg[0]:match('^.+/') or '.'
@@ -67,6 +69,7 @@ local function setup(unique_name)
   local ok = env_execute(command)
   assert(ok, string.format("Failed to create database %s with command:\n  %s", Zgbldir, command))
   yottadb.set('$ZGBLDIR', Zgbldir)
+  _yottadb.delete_excl({})  -- make sure all locals are deleted before each test
 end
 
 local has_simple_data = false
@@ -263,6 +266,12 @@ function test_delete()
   ok, e = pcall(_yottadb.delete, 'test', {'b'}, true)
   assert(not ok)
   assert(e:find('number expected'))
+end
+
+function test_delete_excl()
+  yottadb.set('test1', 'abc')
+  _yottadb.delete_excl({})  -- delete all locals
+  assert(yottadb.get('test1') ~= 'abc')
 end
 
 function test_data()
@@ -2034,6 +2043,71 @@ function test_pairs()
   assert(i == 0)
 end
 
+local inserted_tree = {_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=yottadb.delete}
+
+local expected_tree_dump = [=[
+test("sub1")="berwyn"
+test("sub1","!@#$")="junk"
+test("sub1","appearance")="handsome"
+test("sub1","appearance","eyes")="blue"
+test("sub1","appearance","hair")="blond"
+test("sub1","weight")="78"]=]
+
+local expected_table_dump = [=[
+  _: handsome
+  eyes: blue
+  hair: blond
+!@#$: junk
+_: berwyn
+appearance (table: 0x...):
+weight: 78]=]
+
+local expected_level0_table_dump = [=[
+!@#$: junk
+_: berwyn
+appearance: handsome
+weight: 78]=]
+
+function test_settree()
+  -- check that an inserted_tree creates the correct node dump
+  local node = yottadb.node('test', 'sub1')
+  node:_settree(inserted_tree)
+  local tree_dump = yottadb.dump('test', 'sub1')
+  assert(tree_dump == expected_tree_dump)
+  
+  -- check that a fetched table creates the correct table dump
+  local t = node:_gettree()
+  local actual_table_dump = table_dump.dump(t, nil, true)
+  table.sort(actual_table_dump)
+  local table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
+  assert(table_formatted == expected_table_dump)
+
+  -- check that _get_tree() maxdepth param works
+  t = node:_gettree(0)
+  actual_table_dump = table_dump.dump(t, nil, true)
+  table.sort(actual_table_dump)
+  table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
+  assert(table_formatted == expected_level0_table_dump)
+
+  -- check that _get_tree() filter param works
+  local function filter(node, key, value, recurse, depth)  if key=='appearance' then value,recurse='ugly',false end  return value, recurse  end
+  t = node:_gettree(nil, filter)
+  actual_table_dump = table_dump.dump(t, nil, true)
+  table.sort(actual_table_dump)
+  table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
+  assert(table_formatted == expected_level0_table_dump:gsub('handsome','ugly'))
+
+  -- check that _set_tree() filter param works
+  local function filter(node, key, value)  if key=='nogarble' then key,value='_nogarble','fixed' end  return key, value  end
+  node = yottadb.node('test', 'sub1')
+  inserted_tree['!@#$'] = yottadb.delete    -- test that delete function works
+  inserted_tree['nogarble'] = '!@#$'
+  node:_settree(inserted_tree, filter)
+  local tree_dump2 = yottadb.dump('test', 'sub1')
+  local expected_tree_dump2 = expected_tree_dump:gsub('%!%@%#%$', '_nogarble'):gsub('junk', 'fixed')
+  assert(tree_dump2 == expected_tree_dump2)
+end
+
 function test_readme()
   -- Create key objects for conveniently accessing and manipulating database nodes.
   local key1 = yottadb.key('^hello')
@@ -2105,6 +2179,7 @@ end
 table.sort(tests)
 local failed = 0
 cleanup()
+setup('test')   -- in case I remove subsequent setups for debugging, make sure there is at least one
 for i = 1, #tests do
   print(string.format('Running %s.', tests[i]))
   setup(tests[i])

@@ -50,7 +50,10 @@ is the lua version installed on your system. If your Lua headers are elsewhere, 
     local key3 = yottadb.key('^hello')('chinese')
     key3.value = '你好世界!' -- the value can be set to anything, including UTF-8
     print(key3.name, key3.value)
-
+    
+    yottadb.dump('^hello') -- see what we've entered so far
+    yottadb.dump(key1) -- ditto
+    
     for subscript in key1:subscripts() do -- loop through all subscripts of a key
       local sub_key = key1(subscript)
       print(sub_key.name, sub_key.value)
@@ -99,6 +102,8 @@ is the lua version installed on your system. If your Lua headers are elsewhere, 
 
 ## Developer Notes
 
+### Build
+
 The following notes build and install a local copy of YottaDB to *YDB/install* in the current
 working directory. The only admin privileges required are to change ownership of *gtmsecshr*
 to root, which YottaDB requires to run. (Normally, YottaDB's install script requires admin
@@ -139,3 +144,29 @@ privileges.)
     b set
     y
     r -llydb tests/test.lua
+
+### Developer  Tools
+
+You can enhance the Lua prompt to display database nodes when you type them. This project supplies a `startup.lua` file to make this happen. Simply set your environment variable `export LUA_INIT="require'startup'"` or `require 'startup'` from your own `start.lua` file. For this to work you will need two files from this project in your LUA_PATH: `startup.lua` and `table_dump.lua`.
+
+Now Lua tables and database nodes display their contents when you type them at the Lua REPL prompt:
+
+```lua
+> t={test=5, subtable={x=10, y=20}}
+> t
+test: 5
+subtable (table: 0x56494c7dd5b0):
+  x: 10
+  y: 20
+> n=ydb.key('^oaks')
+> n:settree({_='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}, {shadow=15,angle=45}})
+> n
+^oaks="treedata"
+^oaks("1","angle")="30"
+^oaks("1","shadow")="10"
+^oaks("2","angle")="30"
+^oaks("2","shadow")="13"
+^oaks("3","angle")="45"
+^oaks("3","shadow")="15"
+```
+
