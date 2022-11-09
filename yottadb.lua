@@ -572,9 +572,17 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 -- @usage yottadb.node('varname')('subscript')
 function M.node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
-  assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
+  -- make it possible to inherit from node or key objects
+  if varname._varname then -- if node/key object
+    local new_subsarray = {}
+    table.move(varname._varname, 1, #varname._varname, 1, new_subsarray)
+    table.move(subsarray, 1, #subsarray, #new_subsarray+1, new_subsarray)
+    varname = varname._varname
+    subsarray = new_subsarray
+  end
+  assert_type(varname, 'string', 1)
 
   local subsarray_copy = {}
   if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = tostring(sub) end end
@@ -744,7 +752,7 @@ function node:__call(...)
   -- Provide more helpful error when someone does, e.g. node:get() instead of node:_get() -- or some other node method
   if type(...) == 'table' then
     local _name = '_'..self._subsarray[#self._subsarray]
-    if node[_name] then  error(string.format("cannot add table as a subscript added to '%s' -- did you mean %s()?", self, type(name), _name))  end
+    if node[_name] then  error(string.format("cannot add table as a subscript added to '%s' -- did you mean %s()?", self, _name))  end
   end
   local new_node = self.___new(self._varname, self._subsarray)
   for i = 1, select('#', ...) do
@@ -836,8 +844,9 @@ end
 
 
 -- ~~~ Deprecated M.key() ~~~
--- M.key() is the same as M.node() except that it retains deprecated
--- attribute behaviour and property names (without '_' prefix) for backward compatibility
+-- M.key() is the same as M.node() except that it retains:
+--   deprecated attribute behaviour and property names (without '_' prefix) for backward compatibility
+--   deprecated defintions of key:subscript(), key:subscript_next(), key:subscript_previous()
 -- @see M.node
 function M.key(varname, subsarray)
   assert_type(subsarray, 'table/nil', 2)
