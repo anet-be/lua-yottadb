@@ -32,9 +32,7 @@ else
     local first = ...
     -- check if it's a dbase node object
     if not first._varname then  return original_print(...)  end
+    original_print(tostring(first), select(2, ...))
     original_print(ydb.dump(first, {}, 30))
-    if select('#', ...)>1 then
-      original_print('', select(2, ...))
-    end
   end
 end
