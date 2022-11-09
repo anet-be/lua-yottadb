@@ -2036,7 +2036,7 @@ function test_pairs()
   assert(i == 0)
   -- test pairs on a local var 'testPairsTest' that has no value
   local local_node = yottadb.node('testPairsTest')
-  local_node.subfield = 'junk'
+  local_node.subfield._ = 'junk'
   i = 0  for k,v in pairs(local_node) do  i = i+1 end
   assert(i == 1)
   i = 0  for k,v in pairs(local_node.subfield) do  i = i+1 end
