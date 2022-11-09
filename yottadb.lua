@@ -575,7 +575,7 @@ function M.node(varname, ...)
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   -- make it possible to inherit from node or key objects
-  if varname._varname then -- if node/key object
+  if type(varname)=='table' and varname._varname then -- if node/key object
     local new_subsarray = {}
     table.move(varname._varname, 1, #varname._varname, 1, new_subsarray)
     table.move(subsarray, 1, #subsarray, #new_subsarray+1, new_subsarray)
