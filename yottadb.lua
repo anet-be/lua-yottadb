@@ -935,7 +935,7 @@ end
 -- @deprecated because:
 --   a) pairs() is more Lua-esque
 --   b) it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts
--- Note that key:_subscripts is the version inherited from node
+-- Note that key:_subscripts() is the version inherited from node that operates differently than key:subscripts()
 function key:subscripts(reverse)
   return M.subscripts(self._varname, #self._subsarray > 0 and self._subsarray or {''}, reverse)
 end
