@@ -1,0 +1,16 @@
+// lua-yottadb mumps() call-in table
+
+// Format of lines in this file:
+//<c-call-name> : <ret-type> <label-ref> ([<direction>:<param-type>,...])
+// where <ret-type> may only be:
+//      void
+//      [unsigned]integer: (ydb_[u]long_t*)
+//      string: ydb_string_t*, ydb_char_t*, ydb_buffer_t*
+// where <param_type> may be:
+//      [unsigned]integer: ydb_[u]int_t (32-bit), ydb_[u]int64_t (64-bit)
+//      [unsigned]long: ydb_[u]long_t (32 or 64-bit depending on platform)
+//      floating point: ydb_float_t, ydb_double_type
+//      plus the types allowed by ret-type
+// where <direction> may be: I, O, or IO (in/out to M; outputs may only be pointer types)
+
+%Run^test: ydb_long_t* %Run^test(I:ydb_char_t*, I:ydb_long_t)

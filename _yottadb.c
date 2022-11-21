@@ -656,6 +656,120 @@ static int zwr2str(lua_State *L) {
   return 1;
 }
 
+// free each pointer in an array of malloc'ed pointers unless it is NULL
+static void _freeup(void *array[], int len) {
+  for (int i=0; i<=len; i++)
+    if (array[i]) free(array[i]);
+}
+
+// Open a call-in table using ydb_ci_tab_open()
+// _yottadb.ci_tab_open(ci_table_filename)
+// return: integer handle
+static int ci_tab_open(lua_State *L) {
+  uintptr_t handle;
+  ydb_ci_tab_open(luaL_checkstring(L, 1), &handle);
+  lua_pop(L, 1);
+  lua_pushinteger(L, *handle);
+  return 1;
+}
+
+// Call an M function using ydb_ci()
+// _yottadb.ci(ci_handle, routine_name, has_retval[, param1][, param2][, ...])
+// Call M routine routine_name which was specified in call-in table ci_handle, cf. ci_tab_open()
+// @param has_retval must be true if the routine expects to return a value
+// @param<n> must list the number and type of parameters specified in the call-in table
+// return: function's return value (if has_retval) followed by any params listed as outputs in the call-in table
+//            (returned values are all converted to Lua strings or integers, per the call-in table)
+static int ci(lua_State *L) {
+  int old_handle, ci_handle = luaL_checkinteger(L, 1);
+  char *routine_name = luaL_checkstring(L, 2);
+  int has_retval = lua_toboolean(L, 3);
+  int in_args = lua_gettop(L);
+  int out_args = in_args-2 + has_retval;
+
+  // Create array of arguments to pass to ydb_ci()
+// Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
+// It would be worth testing what happens if an integer (32-bit) is specified
+
+  gparam_list out_arg;
+  void *arg_mallocs[out_nargs]; // space to store a free-pointer for the data of each out_arg if necessary
+  out_args.n = (intptr_t)out_args;
+
+  int out_argi=0;  // current argument index
+  out_args.arg[out_argi] = routine_name;
+  arg_mallocs[out_argi++] = NULL;
+
+  // allocate space for return value
+  if (has_retval) {
+    ydb_buffer_t ret_val;
+    ret_val.buf_addr = malloc(YDB_MAX_STR);
+    ret_val.len_alloc = YDB_MAX_STR;
+    ret_val.len_used = 0;
+    out_args.arg[out_argi] = ret_val.buf_addr;
+    arg_mallocs[out_argi++] = retval.buf_addr;
+  }
+
+  for (int in_argi=4; out_argi<out_args; in_argi++, out_argi++) {
+    arg_mallocs[out_argi] = NULL;  // by default no malloc for this param (so we don't free junk)
+    // Note: does not yet support output-type parameters
+    // TODO: support output parameters by making sure we allocate space for pointer types
+
+    int type = lua_type(L, in_argi);
+    switch (type) {
+      case LUA_TNUMBER:
+        int isint;
+        lua_Integer n_int = lua_tointegerx(L, in_argi, &isint);
+        if (isint)
+          out_args.arg[out_argi] = n_int;
+        else
+          out_args.arg[out_argi] = (lua_Number)lua_tonumber(L, in_argi);
+        break;
+      case LUA_TBOOLEAN:
+        out_args.arg[out_argi] = lua_toboolean(L, in_argi);
+        break;
+      case LUA_TSTRING:
+        size_t len;
+        const char *s = lua_tolstring(L, in_argi, &len);
+        ydb_buffer_t *buf = malloc(sizeof(ydb_buffer_t));
+        buf->len_alloc = len;
+        buf->len_used = len;
+        buf->buf_addr = s;
+        arg_mallocs[out_argi] = buf;
+        out_args.arg[out_argi] = buf;
+        break;
+      default:
+        lua_pop(L, in_args);  // pop all args
+        _freeup(arg_mallocs, out_argi); // free allocated memory
+        luaL_typeerror(L, in_argi, "number/string");
+    }
+  }
+
+  // Set new ci_table
+  int status = ydb_ci_tab_switch(handle, &old_handle);
+  if (status != YDB_OK) goto status_error;
+
+  // Call the M routine
+  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, &out_args);
+
+  // Restore ci_table back
+  int status2 = ydb_ci_tab_switch(old_handle, &handle);
+  if (status == YDB_OK) status=status2; // report the first error
+
+status_error:
+  lua_pop(L, in_args); // pop all args
+
+  if (status == YDB_OK) {
+// TODO: Must fix this to return proper type of retval:
+    if (has_retval)
+      lua_pushlstring(L, ret_val.buf_addr, ret_val.len_used);
+  }
+  _freeup(arg_mallocs, out_argi);
+  if (status != YDB_OK) {
+    error(L, status);
+  }
+  return has_retval;
+}
+
 static const luaL_Reg yottadb_functions[] = {
   {"get", get},
   {"set", set},
@@ -674,6 +788,9 @@ static const luaL_Reg yottadb_functions[] = {
   {"str2zwr", str2zwr},
   {"zwr2str", zwr2str},
   {"message", message},
+  {"ci_tab_open", ci_tab_open},
+  {"ci_tab_switch", ci_tab_switch},
+  {"ci", ci},
   {"init", _ydb_init},
   {NULL, NULL}
 };
