@@ -76,13 +76,13 @@ The proposal has now been implemented and you run the code above and use several
   <tr>
     <td>Initialize db data</td>
       <td><pre lang="lua">
+k.value = 'treedata'
 k('1')('shadow').value = 10
 k('1')('angle').value=30
 k('2')('shadow').value = 13
 k('2')('angle').value=30
 k('3')('shadow').value = 15
-k('3')('angle').value=45
-<pre></td>
+k('3')('angle').value=45<pre></td>
     <td><pre lang="lua">
 n:_settree({ _='treedata',
   {shadow=10,angle=30},
