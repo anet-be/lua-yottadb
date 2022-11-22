@@ -15,18 +15,22 @@ ifeq (, $(ydb_dist))
 ydb_dist=$(shell pwd)/YDB/install
 endif
 
-CFLAGS=-std=c99 -I$(ydb_dist) -I/usr/include/lua5.3 -Wno-discarded-qualifiers
-LDFLAGS=-L$(ydb_dist) -lyottadb #-Wl,rpath,YDB/install
+CC=gcc
+CFLAGS=-std=c99 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
+LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,/usr/local/lib/yottadb/r135
 
 _yottadb.so: _yottadb.c
-	gcc -g $(CFLAGS) -shared -fPIC -o $@ $< $(LDFLAGS)
+	$(CC) -g $(CFLAGS) -shared -fPIC -o $@ $< $(LDFLAGS)
+
+%: %.c
+	$(CC) -g $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
 	rm -f *.so
 
 PREFIX=/usr/local
-share_dir=$(PREFIX)/share/lua/5.3
-lib_dir=$(PREFIX)/lib/lua/5.3
+share_dir=$(PREFIX)/share/lua/
+lib_dir=$(PREFIX)/lib/lua/$(lua_version)
 install: yottadb.lua _yottadb.so
 	install -d $(DESTDIR)$(share_dir) $(DESTDIR)$(lib_dir)
 	install _yottadb.so $(DESTDIR)$(lib_dir)
