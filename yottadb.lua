@@ -562,6 +562,74 @@ end
 --- Node object creation
 -- @section
 
+-- compute all parameter type names from list in _yottadb.c
+local param_type_enums = {}
+local param_list = _yottadb.YDB_CI_PARAM_TYPES:gsub('_PTR', '*'):lower()
+local i=0
+for param in param_list:gmatch('[^, ]+') do
+  param_type_enums[param] = i
+  i = i + 1
+end
+
+-- Parse one line of ydb call-in file format
+-- Return routine name and a function to invoke it
+-- Return nil, error on error or nil, nil if the line did not contain a function prototype
+local function _parse_prototype(line, ci_handle)
+  local param_info = {}  -- array of strings each equivalent to struct type _yottadb.type_spec
+  line = line:gsub('//.*', '')  -- remove comments
+
+  -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
+  local pattern = '%s*([^:%s]+)%s*:%s*([%w_]+%s*%*?)%s*([^(%s]+)%s*%([^)]*)'
+  local routine_name, ret_type, entrypoint, params = line:match(pattern)
+  if not routine_name then  return nil, nil  end
+  local ret_type = ret_type:gsub('%s*', '') -- remove spaces
+  param_type_enum = param_type_enums[ret_type]
+  assert(param_type_enum, string.format("unknown return type %s in YDB call-in table specification", ret_type))
+  param_info[#param_info+1] = string.pack('!1=TBB', 0, param_type_enum, io_byte)
+  assert(params, string.format("Line does not match YDB call-in table specification: '%s'", line))
+
+  -- now iterate each parameter
+  params = params:gsub('%s*', '') -- remove spaces
+  local pattern = '(I?)(O?):([%w_]+%*?)'
+  for typ, i, o in params:gmatch(pattern) do
+    param_type_enum = param_type_enums[typ]
+    assert(param_type_enum, string.format("unknown parameter type %s in YDB call-in table specification", typ))
+    local i, o = i:upper(), o:upper()
+    local io_byte = (i=='I' and _yottadb.DIR_IN or 0) | (o=='O' and _yottadb.DIR_OUT or 0)
+    preallocate = 0 -- TODO: make it so we can put this number in the callin file (same for retval above)
+    param_info[#param_info+1] = string.pack('!1=TBB', preallocate, param_type_enum, io_byte)
+  end
+-- TODO: remove:
+print(param_info)
+  local function func(...)
+    _yottadb.ci(ci_handle, routine_name, table.concat(param_info), ...)
+  end
+  return name, func
+end
+
+
+---
+-- Import Mumps routines from ydb 'callin' file or string
+-- prototypes is a list of lines in the format of ydb 'callin' files per ydb_ci()
+-- if the string does not contain ':' it is the filename of a ydb 'callin' file
+--    otherwise it is treated as a filename to be opened and read
+function M.require(prototypes)
+  if string.find(prototypes, ':', 1, true) then  error("calling strings are not yet implemented; specify a filename")  end
+  -- process 'callin' file so we know what parameter types to pass to ydb
+  local filename = prototypes
+  ci_table = _yottadb.ci_tab_open(filename)
+  local routines = {__ci_filename=ci_filename, __ci_table=ci_table}
+  local f <close> = assert(open(filename))
+  for line in f:lines() do
+    local routine, spec = _parse_prototype(line)
+    if routine then  routines[routine] = spec
+    elseif spec then  f:close() assert(routine, spec)  end
+  end
+  f:close()
+  return routines
+end
+
+
 --- Creates and returns a new YottaDB node object.
 -- This node has all of the class methods defined below.
 -- Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.

@@ -4,6 +4,7 @@
 #include <stdint.h> // intptr_t
 #include <stdio.h>
 #include <strings.h>
+#include <stdbool.h>
 
 #include <libyottadb.h>
 #include <lua.h>
@@ -657,15 +658,12 @@ static int zwr2str(lua_State *L) {
   return 1;
 }
 
-// free each pointer in an array of malloc'ed pointers unless it is NULL
-static void _freeup(void **array, int len) {
-  for (int i=0; i<len; i++)
-    if (array[i]) free(array[i]);
-}
+
+// ~~~ Manage YDB callins ~~~
 
 // Open a call-in table using ydb_ci_tab_open()
 // _yottadb.ci_tab_open(ci_table_filename)
-// return: integer handle
+// return: integer handle to call-in table
 static int ci_tab_open(lua_State *L) {
   uintptr_t ci_handle;
   ydb_ci_tab_open(luaL_checkstring(L, 1), &ci_handle);
@@ -674,81 +672,219 @@ static int ci_tab_open(lua_State *L) {
   return 1;
 }
 
-// Call an M function using ydb_ci()
-// _yottadb.ci(ci_handle, routine_name, has_retval[, param1][, param2][, ...])
+// Note: the order of these numbers MUST remain the same
+// so that YDB_ISPTR_TYPE() and other macros below work
+#define PARAM_TYPE_NAMES \
+  VOID, \
+  YDB_INT_T, YDB_UINT_T, \
+  YDB_LONG_T, YDB_ULONG_T, \
+  YDB_INT64_T, YDB_UINT64_T, \
+  YDB_FLOAT_T, \
+  YDB_DOUBLE_T, \
+  YDB_INT_T_PTR, YDB_UINT_T_PTR, \
+  YDB_LONG_T_PTR, YDB_ULONG_T_PTR, \
+  YDB_INT64_T_PTR, YDB_UINT64_T_PTR, \
+  YDB_FLOAT_T_PTR, \
+  YDB_DOUBLE_T_PTR, \
+  YDB_STRING_T_PTR, \
+  YDB_CHAR_T_PTR, \
+  YDB_BUFFER_T_PTR,
+
+// TODO: I could speed up the following by arranging the categories into bitfields
+enum ydb_types {PARAM_TYPE_NAMES};
+#define YDB_ISPTR_TYPE(type) ((type) >= YDB_INT_T_PTR)
+#define YDB_ISINT_TYPE(type) ( ((type) >= YDB_INT_T && (type) <= YDB_UINT64_T) || ((type) >= YDB_INT_T_PTR && (type) <= YDB_UINT64_T_PTR) )
+#define YDB_ISREAL_TYPE(type) ((type) == YDB_FLOAT_T || (type) == YDB_DOUBLE_T || (type) == YDB_FLOAT_T_PTR || (type) == YDB_DOUBLE_T_PTR)
+#define YDB_ISSTR_TYPE(type) ((type) >= YDB_STRING_T_PTR)
+
+// Let Lua know the order of enums -- keeps it the same between C and Lua versions
+#define _AUX(...) #__VA_ARGS__
+#define _STRINGIFY(x) _AUX(x)
+static char YDB_CI_PARAM_TYPES[] = _STRINGIFY(PARAM_TYPE_NAMES);
+
+typedef union ydb_param_union {
+  void* void_ptr;
+  ydb_int_t int_n;
+  ydb_uint_t uint_n;
+  ydb_long_t long_n;
+  ydb_ulong_t ulong_n;
+  ydb_float_t float_n;
+  ydb_int_t* int_ptr;
+  ydb_uint_t* uint_ptr;
+  ydb_long_t* long_ptr;
+  ydb_ulong_t* ulong_ptr;
+  ydb_float_t* float_ptr;
+  ydb_double_t* double_ptr;
+
+  ydb_char_t* char_ptr;
+  ydb_string_t* string_ptr;
+  ydb_buffer_t* buffer_ptr; // Note: only works from YDB r1.36 onward
+
+  #if UINTPTR_MAX == 0xffffffffffffffff
+    // ydb_double_t doesn't fit in (void*) on 32-bit builds. Instead, use pointer type ydb_double_t*
+    ydb_double_t double_n;
+    // int64 types do not exist on 32-bit builds
+    ydb_int64_t int64_n;
+    ydb_int64_t* int64_ptr;
+    ydb_uint64_t uint64_n;
+    ydb_uint64_t* uint64_ptr;
+  #endif
+} ydb_param;
+
+static_assert( sizeof(ydb_param) == sizeof(void*),
+  "Not all ydb_ci parameters will fit into ydb's gparam_list array. "
+  "Need to revise either ydb or lua-yottadb code. Or don't use the offending parameter types."
+);
+
+// type of parameter list passed to ydb_call_variadic_plist_func()
+typedef struct {
+	intptr_t n;				/* Count of parameter/arguments -- must be same type as in YDB's gparam_list */
+	ydb_param arg[MAX_GPARAM_LIST_ARGS];	/* Parameter/argument array */
+} gparam_list_alltypes;
+
+// specify type and IO of call-in parameter from call-in table
+// (specify __packed__ since these structs are packed end-to-end into a Lua string -- may not be necessary since they're all chars)
+typedef struct {
+  size_t preallocation; // amount of string space to preallocate -- first for alignment reasons
+  char type;  // index into enum ydb_types
+  char io;  // bitfield where bit0=input type (I) and bit1=output type (O)
+} type_spec;
+
+// type direction constants for use in type_spec.io
+enum io_directions {DIR_NONE=0, DIR_IN=1, DIR_OUT=2, DIR_BOTH=3};
+
+// Manage metadata for ci()
+//   specifically, hold param data for each param and malloc pointers that need to be freed
+// -- for internal use
+// For the sake of speed, init M in pre-allocated space rather than using malloc because stack is
+//   much faster. Thus, for minimal functions that don't return strings, malloc is not needed at all.
+// Functions defined as inline for speed.
+typedef struct {
+	int n;				    // count of mallocs stored so far
+	void **malloc;    // pointer to array of pointers to malloc'ed memory
+  ydb_param **data;  // pointer to array of param user data storage space
+} metadata;
+// Allocate metadata structure for 'n' params
+// Metadata is used, to store param data and mallocs (for subsequent freeing)
+// Allocate on the stack for speed (hence need to use a macro)
+// Invoke with: metadata M* = create_metadata(n)
+#define create_metadata(n) \
+  NULL; \
+  ydb_param param_space[(n)]; \
+  void *malloc_space[(n)]; \
+  metadata __M = {0, param_space, malloc_space}; \
+  M = &__M; /* ptr makes it same for user as if we made non-macro version */
+static inline void *add_malloc(metadata *M, size_t size) {
+  return (*M->malloc)[M->n++] = malloc(size);
+}
+// Free each pointer in an array of malloc'ed pointers unless it is NULL
+// ensure the first element is freed last because it contains the malloc structure itself
+static inline void free_mallocs(metadata *M) {
+  for (int i = M->n-1; i >= 0; i--) free((*M->malloc)[i]);
+}
+// Return pointer to metadata for parameter n
+static inline ydb_param *get_metadata(M, int n) {
+  return &(*M->data)[n];
+}
+
+// Cast Lua parameter at index argi to ydb type type->type
+// store any malloc'ed data in metadata struct M
+// on error free all mallocs tracked in M and raise a Lua error
+ydb_param cast_param(lua_State *L, int argi, type_spec *type, metadata *M) {
+  char *message;  // error message
+  ydb_param param;
+  ydb_param *param_ptr;
+  int isint;
+  switch (lua_type(L, argi)) {
+    case LUA_TBOOLEAN:
+      param.long_n = lua_toboolean(L, argi);
+      goto process_integer;
+    case LUA_TNUMBER:
+      param.long_n = lua_tointegerx(L, argi, &isint);
+      if (isint) {
+    process_integer:
+// test if string type and allow conversion to string
+        if (!YDB_ISINT_TYPE(type->type) { message="not an integer"; goto type_error; }
+        if (YDB_ISPTR_TYPE(type->type)) {
+          param_ptr = get_metadata(M, out_argi<fix>);
+// fix out_arg is not available
+          ptr->long_n = param.long_n;
+          param.long_n_ptr = ptr;
+        }
+      } else {
+// up to here
+        ydb_double_t *n_space = add_malloc(M, sizeof(ydb_double_t));
+        *n_space = lua_tonumber(L, argi);
+        out_arg.arg[out_argi].double_ptr = n_space;
+      }
+      break;
+    case LUA_TSTRING:
+      ydb_string_t *buf = add_malloc(M, sizeof(ydb_string_t));
+      out_arg.arg[out_argi].string_ptr = buf;
+      buf->address = lua_tolstring(L, argi, &buf->length);
+      break;
+    default:
+      message = "number/string"; goto type_error;
+  }
+  return param;
+type_error:
+  free_mallocs(M);
+  luaL_typeerror(L, argi, message);
+}
+
+// Call an M routine using ydb_ci()
+// Note: this function is intended to be called by a wrapper in yottadb.lua rather than by the user
+//    (so validity of type_list array is not checked)
+// _yottadb.ci(ci_handle, routine_name, type_list[, param1][, param2][, ...])
 // Call M routine routine_name which was specified in call-in table ci_handle, cf. ci_tab_open()
-// @param has_retval must be true if the routine expects to return a value
-// @param<n> must list the number and type of parameters specified in the call-in table
-// return: function's return value (if has_retval) followed by any params listed as outputs in the call-in table
-//            (returned values are all converted to Lua strings or integers, per the call-in table)
+// @param type_list is a Lua string containing an array of type_spec[] specifying for ret_val and each parameter per the call-in table
+//    (so the number of type_spec array elements must equal (1+n) where n is the number of parameters in the call-in file)
+// @param<n> must list the parameters specified specified in the call-in table
+//    each parameter is converted from its Lua type to the correct C type (e.g. ydb_int_t*) before calling the M routine
+//    an error results if the number of parameters does not match the number specified in the call-in table
+//    if too few parameters are supplied, an error results
+//    if too many parameters are supplied, they are ignored (typical Lua behaviour)
+// return: function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table
+//    returned values are all converted from the call-in table type to Lua types
 static int ci(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
   char *routine_name = luaL_checkstring(L, 2);
-  int has_retval = lua_toboolean(L, 3);
+
+  size_t type_list_len;
+  char *type_string = lua_tolstring(L, 3, &type_list_len);
+  type_spec *type_list = (type_spec *)type_string;
+  type_spec *types_end = (type_spec*)(type_string + type_list_len);
+  bool has_retval = type_list->type != VOID;
+  if (!has_retval) type_list++; // Don't need the first type any more if its type is VOID
+
+  gparam_list_alltypes out_arg; // list of args to send to ydb_ci()
   int in_args = lua_gettop(L);
-  ydb_string_t retval;
-
-  // Create array of arguments to pass to ydb_ci()
-// Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
-// It would be worth testing what happens if an integer (32-bit) is specified
-
-  gparam_list out_arg;
-  out_arg.n = (intptr_t)(in_args-2 + has_retval);
-  void *arg_mallocs[out_arg.n]; // space to store a free-pointer for the data of each out_arg if necessary
-  bzero(arg_mallocs, out_arg.n*sizeof(void*));  // clear all to NULLs to start with so we don't later free junk
-
-  int out_argi=0;  // current argument index
-  out_arg.arg[out_argi] = routine_name;
-  arg_mallocs[out_argi++] = NULL;
-
-  // allocate space for return value
-  if (has_retval) {
-    retval.length = YDB_MAX_STR;
-    retval.address = malloc(YDB_MAX_STR);
-    arg_mallocs[out_argi] = retval.address;
-    out_arg.arg[out_argi++] = &retval;
+  out_arg.n = (intptr_t) = types_end - type_list + 1; // +1 for routine_name
+  if ((in_args-2+has_retval) < out_arg.n) {
+    lua_pushliteral(L, "not enough parameters to match M routine call-in specification");
+    lua_error(L);
   }
 
-  for (int in_argi=4; out_argi<out_arg.n; in_argi++, out_argi++) {
-    arg_mallocs[out_argi] = NULL;  // by default no malloc for this param (so we don't free junk)
-    // Note: does not yet support output-type parameters
-    // TODO: support output parameters by making sure we allocate space for pointer types
+  // Allocate space to store a free-pointer for the data of each out_arg where needed
+  // Note: after this, must not error out without first calling free_mallocs(M)
+  metadata *M = create_metadata(out_arg.n);
 
-    int type = lua_type(L, in_argi);
-    switch (type) {
-      case LUA_TNUMBER:
-        int isint;
-        lua_Integer n_int = lua_tointegerx(L, in_argi, &isint);
-        if (isint)
-          out_arg.arg[out_argi] = (void*)(intptr_t)n_int;
-        else {
-          lua_Number n_num = lua_tonumber(L, in_argi);
-          out_arg.arg[out_argi] = (void*)(intptr_t)*(int*)&n_num; // convert lua_Number type to (void*)
-        }
-        break;
-      case LUA_TBOOLEAN:
-        out_arg.arg[out_argi] = (void*)(intptr_t)lua_toboolean(L, in_argi);
-        break;
-      case LUA_TSTRING:
-        ydb_string_t *buf = malloc(sizeof(ydb_string_t));
-        arg_mallocs[out_argi] = buf;
-        out_arg.arg[out_argi] = buf;
-        buf->address = lua_tolstring(L, in_argi, &buf->length);
-        break;
-      default:
-        lua_pop(L, in_args);  // pop all args
-        _freeup(arg_mallocs, out_argi); // free allocated memory
-        luaL_typeerror(L, in_argi, "number/string");
-    }
+  int out_argi=0;  // current argument index
+  out_arg.arg[out_argi++].char_ptr = routine_name;
+
+  int in_argi = 4 - has_retval;
+  for (type_spec *typeptr=type_list; typeptr < types_end; typeptr++, out_argi++, in_argi++) {
+    out_arg.arg[out_argi] = cast_param(L, in_argi, typeptr, M);
   }
 
   // Set new ci_table
   int status = ydb_ci_tab_switch(ci_handle, &old_handle);
   if (status != YDB_OK) goto status_error;
-
   // Call the M routine
   fflush(stdout); // Avoid mingled stdout; ydb routine also needs to (USE $PRINCIPLE) when done outputting
-  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, &out_arg);
+  // Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
+  // which works, luckily, because gcc pads even 32-bit ydb_int_t to 64-bits
+  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, (gparam_list*)&out_arg);
 
   // Restore ci_table back
   int status2 = ydb_ci_tab_switch(old_handle, &ci_handle);
@@ -756,15 +892,13 @@ static int ci(lua_State *L) {
 
 status_error:
   lua_pop(L, in_args); // pop all args
-
   if (status == YDB_OK) {
 // TODO: Must fix this to return proper type of retval:
     if (has_retval)
       lua_pushlstring(L, retval.address, retval.length);
+//test: lua_pushinteger(L, *(long *)&retval);
   }
-
-  _freeup(arg_mallocs, out_argi);
-
+  free_mallocs(M);
   if (status != YDB_OK) {
     error(L, status);
   }
@@ -827,6 +961,10 @@ static const const_Reg yottadb_constants[] = {
   {"YDB_ERR_NAMECOUNT2HI", YDB_ERR_NAMECOUNT2HI},
   {"YDB_ERR_INVSTRLEN", YDB_ERR_INVSTRLEN},
   {"YDB_ERR_TPCALLBACKINVRETVAL", YDB_ERR_TPCALLBACKINVRETVAL},
+  {"DIR_NONE", DIR_NONE},
+  {"DIR_IN", DIR_IN},
+  {"DIR_OUT", DIR_OUT},
+  {"DIR_BOTH", DIR_BOTH};
   {NULL, 0}
 };
 
@@ -836,5 +974,6 @@ int luaopen__yottadb(lua_State *L) {
     lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
   }
   lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
+  lua_pushstring(L, YDB_CI_PARAM_TYPES), lua_setfield(L, -2, "YDB_CI_PARAM_TYPES");
   return 1;
 }

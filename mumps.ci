@@ -13,4 +13,4 @@
 //      plus the types allowed by ret-type
 // where <direction> may be: I, O, or IO (in/out to M; outputs may only be pointer types)
 
-test_Run: ydb_string_t* %Run^test(I:ydb_string_t*,I:ydb_long_t)
+test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
