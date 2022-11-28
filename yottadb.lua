@@ -562,18 +562,12 @@ end
 --- Node object creation
 -- @section
 
--- compute all parameter type names from list in _yottadb.c
-local param_type_enums = {}
-local param_list = _yottadb.YDB_CI_PARAM_TYPES:gsub('_PTR', '*'):lower()
-local i=0
-for param in param_list:gmatch('[^, ]+') do
-  param_type_enums[param] = i
-  i = i + 1
-end
 
+---
 -- Parse one line of ydb call-in file format
 -- Return routine name and a function to invoke it
 -- Return nil, error on error or nil, nil if the line did not contain a function prototype
+local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
 local function _parse_prototype(line, ci_handle)
   local param_info = {}  -- array of strings each equivalent to struct type _yottadb.type_spec
   line = line:gsub('//.*', '')  -- remove comments

@@ -27,6 +27,11 @@ static const int LUA_YDB_BUFSIZ = 128;
 static const int LUA_YDB_SUBSIZ = 16;
 static const int LUA_YDB_ERR = -200000000; // arbitrary
 
+typedef struct const_Reg {
+  const char *name;
+  int value;
+} const_Reg;
+
 #define YDB_REALLOC_BUFFER(BUFFERP) { \
   int len_used = (BUFFERP)->len_used; \
   YDB_FREE_BUFFER(BUFFERP); \
@@ -672,30 +677,55 @@ static int ci_tab_open(lua_State *L) {
   return 1;
 }
 
-// Note: the order of these numbers MUST remain the same
-// so that YDB_ISPTR_TYPE() and other macros below work
-#define PARAM_TYPE_NAMES \
-  VOID, \
-  YDB_INT_T, YDB_UINT_T, \
-  YDB_LONG_T, YDB_ULONG_T, \
-  YDB_INT64_T, YDB_UINT64_T, \
-  YDB_FLOAT_T, \
-  YDB_DOUBLE_T, \
-  YDB_INT_T_PTR, YDB_UINT_T_PTR, \
-  YDB_LONG_T_PTR, YDB_ULONG_T_PTR, \
-  YDB_INT64_T_PTR, YDB_UINT64_T_PTR, \
-  YDB_FLOAT_T_PTR, \
-  YDB_DOUBLE_T_PTR, \
-  YDB_STRING_T_PTR, \
-  YDB_CHAR_T_PTR, \
-  YDB_BUFFER_T_PTR,
+// Make enum that expresses a bitfield for speedy category lookup when processing
+// order of bits is also important for YDB_TYPE_ISINTEGRAL to work
+#define _YDB_TYPE_ISUNSIGNED 0x01  /* unsigned must be bit1 for enum sequential types to work */
+#define _YDB_TYPE_IS32BIT    0x02  /* not set for LONG types which are build-dependent in YDB */
+#define _YDB_TYPE_IS64BIT    0x04  /* not set for LONG types which are build-dependent in YDB */
+#define _YDB_TYPE_ISPTR      0x08
+#define _YDB_TYPE_ISREAL     0x10  /* float or double */
+#define _YDB_TYPE_ISSTR      0x80  /* Note: for string types, other bits have different: to distinguish string types */
 
-// TODO: I could speed up the following by arranging the categories into bitfields
-enum ydb_types {PARAM_TYPE_NAMES};
-#define YDB_ISPTR_TYPE(type) ((type) >= YDB_INT_T_PTR)
-#define YDB_ISINT_TYPE(type) ( ((type) >= YDB_INT_T && (type) <= YDB_UINT64_T) || ((type) >= YDB_INT_T_PTR && (type) <= YDB_UINT64_T_PTR) )
-#define YDB_ISREAL_TYPE(type) ((type) == YDB_FLOAT_T || (type) == YDB_DOUBLE_T || (type) == YDB_FLOAT_T_PTR || (type) == YDB_DOUBLE_T_PTR)
-#define YDB_ISSTR_TYPE(type) ((type) >= YDB_STRING_T_PTR)
+enum ydb_types {
+  YDB_LONG_T  = 0, YDB_ULONG_T,
+  YDB_INT_T   = _YDB_TYPE_IS32BIT, YDB_UINT_T,
+  YDB_INT64_T = _YDB_TYPE_IS64BIT, YDB_UINT64_T,
+  YDB_FLOAT_T = _YDB_TYPE_ISREAL+_YDB_TYPE_IS32BIT,
+  YDB_DOUBLE_T= _YDB_TYPE_ISREAL+_YDB_TYPE_IS64BIT,
+  YDB_LONG_T_PTR  = _YDB_TYPE_ISPTR, YDB_ULONG_T,
+  YDB_INT_T_PTR   = _YDB_TYPE_ISPTR+_YDB_TYPE_IS32BIT, YDB_UINT_T,
+  YDB_INT64_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_IS64BIT, YDB_UINT64_T,
+  YDB_FLOAT_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_ISREAL+_YDB_TYPE_IS32BIT,
+  YDB_DOUBLE_T_PTR= _YDB_TYPE_ISPTR+_YDB_TYPE_ISREAL+_YDB_TYPE_IS64BIT,
+  YDB_CHAR_T_PTR  = _YDB_TYPE_ISSTR+_YDB_TYPE_ISPTR, YDB_STRING_T_PTR, YDB_BUFFER_T_PTR,
+  VOID=0xff
+};
+
+// Make table of constants for export to Lua
+static const const_Reg yottadb_types[] = {
+  {"ydb_long_t", YDB_LONG_T}, {"ydb_ulong_t", YDB_ULONG_T},
+  {"ydb_int_t", YDB_INT_T}, {"ydb_uint_t", YDB_UINT_T},
+  {"ydb_int64_t", YDB_INT64_T}, {"ydb_uint64_t", YDB_UINT64_T},
+  {"ydb_float_t", YDB_FLOAT_T}, {"ydb_double_t", YDB_DOUBLE_T},
+  {"ydb_long_t*", YDB_LONG_T_PTR}, {"ydb_ulong_t*", YDB_ULONG_T_PTR},
+  {"ydb_int_t*", YDB_INT_T_PTR}, {"ydb_uint_t*", YDB_UINT_T_PTR},
+  {"ydb_int64_t*", YDB_INT64_T_PTR}, {"ydb_uint64_t*", YDB_UINT64_T_PTR},
+  {"ydb_float_t*", YDB_FLOAT_T_PTR}, {"ydb_double_t*", YDB_DOUBLE_T_PTR},
+  {"ydb_char_t*", YDB_CHAR_T_PTR},
+  {"ydb_string_t*", YDB_STRING_T_PTR},
+  {"ydb_buffer_t*", YDB_BUFFER_T_PTR},
+  {"void", VOID},
+  {NULL, 0},
+};
+
+#define YDB_TYPE_ISSTR(type) (((type)&_YDB_TYPE_ISSTR) != 0)
+// The following macros assume the type is already know to be not VOID and not string type
+#define YDB_TYPE_ISPTR(type) (((type)&_YDB_TYPE_ISPTR) != 0)
+#define YDB_TYPE_ISREAL(type) (((type)&_YDB_TYPE_ISREAL) != 0)
+#define YDB_TYPE_IS64BIT(type) (((type)&_YDB_TYPE_IS64BIT) != 0)
+#define YDB_TYPE_IS32BIT(type) (((type)&_YDB_TYPE_IS32BIT) != 0)
+#define YDB_TYPE_ISUNSIGNED(type) (((type)&_YDB_TYPE_ISUNSIGNED) != 0)
+#define YDB_TYPE_ISINTEGRAL(type) (((type) < _YDB_TYPE_ISREAL) != 0)
 
 // Let Lua know the order of enums -- keeps it the same between C and Lua versions
 #define _AUX(...) #__VA_ARGS__
@@ -703,18 +733,12 @@ enum ydb_types {PARAM_TYPE_NAMES};
 static char YDB_CI_PARAM_TYPES[] = _STRINGIFY(PARAM_TYPE_NAMES);
 
 typedef union ydb_param_union {
-  void* void_ptr;
+  intptr_t* any_ptr; // for storing pointer to any pointer type
   ydb_int_t int_n;
   ydb_uint_t uint_n;
   ydb_long_t long_n;
   ydb_ulong_t ulong_n;
   ydb_float_t float_n;
-  ydb_int_t* int_ptr;
-  ydb_uint_t* uint_ptr;
-  ydb_long_t* long_ptr;
-  ydb_ulong_t* ulong_ptr;
-  ydb_float_t* float_ptr;
-  ydb_double_t* double_ptr;
 
   ydb_char_t* char_ptr;
   ydb_string_t* string_ptr;
@@ -725,9 +749,7 @@ typedef union ydb_param_union {
     ydb_double_t double_n;
     // int64 types do not exist on 32-bit builds
     ydb_int64_t int64_n;
-    ydb_int64_t* int64_ptr;
     ydb_uint64_t uint64_n;
-    ydb_uint64_t* uint64_ptr;
   #endif
 } ydb_param;
 
@@ -741,6 +763,15 @@ typedef struct {
 	intptr_t n;				/* Count of parameter/arguments -- must be same type as in YDB's gparam_list */
 	ydb_param arg[MAX_GPARAM_LIST_ARGS];	/* Parameter/argument array */
 } gparam_list_alltypes;
+
+// struct to house every kind of ydb string
+typedef struct {
+  typedef union {
+    ydb_string_t string;
+    ydb_buffer_t buffer;
+  } type;
+  char **data;  // the actual string
+} blob_alltypes;
 
 // specify type and IO of call-in parameter from call-in table
 // (specify __packed__ since these structs are packed end-to-end into a Lua string -- may not be necessary since they're all chars)
@@ -761,8 +792,8 @@ enum io_directions {DIR_NONE=0, DIR_IN=1, DIR_OUT=2, DIR_BOTH=3};
 // Functions defined as inline for speed.
 typedef struct {
 	int n;				    // count of mallocs stored so far
-	void **malloc;    // pointer to array of pointers to malloc'ed memory
-  ydb_param **data;  // pointer to array of param user data storage space
+	void **malloc;    // array of malloc'ed handles - one for each param
+  ydb_param *data;  // array of ydb_param space - one for each param
 } metadata;
 // Allocate metadata structure for 'n' params
 // Metadata is used, to store param data and mallocs (for subsequent freeing)
@@ -787,49 +818,102 @@ static inline ydb_param *get_metadata(M, int n) {
   return &(*M->data)[n];
 }
 
-// Cast Lua parameter at index argi to ydb type type->type
-// store any malloc'ed data in metadata struct M
-// on error free all mallocs tracked in M and raise a Lua error
-ydb_param cast_param(lua_State *L, int argi, type_spec *type, metadata *M) {
-  char *message;  // error message
+// Cast Lua parameter at Lua stack index argi to ydb type type->type
+// Store any malloc'ed data in metadata struct M
+// On error, free all mallocs tracked in M and raise a Lua error
+// Note: this is inner loop param processing, so limit cast_param() args to 4 for speed
+ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
+  char *expected;  // expected type for error message
   ydb_param param;
   ydb_param *param_ptr;
   int isint;
-  switch (lua_type(L, argi)) {
-    case LUA_TBOOLEAN:
-      param.long_n = lua_toboolean(L, argi);
-      goto process_integer;
-    case LUA_TNUMBER:
-      param.long_n = lua_tointegerx(L, argi, &isint);
-      if (isint) {
-    process_integer:
-// test if string type and allow conversion to string
-        if (!YDB_ISINT_TYPE(type->type) { message="not an integer"; goto type_error; }
-        if (YDB_ISPTR_TYPE(type->type)) {
-          param_ptr = get_metadata(M, out_argi<fix>);
-// fix out_arg is not available
-          ptr->long_n = param.long_n;
-          param.long_n_ptr = ptr;
+  bool success;
+  char in_type = ydb_type->type;
+
+  // Use IF statement -- faster than SWITCH (even if table lookup) due to pipelining (untested)
+  if (YDB_TYPE_ISSTR(in_type)) {
+    // first handle string types separate from number types
+    size_t preallocation = ydb_type->preallocation;
+    if (!preallocation) preallocation=YDB_MAX_STR;
+    size_t length;
+    char *s = strcpy(param.char_ptr, lua_tolstring(L, argi, &length))
+    if (length > preallocation) length = preallocation; // prevent writing past preallocation
+    if (!s) { expected="string"; goto type_error; }
+    if (in_type == YDB_CHAR_T_PTR) {
+      // handle ydb_char_t* type
+      if (ydb_type->io & DIR_OUT) {
+        // TODO: could check here whether YDB avoids overwriting string of strlen(input_string) -- maybe we don't need to malloc preallocation, and maybe we need to fill an input string with junk to the preallocation
+        param.char_ptr = add_malloc(M, preallocation+1); // +1 for null safety-terminator
+        if (ydb_type->io & DIR_INPUT)
+          memcpy(param.char_ptr, s, length); // also copy Lua's NUL safety-terminator
+        param.char_ptr[length] = '\0';  // make sure it's null-terminated somewhere
+      } else {
+        param.char_ptr = s;
+      }
+    } else if (in_type == YDB_STRING_T_PTR) {
+      // handle ydb_string_t* type
+      if (ydb_type->io & DIR_OUT) {
+        // TODO: check by trial whether YDB avoids overwriting string of strlen(input_string) -- maybe we don't need to malloc preallocation
+        blob_alltypes *blob = add_malloc(M, preallocation+sizeof(blob_alltypes));
+        param.string_ptr = &blob->type;
+        param.string_ptr.address = &blob->data;
+        param.string_ptr.length = preallocation;
+        if (ydb_type->io & DIR_INPUT)
+          memcpy(param.string_ptr.address, s, length);
+      } else {
+        blob_alltypes *blob = add_malloc(M, sizeof(blob_alltypes));
+        param.string_ptr = &blob->type;
+        param.string_ptr.address = s;
+        param.string_ptr.length = length;
+      }
+    } else (in_type == YDB_BUFFER_T_PTR) {
+      // handle ydb_buffer_t* type
+      if (ydb_type->io & DIR_OUT) {
+        blob_alltypes *blob = add_malloc(M, preallocation+sizeof(blob_alltypes));
+        param.buffer_ptr = &blob->type;
+        param.buffer_ptr.buf_addr = &blob->data;
+        param.buffer_ptr.len_alloc = preallocation;
+        param.buffer_ptr.len_used = 0;
+        if (ydb_type->io & DIR_INPUT) {
+          memcpy(param.buffer_ptr.buf_addr, s, length);
+          param.buffer_ptr.len_used = length;
         }
       } else {
-// up to here
-        ydb_double_t *n_space = add_malloc(M, sizeof(ydb_double_t));
-        *n_space = lua_tonumber(L, argi);
-        out_arg.arg[out_argi].double_ptr = n_space;
+        blob_alltypes *blob = add_malloc(M, sizeof(blob_alltypes));
+        param.buffer_ptr = &blob->type;
+        param.buffer_ptr.buf_addr = s;
+        param.buffer_ptr.len_alloc = length;
+        param.buffer_ptr.len_used = length;
       }
-      break;
-    case LUA_TSTRING:
-      ydb_string_t *buf = add_malloc(M, sizeof(ydb_string_t));
-      out_arg.arg[out_argi].string_ptr = buf;
-      buf->address = lua_tolstring(L, argi, &buf->length);
-      break;
-    default:
-      message = "number/string"; goto type_error;
+    } else {
+        free_mallocs(M);
+        luaL_error("Invalid type id %d supplied in M routine call-in specification", in_type);
+    }
+
+  } else {
+    // now handle number types
+    if (YDB_TYPE_ISINTEGRAL(in_type)) {
+      param.long_n = lua_tointegerx(L, argi, &success);
+      if (!success) { expected="integer"; goto type_error; }
+      if (YDB_TYPE_IS32BIT(in_type))
+        param.int_n = param.long_n; // cast in case on a non-little-endian machine
+    } else if (YDB_TYPE_ISREAL(in_type) {
+      param.double_n = lua_tonumberx(L, argi, &success);
+      if (!success) { expected="number"; goto type_error; }
+      if (in_type == YDB_FLOAT_T)
+        param.float_n = param.double_n; // cast
+    }
+    if (YDB_TYPE_ISPTR(in_type) {
+      // If it's a pointer type, store the actual data in M->data, then make param point to it
+      M->data[argi] = param;
+      param.any_ptr = &M->data[argi];
+    }
   }
+
   return param;
 type_error:
   free_mallocs(M);
-  luaL_typeerror(L, argi, message);
+  luaL_typeerror(L, argi, expected);
 }
 
 // Call an M routine using ydb_ci()
@@ -846,6 +930,8 @@ type_error:
 //    if too many parameters are supplied, they are ignored (typical Lua behaviour)
 // return: function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table
 //    returned values are all converted from the call-in table type to Lua types
+// NOTE: This is designed for speed, which means it does no mallocs unless it has to return strings
+//    (because mallocs take ~50 CPU cycles each, according to google)
 static int ci(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
   char *routine_name = luaL_checkstring(L, 2);
@@ -860,33 +946,33 @@ static int ci(lua_State *L) {
   gparam_list_alltypes out_arg; // list of args to send to ydb_ci()
   int in_args = lua_gettop(L);
   out_arg.n = (intptr_t) = types_end - type_list + 1; // +1 for routine_name
-  if ((in_args-2+has_retval) < out_arg.n) {
-    lua_pushliteral(L, "not enough parameters to match M routine call-in specification");
-    lua_error(L);
-  }
+  if ((in_args-2+has_retval) < out_arg.n)
+    luaL_error(L, "not enough parameters to match M routine call-in specification");
 
-  // Allocate space to store a free-pointer for the data of each out_arg where needed
+  // Allocate space to store a free-pointer and other metadata for each in_arg where needed
   // Note: after this, must not error out without first calling free_mallocs(M)
-  metadata *M = create_metadata(out_arg.n);
+  metadata *M = create_metadata(in_args+1);
 
   int out_argi=0;  // current argument index
   out_arg.arg[out_argi++].char_ptr = routine_name;
 
-  int in_argi = 4 - has_retval;
-  for (type_spec *typeptr=type_list; typeptr < types_end; typeptr++, out_argi++, in_argi++) {
-    out_arg.arg[out_argi] = cast_param(L, in_argi, typeptr, M);
+  type_spec *typeptr = type_list;
+  if (has_retval)
+    out_arg.arg[out_argi] = cast_2ydb(L, 3, typeptr, M);
+  for (int in_argi=4, ++typeptr;  typeptr<types_end;  typeptr++, out_argi++, in_argi++) {
+    out_arg.arg[out_argi] = cast_2ydb(L, in_argi, typeptr, M);
   }
 
   // Set new ci_table
   int status = ydb_ci_tab_switch(ci_handle, &old_handle);
   if (status != YDB_OK) goto status_error;
   // Call the M routine
-  fflush(stdout); // Avoid mingled stdout; ydb routine also needs to (USE $PRINCIPLE) when done outputting
+  fflush(stdout); // Avoid mingled stdout; ydb routine also needs to flush with (U $P) after it outputs
   // Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
   // which works, luckily, because gcc pads even 32-bit ydb_int_t to 64-bits
   status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, (gparam_list*)&out_arg);
 
-  // Restore ci_table back
+  // Restore ci_table
   int status2 = ydb_ci_tab_switch(old_handle, &ci_handle);
   if (status == YDB_OK) status=status2; // report the first error
 
@@ -896,7 +982,6 @@ status_error:
 // TODO: Must fix this to return proper type of retval:
     if (has_retval)
       lua_pushlstring(L, retval.address, retval.length);
-//test: lua_pushinteger(L, *(long *)&retval);
   }
   free_mallocs(M);
   if (status != YDB_OK) {
@@ -928,11 +1013,6 @@ static const luaL_Reg yottadb_functions[] = {
   {"init", _ydb_init},
   {NULL, NULL}
 };
-
-typedef struct const_Reg {
-  const char *name;
-  int value;
-} const_Reg;
 
 static const const_Reg yottadb_constants[] = {
   {"YDB_ERR_GVUNDEF", YDB_ERR_GVUNDEF},
@@ -974,6 +1054,10 @@ int luaopen__yottadb(lua_State *L) {
     lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
   }
   lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
-  lua_pushstring(L, YDB_CI_PARAM_TYPES), lua_setfield(L, -2, "YDB_CI_PARAM_TYPES");
+  lua_createtable(L, 0, sizeof(yottadb_types)/sizeof(const_Reg));
+  for (const_Reg *c = &yottadb_types[0]; c->name; c++) {
+    lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
+  }
+  lua_setfield(L, -2, "YDB_CI_PARAM_TYPES");
   return 1;
 }
