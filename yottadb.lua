@@ -563,11 +563,13 @@ end
 -- @section
 
 
----
+-- ~~~ Functions to handle calling M routines from Lua ~~~
+local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
+
+--- 
 -- Parse one line of ydb call-in file format
 -- Return routine name and a function to invoke it
 -- Return nil, error on error or nil, nil if the line did not contain a function prototype
-local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
 local function _parse_prototype(line, ci_handle)
   local param_info = {}  -- array of strings each equivalent to struct type _yottadb.type_spec
   line = line:gsub('//.*', '')  -- remove comments
@@ -579,7 +581,8 @@ local function _parse_prototype(line, ci_handle)
   local ret_type = ret_type:gsub('%s*', '') -- remove spaces
   param_type_enum = param_type_enums[ret_type]
   assert(param_type_enum, string.format("unknown return type %s in YDB call-in table specification", ret_type))
-  param_info[#param_info+1] = string.pack('!1=TBB', 0, param_type_enum, io_byte)
+  local preallocate, isinput, isoutput = 0, 0, 1
+  param_info[#param_info+1] = string.pack('!1=TBBB', preallocate, param_type_enum, isinput, isoutput)
   assert(params, string.format("Line does not match YDB call-in table specification: '%s'", line))
 
   -- now iterate each parameter
@@ -589,9 +592,11 @@ local function _parse_prototype(line, ci_handle)
     param_type_enum = param_type_enums[typ]
     assert(param_type_enum, string.format("unknown parameter type %s in YDB call-in table specification", typ))
     local i, o = i:upper(), o:upper()
-    local io_byte = (i=='I' and _yottadb.DIR_IN or 0) | (o=='O' and _yottadb.DIR_OUT or 0)
-    preallocate = 0 -- TODO: make it so we can put this number in the callin file (same for retval above)
-    param_info[#param_info+1] = string.pack('!1=TBB', preallocate, param_type_enum, io_byte)
+    isinput = i=='I' and 1 or 0 
+    isoutput = o=='O' and 1 or 0
+    assert(o == '' or typ:find('*', 1, true), string.format("output parameter %s must be a pointer type", typ))
+    preallocate = 0 -- TODO: enhance to support fetching this number from the callin file (same for retval above)
+    param_info[#param_info+1] = string.pack('!1=TBBB', preallocate, param_type_enum, isinput, isoutput)
   end
 -- TODO: remove:
 print(param_info)
