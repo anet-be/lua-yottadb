@@ -692,9 +692,9 @@ enum ydb_types {
   YDB_INT64_T = _YDB_TYPE_IS64BIT, YDB_UINT64_T,
   YDB_FLOAT_T = _YDB_TYPE_ISREAL+_YDB_TYPE_IS32BIT,
   YDB_DOUBLE_T= _YDB_TYPE_ISREAL+_YDB_TYPE_IS64BIT,
-  YDB_LONG_T_PTR  = _YDB_TYPE_ISPTR, YDB_ULONG_T,
-  YDB_INT_T_PTR   = _YDB_TYPE_ISPTR+_YDB_TYPE_IS32BIT, YDB_UINT_T,
-  YDB_INT64_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_IS64BIT, YDB_UINT64_T,
+  YDB_LONG_T_PTR  = _YDB_TYPE_ISPTR, YDB_ULONG_T_PTR,
+  YDB_INT_T_PTR   = _YDB_TYPE_ISPTR+_YDB_TYPE_IS32BIT, YDB_UINT_T_PTR,
+  YDB_INT64_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_IS64BIT, YDB_UINT64_T_PTR,
   YDB_FLOAT_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_ISREAL+_YDB_TYPE_IS32BIT,
   YDB_DOUBLE_T_PTR= _YDB_TYPE_ISPTR+_YDB_TYPE_ISREAL+_YDB_TYPE_IS64BIT,
   YDB_CHAR_T_PTR  = _YDB_TYPE_ISSTR+_YDB_TYPE_ISPTR, YDB_STRING_T_PTR, YDB_BUFFER_T_PTR,
@@ -732,14 +732,14 @@ static const const_Reg yottadb_types[] = {
 #define _STRINGIFY(x) _AUX(x)
 static char YDB_CI_PARAM_TYPES[] = _STRINGIFY(PARAM_TYPE_NAMES);
 
-typedef union ydb_param_union {
+typedef union {
   ydb_int_t int_n;
   ydb_uint_t uint_n;
   ydb_long_t long_n;
   ydb_ulong_t ulong_n;
   ydb_float_t float_n;
 
-  intptr_t* any_ptr; // for storing pointer to any pointer type
+  void* any_ptr; // for storing pointer to any pointer type
   ydb_int_t* int_ptr;
   ydb_uint_t* uint_ptr;
   ydb_long_t* long_ptr;
@@ -775,11 +775,11 @@ typedef struct {
 
 // struct to house every kind of ydb string
 typedef struct {
-  typedef union {
+  union {
     ydb_string_t string;
     ydb_buffer_t buffer;
   } type;
-  char **data;  // the actual string
+  char data[];  // the actual string
 } blob_alltypes;
 
 // specify type and IO of call-in parameter from call-in table
@@ -799,29 +799,48 @@ typedef struct {
 typedef struct {
 	int n;				    // count of mallocs stored so far
 	void **malloc;    // array of malloc'ed handles - one for each param
-  ydb_param *data;  // array of ydb_param space - one for each param
+  ydb_param **data;  // array of ydb_param space - one for each param
 } metadata;
 // Allocate metadata structure for 'n' params
 // Metadata is used, to store param data and mallocs (for subsequent freeing)
 // Allocate on the stack for speed (hence need to use a macro)
-// Invoke with: metadata M* = create_metadata(n)
+// Invoke with: metadata M* = create_metadata(n) -- must use letter M to work
+//#define DEBUG_MALLOCS
+#define DEBUG_MALLOCS(str, value) printf((str), (value))
 #define create_metadata(n) \
-  NULL; \
-  ydb_param param_space[(n)]; \
-  void *malloc_space[(n)]; \
-  metadata __M = {0, param_space, malloc_space}; \
-  M = &__M; /* ptr makes it same for user as if we made non-macro version */
+  NULL; /* fake return value -- M patched later */ \
+  ydb_param __param_spaces[(n)]; \
+  void *__malloc_spaces[(n)]; \
+  metadata __M = {0, __malloc_spaces, (ydb_param **)&__param_spaces}; \
+  M = &__M; /* ptr makes it same for user as if we made non-macro version */ \
+  DEBUG_MALLOCS("sizeof(metadata)=%ld", sizeof(metadata)); \
+  DEBUG_MALLOCS("sizeof(__malloc_spaces)=%ld", sizeof(__malloc_spaces)); \
+  DEBUG_MALLOCS("sizeof(__param_spaces)=%ld", sizeof(__param_spaces)); \
+  DEBUG_MALLOCS("&__malloc_spaces=%p", &__malloc_spaces); \
+  DEBUG_MALLOCS("&__param_spaces=%p", &__param_spaces); \
+  DEBUG_MALLOCS("__param_spaces=%p", __param_spaces); \
+  DEBUG_MALLOCS("Mallocing %d", (n));
 static inline void *add_malloc(metadata *M, size_t size) {
-  return (*M->malloc)[M->n++] = malloc(size);
+  void *space = M->malloc[M->n++] = malloc(size);
+  DEBUG_MALLOCS("Malloc %p\n", space);
+  return space;
 }
 // Free each pointer in an array of malloc'ed pointers unless it is NULL
 // ensure the first element is freed last because it contains the malloc structure itself
 static inline void free_mallocs(metadata *M) {
-  for (int i = M->n-1; i >= 0; i--) free((*M->malloc)[i]);
+  for (int i = M->n-1; i >= 0; i--) {
+    #if DEBUG_MALLOCS
+      printf("Free %p\n", M->malloc[i]);
+    #endif
+    free(M->malloc[i]);
+  }
 }
 // Return pointer to metadata for parameter n
-static inline ydb_param *get_metadata(M, int n) {
-  return &(*M->data)[n];
+static inline ydb_param *get_metadata(metadata *M, int n) {
+  #if DEBUG_MALLOCS
+    printf("Using %p->data=%p\n", M, M->data[n]);
+  #endif
+  return M->data[n];
 }
 
 // Cast Lua parameter at Lua stack index argi to ydb type type->type
@@ -832,7 +851,7 @@ ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
   char *expected;  // expected type for error message
   ydb_param param;
   int isint;
-  bool success;
+  int success;
   char type = ydb_type->type;
   char isinput = ydb_type->input;
   char isoutput = ydb_type->output;
@@ -843,7 +862,7 @@ ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
     size_t preallocation = ydb_type->preallocation;
     if (!preallocation) preallocation=YDB_MAX_STR;
     size_t length;
-    char *s = strcpy(param.char_ptr, lua_tolstring(L, argi, &length))
+    char *s = strcpy(param.char_ptr, lua_tolstring(L, argi, &length));
     if (length > preallocation) length = preallocation; // prevent writing past preallocation
     if (!s) { expected="string"; goto type_error; }
     if (type == YDB_CHAR_T_PTR) {
@@ -864,39 +883,39 @@ ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
       if (isoutput) {
         // TODO: check by trial whether YDB avoids overwriting string of strlen(input_string) -- maybe we don't need to malloc preallocation
         blob_alltypes *blob = add_malloc(M, preallocation+sizeof(blob_alltypes));
-        param.string_ptr = &blob->type;
-        param.string_ptr.address = &blob->data;
-        param.string_ptr.length = preallocation;
+        param.string_ptr = &blob->type.string;
+        param.string_ptr->address = blob->data;
+        param.string_ptr->length = preallocation;
         if (isinput)
-          memcpy(param.string_ptr.address, s, length);
+          memcpy(param.string_ptr->address, s, length);
       } else {
         blob_alltypes *blob = add_malloc(M, sizeof(blob_alltypes));
-        param.string_ptr = &blob->type;
-        param.string_ptr.address = s;
-        param.string_ptr.length = length;
+        param.string_ptr = &blob->type.string;
+        param.string_ptr->address = s;
+        param.string_ptr->length = length;
       }
-    } else (type == YDB_BUFFER_T_PTR) {
+    } else if (type == YDB_BUFFER_T_PTR) {
       // handle ydb_buffer_t* type
       if (isoutput) {
         blob_alltypes *blob = add_malloc(M, preallocation+sizeof(blob_alltypes));
-        param.buffer_ptr = &blob->type;
-        param.buffer_ptr.buf_addr = &blob->data;
-        param.buffer_ptr.len_alloc = preallocation;
-        param.buffer_ptr.len_used = 0;
+        param.buffer_ptr = &blob->type.buffer;
+        param.buffer_ptr->buf_addr = blob->data;
+        param.buffer_ptr->len_alloc = preallocation;
+        param.buffer_ptr->len_used = 0;
         if (isinput) {
-          memcpy(param.buffer_ptr.buf_addr, s, length);
-          param.buffer_ptr.len_used = length;
+          memcpy(param.buffer_ptr->buf_addr, s, length);
+          param.buffer_ptr->len_used = length;
         }
       } else {
         blob_alltypes *blob = add_malloc(M, sizeof(blob_alltypes));
-        param.buffer_ptr = &blob->type;
-        param.buffer_ptr.buf_addr = s;
-        param.buffer_ptr.len_alloc = length;
-        param.buffer_ptr.len_used = length;
+        param.buffer_ptr = &blob->type.buffer;
+        param.buffer_ptr->buf_addr = s;
+        param.buffer_ptr->len_alloc = length;
+        param.buffer_ptr->len_used = length;
       }
     } else {
         free_mallocs(M);
-        luaL_error("Invalid type id %d supplied in M routine call-in specification", type);
+        luaL_error(L, "Invalid type id %d supplied in M routine call-in specification", type);
     }
 
   } else {
@@ -909,7 +928,7 @@ ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
         if (YDB_TYPE_IS32BIT(type))
           // handle int32 (ydb_int_t is specifically 32-bits)
           param.int_n = param.long_n; // cast in case we're running big-endian
-      } else if (YDB_TYPE_ISREAL(type) {
+      } else if (YDB_TYPE_ISREAL(type)) {
         param.double_n = lua_tonumberx(L, argi, &success);
         if (!success) { expected="number"; goto type_error; }
         if (type == YDB_FLOAT_T)
@@ -917,10 +936,11 @@ ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
       }
     } else
       param.long_n = 0;
-    if (YDB_TYPE_ISPTR(type) {
+    if (YDB_TYPE_ISPTR(type)) {
       // If it's a pointer type, store the actual data in M->data, then make param point to it
-      M->data[argi] = param;
-      param.any_ptr = &M->data[argi];
+      ydb_param *p_ptr = get_metadata(M, argi);
+      *p_ptr = param;
+      param.any_ptr = p_ptr;
     }
   }
 
@@ -945,7 +965,7 @@ void cast_2lua(lua_State *L, ydb_param *param, type_spec *ydb_type) {
       lua_pushstring(L, param->char_ptr);
     else if (type == YDB_STRING_T_PTR)
       lua_pushlstring(L, param->string_ptr->address, param->string_ptr->length);
-    else (type == YDB_BUFFER_T_PTR)
+    else if (type == YDB_BUFFER_T_PTR)
       lua_pushlstring(L, param->buffer_ptr->buf_addr, param->buffer_ptr->len_used);
 
   } else {
@@ -955,7 +975,7 @@ void cast_2lua(lua_State *L, ydb_param *param, type_spec *ydb_type) {
         lua_pushinteger(L, *param->int_ptr);
       else
         lua_pushinteger(L, *param->long_ptr);
-    } else if (YDB_TYPE_ISREAL(type) {
+    } else if (YDB_TYPE_ISREAL(type)) {
       if (type == YDB_FLOAT_T_PTR)
         lua_pushnumber(L, *param->float_ptr);
       else
@@ -994,7 +1014,7 @@ static int ci(lua_State *L) {
 
   gparam_list_alltypes out_arg; // list of args to send to ydb_ci()
   int in_args = lua_gettop(L);
-  out_arg.n = (intptr_t) = types_end - type_list + 1; // +1 for routine_name
+  out_arg.n = (intptr_t)(types_end - type_list + 1); // +1 for routine_name
   if ((in_args-2+has_retval) < out_arg.n)
     luaL_error(L, "not enough parameters to match M routine call-in specification");
 
@@ -1027,10 +1047,10 @@ static int ci(lua_State *L) {
 
   // Push return values
   int nreturns = 0;
-  type_spec *typeptr = type_list;
+  typeptr = type_list;
   for (argi=1;  typeptr<types_end;  typeptr++, argi++) {
     if (!typeptr->output) continue;
-    cast_2lua(L, &out_arg[argi], typeptr);
+    cast_2lua(L, &out_arg.arg[argi], typeptr);
     nreturns++;
   }
 
@@ -1089,10 +1109,6 @@ static const const_Reg yottadb_constants[] = {
   {"YDB_ERR_NAMECOUNT2HI", YDB_ERR_NAMECOUNT2HI},
   {"YDB_ERR_INVSTRLEN", YDB_ERR_INVSTRLEN},
   {"YDB_ERR_TPCALLBACKINVRETVAL", YDB_ERR_TPCALLBACKINVRETVAL},
-  {"DIR_NONE", DIR_NONE},
-  {"DIR_IN", DIR_IN},
-  {"DIR_OUT", DIR_OUT},
-  {"DIR_BOTH", DIR_BOTH};
   {NULL, 0}
 };
 
