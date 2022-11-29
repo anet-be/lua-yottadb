@@ -88,11 +88,11 @@ static int message(lua_State *L) {
 }
 
 // Raises a Lua error with the YDB error code supplied
-static int error(lua_State *L, int code) {
+static int ydb_assert(lua_State *L, int code) {
+  if (code == YDB_OK) return code;
   lua_pushinteger(L, code);
   message(L);
   lua_error(L);
-  return 0;
 }
 
 // Call ydb_init()
@@ -127,9 +127,7 @@ static int get(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -149,10 +147,7 @@ static int set(lua_State *L) {
   size_t length;
   value.buf_addr = luaL_optlstring(L, !lua_isstring(L, 2) ? 3 : 2, "", &length);
   value.len_used = value.len_alloc = (unsigned int)length;
-  int status = ydb_set_s(&varname, subs_used, subsarray, &value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_set_s(&varname, subs_used, subsarray, &value));
   return 0;
 }
 
@@ -168,10 +163,7 @@ static int delete(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   int deltype = luaL_optinteger(L, lua_type(L, 2) != LUA_TNUMBER ? 3 : 2, YDB_DEL_NODE);
-  int status = ydb_delete_s(&varname, subs_used, subsarray, deltype);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_delete_s(&varname, subs_used, subsarray, deltype));
   return 0;
 }
 
@@ -190,10 +182,7 @@ static int data(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   unsigned int ret_value;
-  int status = ydb_data_s(&varname, subs_used, subsarray, &ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_data_s(&varname, subs_used, subsarray, &ret_value));
   lua_pushinteger(L, ret_value);
   return 1;
 }
@@ -211,10 +200,7 @@ static int lock_incr(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   unsigned long long timeout = luaL_optnumber(L, lua_type(L, 2) != LUA_TNUMBER ? 3 : 2, 0) * 1000000000;
-  int status = ydb_lock_incr_s(timeout, &varname, subs_used, subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_lock_incr_s(timeout, &varname, subs_used, subsarray));
   return 0;
 }
 
@@ -228,10 +214,7 @@ static int lock_decr(lua_State *L) {
   get_key_info(L, &varname, &subs_used);
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
-  int status = ydb_lock_decr_s(&varname, subs_used, subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_lock_decr_s(&varname, subs_used, subsarray));
   return 0;
 }
 
@@ -322,8 +305,8 @@ static int tp(lua_State *L) {
   if (status == LUA_YDB_ERR) {
     lua_getfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error");
     lua_error(L);
-  } else if (status != YDB_OK && status != YDB_TP_RESTART) {
-    error(L, status);
+  } else if (status != YDB_TP_RESTART) {
+    ydb_assert(L, status);
   }
   return 0;
 }
@@ -351,9 +334,7 @@ static int subscript_next(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -380,9 +361,7 @@ static int subscript_previous(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -428,9 +407,7 @@ static int node_next(lua_State *L) {
     YDB_FREE_BUFFER(&ret_subsarray[i]);
   }
   free(ret_subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -476,9 +453,7 @@ static int node_previous(lua_State *L) {
     YDB_FREE_BUFFER(&ret_subsarray[i]);
   }
   free(ret_subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -553,9 +528,7 @@ static int lock(lua_State *L) {
       YDB_FREE_BUFFER(&keys[i].subsarray[j]);
     }
   }
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 0;
 }
 
@@ -576,10 +549,7 @@ static int delete_excl(lua_State *L) {
     YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &varnames[i], unused);
     lua_pop(L, 1); // varname
   }
-  int status = ydb_delete_excl_s(namecount, varnames);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_delete_excl_s(namecount, varnames));
   return 0;
 }
 
@@ -608,9 +578,7 @@ static int incr(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -633,9 +601,7 @@ static int str2zwr(lua_State *L) {
     lua_pushlstring(L, zwr.buf_addr, zwr.len_used);
   }
   YDB_FREE_BUFFER(&zwr);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -657,9 +623,7 @@ static int zwr2str(lua_State *L) {
     lua_pushlstring(L, str.buf_addr, str.len_used);
   }
   YDB_FREE_BUFFER(&str);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -671,7 +635,7 @@ static int zwr2str(lua_State *L) {
 // return: integer handle to call-in table
 static int ci_tab_open(lua_State *L) {
   uintptr_t ci_handle;
-  ydb_ci_tab_open(luaL_checkstring(L, 1), &ci_handle);
+  ydb_assert(L, ydb_ci_tab_open(luaL_checkstring(L, 1), &ci_handle));
   lua_pop(L, 1);
   lua_pushinteger(L, ci_handle);
   return 1;
@@ -726,11 +690,6 @@ static const const_Reg yottadb_types[] = {
 #define YDB_TYPE_IS32BIT(type) (((type)&_YDB_TYPE_IS32BIT) != 0)
 #define YDB_TYPE_ISUNSIGNED(type) (((type)&_YDB_TYPE_ISUNSIGNED) != 0)
 #define YDB_TYPE_ISINTEGRAL(type) ((type) < _YDB_TYPE_ISREAL)
-
-// Let Lua know the order of enums -- keeps it the same between C and Lua versions
-#define _AUX(...) #__VA_ARGS__
-#define _STRINGIFY(x) _AUX(x)
-static char YDB_CI_PARAM_TYPES[] = _STRINGIFY(PARAM_TYPE_NAMES);
 
 typedef union {
   ydb_int_t int_n;
@@ -806,7 +765,7 @@ typedef struct {
 // Allocate on the stack for speed (hence need to use a macro)
 // Invoke with: metadata M* = create_metadata(n) -- must use letter M to work
 //#define DEBUG_MALLOCS
-#define DEBUG_MALLOCS(str, value) printf((str), (value))
+#define DEBUG_MALLOCS(str, value) printf(str "\n", (value)), fflush(stdout)
 #define create_metadata(n) \
   NULL; /* fake return value -- M patched later */ \
   ydb_param __param_spaces[(n)]; \
@@ -1031,7 +990,7 @@ static int ci(lua_State *L) {
 
   // Set new ci_table
   int status = ydb_ci_tab_switch(ci_handle, &old_handle);
-  if (status != YDB_OK) { free_mallocs(M); error(L, status); }
+  if (status != YDB_OK) { free_mallocs(M); ydb_assert(L, status); }
 
   // Call the M routine
   fflush(stdout); // Avoid mingled stdout; ydb routine also needs to flush with (U $P) after it outputs
@@ -1042,7 +1001,7 @@ static int ci(lua_State *L) {
   // Restore ci_table
   int status2 = ydb_ci_tab_switch(old_handle, &ci_handle);
   if (status == YDB_OK) status=status2; // report the first error
-  if (status != YDB_OK) { free_mallocs(M); error(L, status); }
+  if (status != YDB_OK) { free_mallocs(M); ydb_assert(L, status); }
   lua_pop(L, in_args); // pop all args
 
   // Push return values
