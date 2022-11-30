@@ -661,7 +661,7 @@ enum ydb_types {
   YDB_INT64_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_IS64BIT, YDB_UINT64_T_PTR,
   YDB_FLOAT_T_PTR = _YDB_TYPE_ISPTR+_YDB_TYPE_ISREAL+_YDB_TYPE_IS32BIT,
   YDB_DOUBLE_T_PTR= _YDB_TYPE_ISPTR+_YDB_TYPE_ISREAL+_YDB_TYPE_IS64BIT,
-  YDB_CHAR_T_PTR  = _YDB_TYPE_ISSTR+_YDB_TYPE_ISPTR, YDB_STRING_T_PTR, YDB_BUFFER_T_PTR,
+  YDB_CHAR_T_PTR  = _YDB_TYPE_ISSTR+_YDB_TYPE_ISPTR /*0x88*/, YDB_STRING_T_PTR /*0x89*/, YDB_BUFFER_T_PTR /*0x8a*/,
   VOID=0xff
 };
 
@@ -773,12 +773,11 @@ typedef struct {
   metadata __M = {0, __malloc_spaces, (ydb_param **)&__param_spaces}; \
   M = &__M; /* ptr makes it same for user as if we made non-macro version */ \
   DEBUG_MALLOCS("sizeof(metadata)=%ld", sizeof(metadata)); \
-  DEBUG_MALLOCS("sizeof(__malloc_spaces)=%ld", sizeof(__malloc_spaces)); \
   DEBUG_MALLOCS("sizeof(__param_spaces)=%ld", sizeof(__param_spaces)); \
-  DEBUG_MALLOCS("&__malloc_spaces=%p", &__malloc_spaces); \
+  DEBUG_MALLOCS("sizeof(__malloc_spaces)=%ld", sizeof(__malloc_spaces)); \
   DEBUG_MALLOCS("&__param_spaces=%p", &__param_spaces); \
-  DEBUG_MALLOCS("__param_spaces=%p", __param_spaces); \
-  DEBUG_MALLOCS("Mallocing %d", (n));
+  DEBUG_MALLOCS("&__malloc_spaces=%p", &__malloc_spaces); \
+  DEBUG_MALLOCS("Stack space for %d args", (n));
 static inline void *add_malloc(metadata *M, size_t size) {
   void *space = M->malloc[M->n++] = malloc(size);
   DEBUG_MALLOCS("Malloc %p\n", space);
@@ -874,7 +873,7 @@ ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
       }
     } else {
         free_mallocs(M);
-        luaL_error(L, "Invalid type id %d supplied in M routine call-in specification", type);
+        luaL_error(L, "Invalid type id %d supplied in M routine call-in specification", (unsigned char)type);
     }
 
   } else {
@@ -960,6 +959,7 @@ void cast_2lua(lua_State *L, ydb_param *param, type_spec *ydb_type) {
 //    returned values are all converted from the call-in table type to Lua types
 // NOTE: This is designed for speed, which means it does no mallocs unless it has to return strings
 //    (because mallocs take ~50 CPU cycles each, according to google)
+// TODO: could improve speed by having caller metadata remember total malloc space required and doing just one malloc for all
 static int ci(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
   char *routine_name = luaL_checkstring(L, 2);
