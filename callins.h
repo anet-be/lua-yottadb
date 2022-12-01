@@ -96,11 +96,13 @@ typedef struct {
   char data[];  // the actual string
 } blob_alltypes;
 
+typedef unsigned char ydb_type_id;  // Must be unsigned to make comparison against larger ints work nicely
+
 // specify type and IO of call-in parameter from call-in table
 // (specify __packed__ since these structs are packed end-to-end into a Lua string -- may not be necessary since they're all chars)
 typedef struct {
   size_t preallocation; // amount of string space to preallocate -- first for alignment reasons
-  unsigned char type;  // index into enum ydb_types
+  ydb_type_id type;  // index into enum ydb_types
   char input, output;  // 1 char boolean flags
 } type_spec;
 

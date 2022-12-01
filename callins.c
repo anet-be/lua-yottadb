@@ -79,7 +79,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
   ydb_param param;
   int isint;
   int success;
-  unsigned char type = ydb_type->type;
+  ydb_type_id type = ydb_type->type;
   char isinput = ydb_type->input;
   char isoutput = ydb_type->output;
 
@@ -182,9 +182,7 @@ type_error:
 // Only called for output types
 // There are no errors
 // Note: this is inner loop param processing, so limit cast_2lua() args to 4 for speedy register params
-static void cast_2lua(lua_State *L, ydb_param *param, type_spec *ydb_type) {
-  char type = ydb_type->type;
-
+static void cast_2lua(lua_State *L, ydb_param *param, ydb_type_id type) {
   // Use IF statement -- faster than SWITCH (even if table lookup) due to pipelining (untested)
   if (YDB_TYPE_ISSTR(type)) {
     // first handle all string types (number types later)
@@ -279,10 +277,9 @@ int ci(lua_State *L) {
   typeptr = type_list;
   for (argi=1;  typeptr<types_end;  typeptr++, argi++) {
     if (!typeptr->output) continue;
-    cast_2lua(L, &ci_arg.arg[argi], typeptr);
+    cast_2lua(L, &ci_arg.arg[argi], typeptr->type);
     nreturns++;
   }
-
   free_mallocs(M);
   return nreturns;
 }

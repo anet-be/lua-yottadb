@@ -614,7 +614,7 @@ local function parse_prototype(line, ci_handle)
   param_info_string = table.concat(param_info)
 
   local function func(...)
-    _yottadb.ci(ci_handle, routine_name, param_info_string, ...)
+    return _yottadb.ci(ci_handle, routine_name, param_info_string, ...)
   end
   return routine_name, func
 end
