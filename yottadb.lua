@@ -565,17 +565,6 @@ end
 
 -- ~~~ Functions to handle calling M routines from Lua ~~~
 
--- Return running YDB release number and cache the response
-local _ydb_release = nil
-function ydb_release()
-  if _ydb_release then  return _ydb_release  end
-  release_string = _yottadb.get('$ZYRELEASE')
-  local release = release_string:match('YottaDB r([%d.]+)')
-  if not release then  return nil  end
-  _ydb_release = release
-  return _ydb_release
-end
-
 local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
 
 ---
@@ -590,7 +579,6 @@ function pack_type(type_str)
   if not typ then  return nil  end
   param_type_enum = param_type_enums[typ]
   assert(param_type_enum, string.format("unknown return or parameter type %s in YDB call-in table specification", typ))
-  assert(typ~='ydb_buffer_t*' or ydb_release() >= 1.36, "type ydb_buffer_t* not supported until YDB r1.36")
   isinput = i:upper()=='I' and 1 or 0
   isoutput = o:upper()=='O' and 1 or 0
   assert(isoutput==0 or typ:find('*', 1, true), string.format("output parameter %s must be a pointer type", typ))
