@@ -1,0 +1,5 @@
+/* define which symbols the .so file should share */
+{
+    global: luaopen__yottadb;
+    local: *;  /* Define all other symbols as local -- not shared in .so file */
+};
