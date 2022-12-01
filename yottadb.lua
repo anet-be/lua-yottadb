@@ -614,8 +614,6 @@ local function parse_prototype(line, ci_handle)
   param_info_string = table.concat(param_info)
 
   local function func(...)
-print(param_info)--***
-print("calling _yottadb.ci(", ci_handle, routine_name, ...)--***
     _yottadb.ci(ci_handle, routine_name, param_info_string, ...)
   end
   return routine_name, func
@@ -637,7 +635,6 @@ function M.require(prototypes)
   for line in f:lines() do
     line_no = line_no+1
     local ok, routine, func = pcall(parse_prototype, line, ci_handle)
-print(ok, routine, func)--***
     assert(ok, string.format("%s: call-in table line %d", routine, line_no))
     if routine then  routines[routine] = func end
   end

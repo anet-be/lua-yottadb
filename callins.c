@@ -79,7 +79,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
   ydb_param param;
   int isint;
   int success;
-  char type = ydb_type->type;
+  unsigned char type = ydb_type->type;
   char isinput = ydb_type->input;
   char isoutput = ydb_type->output;
 
@@ -89,7 +89,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
     size_t preallocation = ydb_type->preallocation;
     if (!preallocation) preallocation=YDB_MAX_STR;
     size_t length;
-    char *s = strcpy(param.char_ptr, lua_tolstring(L, argi, &length));
+    char *s = lua_tolstring(L, argi, &length);
     if (length > preallocation) length = preallocation; // prevent writing past preallocation
     if (!s) { expected="string"; goto type_error; }
     if (type == YDB_CHAR_T_PTR) {
@@ -142,7 +142,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       }
     } else {
         free_mallocs(M);
-        luaL_error(L, "M routine param #%d has invalid type id %d supplied in M routine call-in specification", argi-2, (unsigned char)type);
+        luaL_error(L, "M routine param #%d has invalid type id %d supplied in M routine call-in specification", argi-2, type);
     }
 
   } else {
@@ -243,7 +243,6 @@ int ci(lua_State *L) {
   gparam_list_alltypes ci_arg; // list of args to send to ydb_ci()
   int lua_args = lua_gettop(L);
   ci_arg.n = (intptr_t)(types_end - type_list + 1); // +1 for routine_name
-printf("type_list=%p, types_end=%p; diff=%ld, sizeof(type_spec)=%ld\n", type_list, types_end, types_end-type_list, sizeof(type_spec));
   if (lua_args-3 < ci_arg.n-1-has_retval)
     luaL_error(L, "not enough parameters to M routine %s() to match call-in specification", routine_name);
 

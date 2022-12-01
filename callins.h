@@ -100,7 +100,7 @@ typedef struct {
 // (specify __packed__ since these structs are packed end-to-end into a Lua string -- may not be necessary since they're all chars)
 typedef struct {
   size_t preallocation; // amount of string space to preallocate -- first for alignment reasons
-  char type;  // index into enum ydb_types
+  unsigned char type;  // index into enum ydb_types
   char input, output;  // 1 char boolean flags
 } type_spec;
 
