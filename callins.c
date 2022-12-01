@@ -33,20 +33,24 @@ const const_Reg yottadb_types[] = {
 // Metadata is used, to store param data and mallocs (for subsequent freeing)
 // Allocate on the stack for speed (hence need to use a macro)
 // Invoke with: metadata M* = create_metadata(n) -- must use letter M to work
-//#define DEBUG_MALLOCS
-#define DEBUG_MALLOCS(str, value) printf(str "\n", (value)), fflush(stdout)
+#define DEBUG_MALLOC 0
+#if DEBUG_MALLOC
+  #define DEBUG_MALLOCS(str, value) printf(str, (value)), fflush(stdout)
+#else
+  #define DEBUG_MALLOCS(str, value)
+#endif
 #define create_metadata(n) \
-  NULL; /* fake return value -- M patched later */ \
+  NULL; /* fake return value -- M is patched later */ \
   ydb_param __param_spaces[(n)]; \
   void *__malloc_spaces[(n)]; \
-  metadata __M = {0, __malloc_spaces, (ydb_param **)&__param_spaces}; \
+  metadata __M = {0, 0, __malloc_spaces, (ydb_param **)&__param_spaces}; \
   M = &__M; /* ptr makes it same for user as if we made non-macro version */ \
-  DEBUG_MALLOCS("sizeof(metadata)=%ld", sizeof(metadata)); \
-  DEBUG_MALLOCS("sizeof(__param_spaces)=%ld", sizeof(__param_spaces)); \
-  DEBUG_MALLOCS("sizeof(__malloc_spaces)=%ld", sizeof(__malloc_spaces)); \
-  DEBUG_MALLOCS("&__param_spaces=%p", &__param_spaces); \
-  DEBUG_MALLOCS("&__malloc_spaces=%p", &__malloc_spaces); \
-  DEBUG_MALLOCS("Stack space for %d args", (n));
+  DEBUG_MALLOCS("sizeof(metadata)=%ld\b", sizeof(metadata)); \
+  DEBUG_MALLOCS("sizeof(__param_spaces)=%ld\n", sizeof(__param_spaces)); \
+  DEBUG_MALLOCS("sizeof(__malloc_spaces)=%ld\n", sizeof(__malloc_spaces)); \
+  DEBUG_MALLOCS("&__param_spaces=%p\n", &__param_spaces); \
+  DEBUG_MALLOCS("&__malloc_spaces=%p\n", &__malloc_spaces); \
+  DEBUG_MALLOCS("Stack space for %ld params\n", (n));
 static inline void *add_malloc(metadata *M, size_t size) {
   void *space = M->malloc[M->n++] = malloc(size);
   DEBUG_MALLOCS("Malloc %p\n", space);
@@ -56,18 +60,14 @@ static inline void *add_malloc(metadata *M, size_t size) {
 // ensure the first element is freed last because it contains the malloc structure itself
 static inline void free_mallocs(metadata *M) {
   for (int i = M->n-1; i >= 0; i--) {
-    #if DEBUG_MALLOCS
-      printf("Free %p\n", M->malloc[i]);
-    #endif
+    DEBUG_MALLOCS("Free %p\n", M->malloc[i]);
     free(M->malloc[i]);
   }
 }
-// Return pointer to metadata for parameter n
-static inline ydb_param *get_metadata(metadata *M, int n) {
-  #if DEBUG_MALLOCS
-    printf("Using %p->data=%p\n", M, M->data[n]);
-  #endif
-  return M->data[n];
+// Return pointer to the next free metadata slot
+static inline ydb_param *get_metadata(metadata *M) {
+  DEBUG_MALLOCS("Using slot at M->data[%p]\n", M->data[M->i]);
+  return M->data[M->i++];
 }
 
 // Cast Lua parameter at Lua stack index argi to ydb type type->type
@@ -142,7 +142,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       }
     } else {
         free_mallocs(M);
-        luaL_error(L, "Invalid type id %d supplied in M routine call-in specification", (unsigned char)type);
+        luaL_error(L, "M routine param #%d has invalid type id %d supplied in M routine call-in specification", argi-2, (unsigned char)type);
     }
 
   } else {
@@ -164,8 +164,8 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
     } else
       param.long_n = 0;
     if (YDB_TYPE_ISPTR(type)) {
-      // If it's a pointer type, store the actual data in M->data, then make param point to it
-      ydb_param *p_ptr = get_metadata(M, argi);
+      // If it's a pointer type, store the actual data in the next metadata slot, then make param point to it
+      ydb_param *p_ptr = get_metadata(M);
       *p_ptr = param;
       param.any_ptr = p_ptr;
     }
@@ -212,17 +212,6 @@ static void cast_2lua(lua_State *L, ydb_param *param, type_spec *ydb_type) {
 }
 
 
-// Open a call-in table using ydb_ci_tab_open()
-// _yottadb.ci_tab_open(ci_table_filename)
-// return: integer handle to call-in table
-int ci_tab_open(lua_State *L) {
-  uintptr_t ci_handle;
-  ydb_assert(L, ydb_ci_tab_open(luaL_checkstring(L, 1), &ci_handle));
-  lua_pop(L, 1);
-  lua_pushinteger(L, ci_handle);
-  return 1;
-}
-
 // Call an M routine using ydb_ci()
 // Note: this function is intended to be called by a wrapper in yottadb.lua rather than by the user
 //    (so validity of type_list array is not checked)
@@ -251,21 +240,23 @@ int ci(lua_State *L) {
   bool has_retval = type_list->type != VOID;
   if (!has_retval) type_list++; // Don't need the first type any more if its type is VOID
 
-  gparam_list_alltypes out_arg; // list of args to send to ydb_ci()
-  int in_args = lua_gettop(L);
-  out_arg.n = (intptr_t)(types_end - type_list + 1); // +1 for routine_name
-  if ((in_args-2+has_retval) < out_arg.n)
-    luaL_error(L, "not enough parameters to match M routine call-in specification");
+  gparam_list_alltypes ci_arg; // list of args to send to ydb_ci()
+  int lua_args = lua_gettop(L);
+  ci_arg.n = (intptr_t)(types_end - type_list + 1); // +1 for routine_name
+printf("type_list=%p, types_end=%p; diff=%ld, sizeof(type_spec)=%ld\n", type_list, types_end, types_end-type_list, sizeof(type_spec));
+  if (lua_args-3 < ci_arg.n-1-has_retval)
+    luaL_error(L, "not enough parameters to M routine %s() to match call-in specification", routine_name);
 
-  // Allocate space to store a free-pointer and other metadata for each in_arg where needed
+  // Allocate space to store a metadata for each param to ydb_ci() except routine_name
+  // (actually we only need one per output_type parameter, but we don't have that count handy)
   // Note: after this, must not error out without first calling free_mallocs(M)
-  metadata *M = create_metadata(in_args+1);
+  metadata *M = create_metadata(ci_arg.n-1);
 
   int argi=0;  // output argument index
-  out_arg.arg[argi++].char_ptr = routine_name;
+  ci_arg.arg[argi++].char_ptr = routine_name;
   type_spec *typeptr = type_list;
   for (; typeptr<types_end; typeptr++, argi++) {
-    out_arg.arg[argi] = cast_2ydb(L, argi+3-has_retval, typeptr, M);
+    ci_arg.arg[argi] = cast_2ydb(L, argi+3-has_retval, typeptr, M);
   }
 
   // Set new ci_table
@@ -276,23 +267,34 @@ int ci(lua_State *L) {
   fflush(stdout); // Avoid mingled stdout; ydb routine also needs to flush with (U $P) after it outputs
   // Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
   // which works, luckily, because gcc pads even 32-bit ydb_int_t to 64-bits
-  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, (gparam_list*)&out_arg);
+  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, (gparam_list*)&ci_arg);
 
   // Restore ci_table
   int status2 = ydb_ci_tab_switch(old_handle, &ci_handle);
   if (status == YDB_OK) status=status2; // report the first error
   if (status != YDB_OK) { free_mallocs(M); ydb_assert(L, status); }
-  lua_pop(L, in_args); // pop all args
+  lua_pop(L, lua_args); // pop all args
 
   // Push return values
   int nreturns = 0;
   typeptr = type_list;
   for (argi=1;  typeptr<types_end;  typeptr++, argi++) {
     if (!typeptr->output) continue;
-    cast_2lua(L, &out_arg.arg[argi], typeptr);
+    cast_2lua(L, &ci_arg.arg[argi], typeptr);
     nreturns++;
   }
 
   free_mallocs(M);
   return nreturns;
+}
+
+// Open a call-in table using ydb_ci_tab_open()
+// _yottadb.ci_tab_open(ci_table_filename)
+// return: integer handle to call-in table
+int ci_tab_open(lua_State *L) {
+  uintptr_t ci_handle;
+  ydb_assert(L, ydb_ci_tab_open(luaL_checkstring(L, 1), &ci_handle));
+  lua_pop(L, 1);
+  lua_pushinteger(L, ci_handle);
+  return 1;
 }

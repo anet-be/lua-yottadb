@@ -112,8 +112,9 @@ typedef struct {
 // Functions defined as inline for speed.
 typedef struct {
 	int n;				    // count of mallocs stored so far
+  int i;            // count of data pointers stored so far
 	void **malloc;    // array of malloc'ed handles - one for each param
-  ydb_param **data;  // array of ydb_param space - one for each param
+  ydb_param **data; // array of ydb_param space - one for each param
 } metadata;
 
 

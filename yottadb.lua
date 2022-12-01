@@ -568,24 +568,22 @@ end
 local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
 
 ---
--- Check and pack info for each ydb type
--- input must be 'I' or ''
--- output must be 'O' or ''
--- return nil if no type info found
+-- Parse call-in ydb type of the typical form: IO:ydb_int_t*
+-- Return a string of type info packed into a string matching callins.h struct type_spec
 -- assert any errors
-function pack_type(type_str)
+local function pack_type(type_str, param_id)
   local pattern = '(I?)(O?):([%w_]+%*?)([%[%d%]]*)'
-  i, o, typ, alloc_str = type_str:match(pattern)
-  if not typ then  return nil  end
-  param_type_enum = param_type_enums[typ]
-  assert(param_type_enum, string.format("unknown return or parameter type %s in YDB call-in table specification", typ))
-  isinput = i:upper()=='I' and 1 or 0
-  isoutput = o:upper()=='O' and 1 or 0
-  assert(isoutput==0 or typ:find('*', 1, true), string.format("output parameter %s must be a pointer type", typ))
+  local i, o, typ, alloc_str = type_str:match(pattern)
+  assert(typ, string.format("ydb parameter %s not found YDB call-in table specification", param_id))
+  type_enum = param_type_enums[typ]
+  assert(type_enum, string.format("unknown parameter %s '%s' in YDB call-in table specification", param_id, typ))
+  local input = i:upper()=='I' and 1 or 0
+  local output = o:upper()=='O' and 1 or 0
+  assert(output==0 or typ:find('*', 1, true), string.format("output parameter %s '%s' must be a pointer type", param_id, typ))
   -- TODO: implement rewriting call-in file to remove preallocation info which ydb can't parse
-  alloc_str = alloc_str:match('%[(%d+)%]')
-  preallocate = tonumber(alloc_str) or 0
-  return string.pack('!1=TBBB', preallocate, param_type_enum, isinput, isoutput)
+  local alloc_str = alloc_str:match('%[(%d+)%]')
+  local preallocation = tonumber(alloc_str) or 0
+  return string.pack('!=TBBBXT', preallocation, type_enum, input, output)
 end
 
 --- 
@@ -594,8 +592,7 @@ end
 -- Return routine_name, func
 -- On return nil, nil if the line did not contain a function prototype
 -- Assert any errors
-local function _parse_prototype(line, ci_handle)
-  local param_info = {}  -- array of strings each equivalent to struct type _yottadb.type_spec
+local function parse_prototype(line, ci_handle)
   line = line:gsub('//.*', '')  -- remove comments
 
   -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
@@ -604,18 +601,22 @@ local function _parse_prototype(line, ci_handle)
   if not routine_name then  return nil, nil  end
   assert(params, string.format("Line does not match YDB call-in table specification: '%s'", line))
   local ret_type = ret_type:gsub('%s*', '') -- remove spaces
-  param_info[#param_info+1] = pack_type('O:'..ret_type)
+  local param_info = {pack_type('O:'..ret_type, 'return')}
 
   -- now iterate each parameter
   params = params:gsub('%s*', '') -- remove spaces
   local pattern = '([^,%)]+)'
+  i = 0
   for type_str in params:gmatch(pattern) do
-    param_info[#param_info+1] = pack_type(type_str)
+    i = i+1
+    table.insert(param_info, pack_type(type_str, i))
   end
+  param_info_string = table.concat(param_info)
+
   local function func(...)
 print(param_info)--***
-print(ci_handle, routine_name, ...)--***
-    _yottadb.ci(ci_handle, routine_name, table.concat(param_info), ...)
+print("calling _yottadb.ci(", ci_handle, routine_name, ...)--***
+    _yottadb.ci(ci_handle, routine_name, param_info_string, ...)
   end
   return routine_name, func
 end
@@ -635,7 +636,7 @@ function M.require(prototypes)
   line_no = 0
   for line in f:lines() do
     line_no = line_no+1
-    local ok, routine, func = pcall(_parse_prototype, line, ci_handle)
+    local ok, routine, func = pcall(parse_prototype, line, ci_handle)
 print(ok, routine, func)--***
     assert(ok, string.format("%s: call-in table line %d", routine, line_no))
     if routine then  routines[routine] = func end
