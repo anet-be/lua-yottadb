@@ -19,8 +19,8 @@ CC=gcc
 CFLAGS=-g -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist)
 
-_yottadb.so: yottadb.o callins.o exports.map
-	$(CC) yottadb.o callins.o  -o $@  -shared -Wl,--version-script=exports.map $(CFLAGS) $(LDFLAGS)
+_yottadb.so: yottadb.c callins.c exports.map
+	$(CC) yottadb.c callins.c  -o $@  -shared -Wl,--version-script=exports.map $(CFLAGS) $(LDFLAGS)
 %: %.c
 	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)
 %.o: %.c
