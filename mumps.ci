@@ -14,5 +14,5 @@
 //      plus the types allowed by ret-type
 // where <direction> may be: I, O, or IO (in/out to M; outputs may only be pointer types)
 
-test_add: ydb_string_t* add^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
-test_run: ydb_string_t* add^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
+//test_run: ydb_string_t* add^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
+test_add: ydb_string_t* add^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_float_t*, IO:ydb_char_t*)

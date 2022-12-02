@@ -575,7 +575,7 @@ local function pack_type(type_str, param_id)
   local pattern = '(I?)(O?):([%w_]+%*?)([%[%d%]]*)'
   local i, o, typ, alloc_str = type_str:match(pattern)
   assert(typ, string.format("ydb parameter %s not found YDB call-in table specification", param_id))
-  type_enum = param_type_enums[typ]
+  local type_enum = param_type_enums[typ]
   assert(type_enum, string.format("unknown parameter %s '%s' in YDB call-in table specification", param_id, typ))
   local input = i:upper()=='I' and 1 or 0
   local output = o:upper()=='O' and 1 or 0
@@ -592,9 +592,9 @@ end
 -- Return routine_name, func
 -- On return nil, nil if the line did not contain a function prototype
 -- Assert any errors
+local entrypoint_cache = {}
 local function parse_prototype(line, ci_handle)
   line = line:gsub('//.*', '')  -- remove comments
-
   -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
   local pattern = '%s*([^:%s]+)%s*:%s*([%w_]+%s*%*?)%s*([^(%s]+)%s*%(([^)]*)%)'
   local routine_name, ret_type, entrypoint, params = line:match(pattern)
@@ -602,17 +602,22 @@ local function parse_prototype(line, ci_handle)
   assert(params, string.format("Line does not match YDB call-in table specification: '%s'", line))
   local ret_type = ret_type:gsub('%s*', '') -- remove spaces
   local param_info = {pack_type('O:'..ret_type, 'return')}
-
   -- now iterate each parameter
   params = params:gsub('%s*', '') -- remove spaces
   local pattern = '([^,%)]+)'
-  i = 0
+  local i = 0
   for type_str in params:gmatch(pattern) do
     i = i+1
     table.insert(param_info, pack_type(type_str, i))
   end
-  param_info_string = table.concat(param_info)
-
+  local param_info_string = table.concat(param_info)
+  -- check there is no double-entry in call-in table
+  local previous_entrypoint = entrypoint_cache[entrypoint]
+  if previous_entrypoint and previous_entrypoint ~= param_info_string then
+    io.stderr:write("Warning: entrypoint redefined: ydb will use the latest one for all wrapper functions that use that entrypoint\n")
+  end
+  entrypoint_cache[entrypoint] = param_info_string
+  -- create the actual wrapper function
   local function func(...)
     return _yottadb.ci(ci_handle, routine_name, param_info_string, ...)
   end

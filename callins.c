@@ -33,41 +33,54 @@ const const_Reg yottadb_types[] = {
 // Metadata is used, to store param data and mallocs (for subsequent freeing)
 // Allocate on the stack for speed (hence need to use a macro)
 // Invoke with: metadata M* = create_metadata(n) -- must use letter M to work
-#define DEBUG_MALLOC 0
-#if DEBUG_MALLOC
-  #define DEBUG_MALLOCS(str, value) printf(str, (value)), fflush(stdout)
+#define DEBUG_META_FLAG 0
+#if DEBUG_META_FLAG
+  #define DEBUG_META(str, value) printf(str, (value)), fflush(stdout)
 #else
-  #define DEBUG_MALLOCS(str, value)
+  #define DEBUG_META(str, value)
 #endif
 #define create_metadata(n) \
   NULL; /* fake return value -- M is patched later */ \
-  ydb_param __param_spaces[(n)]; \
+  byref_slot __slots[(n)]; \
   void *__malloc_spaces[(n)]; \
-  metadata __M = {0, 0, __malloc_spaces, (ydb_param **)&__param_spaces}; \
+  metadata __M = {0, 0, __malloc_spaces, __slots}; \
   M = &__M; /* ptr makes it same for user as if we made non-macro version */ \
-  DEBUG_MALLOCS("sizeof(metadata)=%ld\b", sizeof(metadata)); \
-  DEBUG_MALLOCS("sizeof(__param_spaces)=%ld\n", sizeof(__param_spaces)); \
-  DEBUG_MALLOCS("sizeof(__malloc_spaces)=%ld\n", sizeof(__malloc_spaces)); \
-  DEBUG_MALLOCS("&__param_spaces=%p\n", &__param_spaces); \
-  DEBUG_MALLOCS("&__malloc_spaces=%p\n", &__malloc_spaces); \
-  DEBUG_MALLOCS("Stack space for %ld params\n", (n));
+  DEBUG_META("Allocating stack space for %ld params\n", (n)); \
+  DEBUG_META("  using a total stack space of %ld bytes:\n", sizeof(metadata)+sizeof(__slots)+sizeof(__malloc_spaces)); \
+  DEBUG_META("    sizeof(metadata)=%ld\n", sizeof(metadata)); \
+  DEBUG_META("   +params*sizeof(__slots)=%ld\n", sizeof(__slots)); \
+  DEBUG_META("   +params*sizeof(__malloc_spaces)=%ld\n", sizeof(__malloc_spaces)); \
+  DEBUG_META("&M->malloc=%p\n", &M->malloc); \
+  DEBUG_META("&M->slot=%p\n", &M->slot); \
+  DEBUG_META("&__slots=%p\n", &__slots); \
+  DEBUG_META("&__malloc_spaces=%p\n", &__malloc_spaces); \
+  DEBUG_META("M->malloc=%p\n", M->malloc); \
+  DEBUG_META("M->slot=%p\n", M->slot);
 static inline void *add_malloc(metadata *M, size_t size) {
-  void *space = M->malloc[M->n++] = malloc(size);
-  DEBUG_MALLOCS("Malloc %p\n", space);
-  return space;
+  void *space = malloc(size);
+  DEBUG_META("Assigning malloc space %p\n", space);
+  DEBUG_META("  to malloc slot number %d\n", M->n);
+  DEBUG_META("  at address M->malloc[M->n]=%p\n", &M->malloc[M->n]);
+  return M->malloc[M->n++] = space;
 }
 // Free each pointer in an array of malloc'ed pointers unless it is NULL
 // ensure the first element is freed last because it contains the malloc structure itself
 static inline void free_mallocs(metadata *M) {
   for (int i = M->n-1; i >= 0; i--) {
-    DEBUG_MALLOCS("Free %p\n", M->malloc[i]);
+    DEBUG_META("Free %p\n", M->malloc[i]);
     free(M->malloc[i]);
   }
 }
 // Return pointer to the next free metadata slot
-static inline ydb_param *get_metadata(metadata *M) {
-  DEBUG_MALLOCS("Using slot at M->data[%p]\n", M->data[M->i]);
-  return M->data[M->i++];
+static inline byref_slot *get_slot(metadata *M) {
+  DEBUG_META("Allocating byref slot number %d\n", M->i);
+  DEBUG_META("  at address &M->slot[M->i]=%p\n", &M->slot[M->i]);
+  return &M->slot[M->i++];
+}
+
+static void typeerror_cleanup(lua_State* L, metadata *M, int argi, char *expected_type) {
+  free_mallocs(M);
+  luaL_typeerror(L, argi, expected_type);
 }
 
 // Cast Lua parameter at Lua stack index argi to ydb type type->type
@@ -91,11 +104,10 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
     size_t length;
     char *s = lua_tolstring(L, argi, &length);
     if (length > preallocation) length = preallocation; // prevent writing past preallocation
-    if (!s) { expected="string"; goto type_error; }
+    if (!s) typeerror_cleanup(L, M, argi, "string");
     if (type == YDB_CHAR_T_PTR) {
       // handle ydb_char_t* type
       if (isoutput) {
-        // TODO: could check here whether YDB avoids overwriting string of strlen(input_string) -- maybe we don't need to malloc preallocation, and maybe we need to fill an input string with junk to the preallocation
         param.char_ptr = add_malloc(M, preallocation+1); // +1 for null safety-terminator
         if (isinput) {
           memcpy(param.char_ptr, s, length); // also copy Lua's NUL safety-terminator
@@ -107,38 +119,34 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       }
     } else if (type == YDB_STRING_T_PTR) {
       // handle ydb_string_t* type
+      byref_slot *slot = get_slot(M);
+      param.string_ptr = &slot->string;
       if (isoutput) {
-        // TODO: check by trial whether YDB avoids overwriting string of strlen(input_string) -- maybe we don't need to malloc preallocation
-        blob_alltypes *blob = add_malloc(M, preallocation+sizeof(blob_alltypes));
-        param.string_ptr = &blob->type.string;
-        param.string_ptr->address = blob->data;
-        param.string_ptr->length = preallocation;
+        slot->string.address = add_malloc(M, preallocation);
+        slot->string.length = preallocation;
         if (isinput)
-          memcpy(param.string_ptr->address, s, length);
+          memcpy(slot->string.address, s, length);
+          slot->string.length = length;
       } else {
-        blob_alltypes *blob = add_malloc(M, sizeof(blob_alltypes));
-        param.string_ptr = &blob->type.string;
-        param.string_ptr->address = s;
-        param.string_ptr->length = length;
+        slot->string.address = s;
+        slot->string.length = length;
       }
     } else if (type == YDB_BUFFER_T_PTR) {
       // handle ydb_buffer_t* type
+      byref_slot *slot = get_slot(M);
+      param.buffer_ptr = &slot->buffer;
       if (isoutput) {
-        blob_alltypes *blob = add_malloc(M, preallocation+sizeof(blob_alltypes));
-        param.buffer_ptr = &blob->type.buffer;
-        param.buffer_ptr->buf_addr = blob->data;
-        param.buffer_ptr->len_alloc = preallocation;
-        param.buffer_ptr->len_used = 0;
+        slot->buffer.buf_addr = add_malloc(M, preallocation);
+        slot->buffer.len_alloc = preallocation;
+        slot->buffer.len_used = 0;
         if (isinput) {
-          memcpy(param.buffer_ptr->buf_addr, s, length);
-          param.buffer_ptr->len_used = length;
+          memcpy(slot->buffer.buf_addr, s, length);
+          slot->buffer.len_used = length;
         }
       } else {
-        blob_alltypes *blob = add_malloc(M, sizeof(blob_alltypes));
-        param.buffer_ptr = &blob->type.buffer;
-        param.buffer_ptr->buf_addr = s;
-        param.buffer_ptr->len_alloc = length;
-        param.buffer_ptr->len_used = length;
+        slot->buffer.buf_addr = s;
+        slot->buffer.len_alloc = length;
+        slot->buffer.len_used = length;
       }
     } else {
         free_mallocs(M);
@@ -151,13 +159,16 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       if (YDB_TYPE_ISINTEGRAL(type)) {
         // handle long and int64
         param.long_n = lua_tointegerx(L, argi, &success);
-        if (!success) { expected="integer"; goto type_error; }
-        if (YDB_TYPE_IS32BIT(type))
+        if (!success) typeerror_cleanup(L, M, argi, "integer");
+        if (YDB_TYPE_IS32BIT(type)) {
           // handle int32 (ydb_int_t is specifically 32-bits)
-          param.int_n = param.long_n; // cast in case we're running big-endian
+          if (param.int_n > 0x7fffffff || param.int_n < -0x80000000)
+            typeerror_cleanup(L, M, argi, "32-bit integer");
+          param.int_n = param.long_n; // cast in case we're running big-endian which won't auto-cast
+        }
       } else if (YDB_TYPE_ISREAL(type)) {
         param.double_n = lua_tonumberx(L, argi, &success);
-        if (!success) { expected="number"; goto type_error; }
+        if (!success) typeerror_cleanup(L, M, argi, "number");
         if (type == YDB_FLOAT_T)
           param.float_n = param.double_n; // cast
       }
@@ -165,17 +176,15 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       param.long_n = 0;
     if (YDB_TYPE_ISPTR(type)) {
       // If it's a pointer type, store the actual data in the next metadata slot, then make param point to it
-      ydb_param *p_ptr = get_metadata(M);
-      *p_ptr = param;
-      param.any_ptr = p_ptr;
+      byref_slot *slot = get_slot(M);
+      // TODO: confirm in assembler output that the next line is an efficient 64-bit value copy
+      slot->param = param;
+      param.any_ptr = slot;
     }
   }
 
   // TODO: confirm in assembler output that compiler returns an efficient single 64-bit value for param
   return param;
-type_error:
-  free_mallocs(M);
-  luaL_typeerror(L, argi, expected);
 }
 
 // Cast retval/output param from ydb_type to a Lua type and push onto the Lua stack as a return value.
@@ -224,9 +233,11 @@ static void cast_2lua(lua_State *L, ydb_param *param, ydb_type_id type) {
 //    if too many parameters are supplied, they are ignored (typical Lua behaviour)
 // return: function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table
 //    returned values are all converted from the call-in table type to Lua types
-// NOTE: This is designed for speed, which means it does no mallocs unless it has to return strings
+// NOTE: This is designed for speed, which means all temporary data is allotted on the stack
+//    and it does no mallocs unless it has to return strings (which can be large so need malloc)
 //    (because mallocs take ~50 CPU cycles each, according to google)
-// TODO: could improve speed by having caller metadata remember total malloc space required and doing just one malloc for all
+//    So don't return strings or make them outputs, if you want it to be super fast!
+// TODO: could improve speed by having caller metadata remember total string-malloc space required and doing just one malloc for all
 int ci(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
   char *routine_name = luaL_checkstring(L, 2);

@@ -46,6 +46,7 @@ enum ydb_types {
 #define YDB_TYPE_ISUNSIGNED(type) (((type)&_YDB_TYPE_ISUNSIGNED) != 0)
 #define YDB_TYPE_ISINTEGRAL(type) ((type) < _YDB_TYPE_ISREAL)
 
+// define a param type that holds any type of param
 typedef union {
   ydb_int_t int_n;
   ydb_uint_t uint_n;
@@ -63,7 +64,7 @@ typedef union {
 
   ydb_char_t* char_ptr;
   ydb_string_t* string_ptr;
-  ydb_buffer_t* buffer_ptr; // Note: only works from YDB r1.36 onward
+  ydb_buffer_t* buffer_ptr; // Note: only works with call-in from YDB r1.36 onward
 
   #if UINTPTR_MAX == 0xffffffffffffffff
     // ydb_double_t doesn't fit in (void*) on 32-bit builds. Instead, use pointer type ydb_double_t*
@@ -75,6 +76,18 @@ typedef union {
     ydb_uint64_t* uint64_ptr;
   #endif
 } ydb_param;
+
+// define a space that holds any type of structure that can be pointed to by ydb_xxx_t*
+typedef union {
+  ydb_param param;  // let us cast from this type to param
+  ydb_int_t int_n;
+  ydb_uint_t uint_n;
+  ydb_long_t long_n;
+  ydb_ulong_t ulong_n;
+  ydb_float_t float_n;
+  ydb_string_t string;
+  ydb_buffer_t buffer; // Note: only works with call-in from YDB r1.36 onward
+} byref_slot;
 
 static_assert( sizeof(ydb_param) == sizeof(void*),
   "Not all ydb_ci parameters will fit into ydb's gparam_list array. "
@@ -112,11 +125,12 @@ typedef struct {
 // For the sake of speed, init M in pre-allocated space rather than using malloc because stack is
 //   much faster. Thus, for minimal functions that don't return strings, malloc is not needed at all.
 // Functions defined as inline for speed.
+typedef void *ptrarray[];
 typedef struct {
 	int n;				    // count of mallocs stored so far
   int i;            // count of data pointers stored so far
-	void **malloc;    // array of malloc'ed handles - one for each param
-  ydb_param **data; // array of ydb_param space - one for each param
+	void **malloc;    // pointer to array of malloc'ed handles - one for each param
+  byref_slot *slot; // pointer to array of byref_slots - one for each param
 } metadata;
 
 
