@@ -574,7 +574,7 @@ local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
 local function pack_type(type_str, param_id)
   local pattern = '(I?)(O?):([%w_]+%*?)([%[%d%]]*)'
   local i, o, typ, alloc_str = type_str:match(pattern)
-  assert(typ, string.format("ydb parameter %s not found YDB call-in table specification", param_id))
+  assert(typ, string.format("ydb parameter %s not found YDB call-in table specification %q", param_id, type_str))
   local type_enum = param_type_enums[typ]
   assert(type_enum, string.format("unknown parameter %s '%s' in YDB call-in table specification", param_id, typ))
   local input = i:upper()=='I' and 1 or 0
@@ -601,7 +601,7 @@ local function parse_prototype(line, ci_handle)
   if not routine_name then  return nil, nil  end
   assert(params, string.format("Line does not match YDB call-in table specification: '%s'", line))
   local ret_type = ret_type:gsub('%s*', '') -- remove spaces
-  local param_info = {pack_type('O:'..ret_type, 'return')}
+  local param_info = {pack_type(ret_type=='void' and ':void' or 'O:'..ret_type, "'return_value'")}
   -- now iterate each parameter
   params = params:gsub('%s*', '') -- remove spaces
   local pattern = '([^,%)]+)'
@@ -614,7 +614,7 @@ local function parse_prototype(line, ci_handle)
   -- check there is no double-entry in call-in table
   local previous_entrypoint = entrypoint_cache[entrypoint]
   if previous_entrypoint and previous_entrypoint ~= param_info_string then
-    io.stderr:write("Warning: entrypoint redefined: ydb will use the latest one for all wrapper functions that use that entrypoint\n")
+    io.stderr:write(string.format("Warning: entrypoint %q defined more than once: ydb will use the latest definition for all wrapper functions that use that entrypoint.\n", entrypoint))
   end
   entrypoint_cache[entrypoint] = param_info_string
   -- create the actual wrapper function

@@ -78,9 +78,12 @@ static inline byref_slot *get_slot(metadata *M) {
   return &M->slot[M->i++];
 }
 
+// Free mallocs and assert type error
+// Prints argument # of M routine rather than argument of ci()
+// assumes there are 3 arguments to ci() before the M arguments
 static void typeerror_cleanup(lua_State* L, metadata *M, int argi, char *expected_type) {
   free_mallocs(M);
-  luaL_typeerror(L, argi, expected_type);
+  luaL_error(L, "bad argument #%d of M routine wrapper (expected %s, got %s)", argi-3, expected_type, lua_typename(L, lua_type(L, argi)));
 }
 
 // Cast Lua parameter at Lua stack index argi to ydb type type->type
@@ -88,7 +91,6 @@ static void typeerror_cleanup(lua_State* L, metadata *M, int argi, char *expecte
 // On error, free all mallocs tracked in M and raise a Lua error
 // Note: this is inner loop param processing, so limit cast_2ydb() args to 4 for speedy register params
 static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
-  char *expected;  // expected type for error message
   ydb_param param;
   int isint;
   int success;
@@ -114,9 +116,8 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
           param.char_ptr[length] = '\0';  // make sure it's null-terminated somewhere
         } else
           param.char_ptr[0] = '\0'; // make it a blank string to start with if it's not an input
-      } else {
+      } else
         param.char_ptr = s;
-      }
     } else if (type == YDB_STRING_T_PTR) {
       // handle ydb_string_t* type
       byref_slot *slot = get_slot(M);
@@ -124,9 +125,10 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       if (isoutput) {
         slot->string.address = add_malloc(M, preallocation);
         slot->string.length = preallocation;
-        if (isinput)
+        if (isinput) {
           memcpy(slot->string.address, s, length);
           slot->string.length = length;
+        }
       } else {
         slot->string.address = s;
         slot->string.length = length;
@@ -150,7 +152,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       }
     } else {
         free_mallocs(M);
-        luaL_error(L, "M routine param #%d has invalid type id %d supplied in M routine call-in specification", argi-2, type);
+        luaL_error(L, "M routine argument #%d has invalid type id %d supplied in M routine call-in specification", argi-3, type);
     }
 
   } else {
@@ -162,15 +164,16 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
         if (!success) typeerror_cleanup(L, M, argi, "integer");
         if (YDB_TYPE_IS32BIT(type)) {
           // handle int32 (ydb_int_t is specifically 32-bits)
-          if (param.int_n > 0x7fffffff || param.int_n < -0x80000000)
-            typeerror_cleanup(L, M, argi, "32-bit integer");
+          if (param.long_n > 0x7fffffffL || param.long_n < -0x80000000L)
+            typeerror_cleanup(L, M, argi, "number that will fit in 32-bit integer");
           param.int_n = param.long_n; // cast in case we're running big-endian which won't auto-cast
         }
       } else if (YDB_TYPE_ISREAL(type)) {
         param.double_n = lua_tonumberx(L, argi, &success);
         if (!success) typeerror_cleanup(L, M, argi, "number");
-        if (type == YDB_FLOAT_T)
+        if (YDB_TYPE_IS32BIT(type)) {
           param.float_n = param.double_n; // cast
+        }
       }
     } else
       param.long_n = 0;
@@ -179,7 +182,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
       byref_slot *slot = get_slot(M);
       // TODO: confirm in assembler output that the next line is an efficient 64-bit value copy
       slot->param = param;
-      param.any_ptr = slot;
+      param.any_ptr = &slot->param;
     }
   }
 
@@ -218,6 +221,33 @@ static void cast_2lua(lua_State *L, ydb_param *param, ydb_type_id type) {
   }
 }
 
+// Turn on the following code to debug problems with the array of parameters passed to ydb_ci
+// For example:
+//  - gcc passes double/float types in FPU registers instead of in the parameter array
+//    which means we cannot pass them in gparam_list. (YDB should have used sseregparm attribute on ydb_ci)
+//  - similarly, gcc passes 32-bit params like ydb_int_t as only 32-bits which upsets our 64-bit array
+//    and gcc also rearranges them to align them
+// All this means we must pass float, double, and int as pointers (or int as long) instead of actuals.
+// The wrapper in yottadb.lua will auto-convert the call-in table to these ideals.
+#define DEBUG_VA_ARGS 0
+#if DEBUG_VA_ARGS
+void dump(void *p, size_t n, int inc) {
+  for (; n; n--, p+=inc) {
+    printf("%016lx, ", *(unsigned long *)p);
+  }
+   printf("\b\b  \n");
+}
+
+static int _num_params=0;
+int ydb_ci_stub(char *name, ...) { //ydb_string_t *retval, ydb_string_t *n, long a, double x, ydb_char_t *msg, long q, long w, ...) {
+  va_list ap;
+  va_start(ap, name);
+  printf("%17s(", name);
+  for (int i=0; i<_num_params-1; i++)
+    printf("%016lx, ", va_arg(ap, ydb_long_t));
+  printf("\b\b) \n");
+}
+#endif
 
 // Call an M routine using ydb_ci()
 // Note: this function is intended to be called by a wrapper in yottadb.lua rather than by the user
@@ -273,8 +303,17 @@ int ci(lua_State *L) {
 
   // Call the M routine
   fflush(stdout); // Avoid mingled stdout; ydb routine also needs to flush with (U $P) after it outputs
+
   // Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
-  // which works, luckily, because gcc pads even 32-bit ydb_int_t to 64-bits
+  // So ydb_int_t must not be used,
+  // float/double must be passed as pointers because ydb_ci() expects them in FPU registers per calling convention
+  // (YDB could have used sseregparam attribute on ydb_ci() to avoid this, but pointers will have to suffice)
+
+  #if DEBUG_VA_ARGS
+    dump(ci_arg.arg, 8, ci_arg.n);
+    _num_params = ci_arg.n;
+    ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci_stub, (gparam_list*)&ci_arg);
+  #endif
   status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, (gparam_list*)&ci_arg);
 
   // Restore ci_table

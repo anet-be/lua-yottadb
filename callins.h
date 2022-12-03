@@ -5,6 +5,7 @@
 #define CALLINS_H
 
 #include <assert.h>
+#include <lua.h>
 
 typedef struct const_Reg {
   const char *name;
