@@ -22,4 +22,6 @@
 // Note2: ydb_char_t* as an output/retval is discouraged as preallocation is always max (1MB) to prevent overruns
 // Note3: ydb_char_t* cannot return data containing '\0' characters since Lua cannot determine its end
 
-test_add: ydb_string_t*[1024] add^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
+add_verbose: ydb_string_t*[1024] addVerbose^arithmetic(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
+add: ydb_long_t* add^arithmetic(I:ydb_long_t, I:ydb_long_t)
+sub: ydb_long_t* sub^arithmetic(I:ydb_long_t, I:ydb_long_t)

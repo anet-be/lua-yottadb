@@ -96,7 +96,21 @@ Oak 2 is 7.5m high
 Oak 3 is 15.0m high
 ```
 
-Database transactions are also available:
+### Calling M from Lua
+
+The Lua wrapper for M is designed for both speed and simple usage:
+
+```lua
+-- Invoke M routines from Lua
+-- (ensure arithmetic.m path is in ydb_routines environment variable so ydb can find it)
+> arithmetic = ydb.require('arithmetic.ci')
+> arithmetic.add_verbose("Sum is:", 2, 3)
+Sum is: 53
+> arithmetic.sub(5,7)
+-2
+```
+
+### Database transactions are also available:
 
 ```lua
 > Znode = ydb.node('^Ztest')
