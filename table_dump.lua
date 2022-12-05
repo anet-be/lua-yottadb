@@ -8,7 +8,7 @@
 
 M = {}
 
--- Return a recursive dump table `tbl` (or iterator), with indentation
+-- Return a recursive dump table (or iterator) `tbl`, with indentation
 --   Return as both a string (first) and a table of lines (second).
 --   The table version can be useful for sorting and comparison.
 -- `maxlines` (optional) defaults to 30 unless specified
