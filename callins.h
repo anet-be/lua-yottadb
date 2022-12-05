@@ -13,6 +13,7 @@ typedef struct const_Reg {
 } const_Reg;
 
 extern const const_Reg yottadb_types[];
+extern const char *LUA_YDB_ERR_PREFIX;
 
 // Make enum that expresses a bitfield for speedy category lookup when processing
 // order of bits is also important for YDB_TYPE_ISINTEGRAL to work

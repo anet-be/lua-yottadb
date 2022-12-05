@@ -2124,8 +2124,34 @@ function test_settree()
   assert(tree_dump2 == expected_tree_dump2)
 end
 
+ci_table1 = [=[
+  add: ydb_long_t* add^unittest(I:ydb_int_t, I:ydb_uint_t, I:ydb_long_t, I:ydb_ulong_t, I:ydb_int_t*, I:ydb_uint_t*, I:ydb_long_t*, I:ydb_ulong_t*)
+  add_floats: ydb_long_t* add^unittest(I:ydb_int_t, I:ydb_uint_t, I:ydb_long_t, I:ydb_ulong_t, I:ydb_int_t*, I:ydb_uint_t*, I:ydb_float_t*, I:ydb_double_t*)
+  ret_float: ydb_double_t* add^unittest(I:ydb_int_t, I:ydb_uint_t, I:ydb_long_t, I:ydb_ulong_t, I:ydb_int_t*, I:ydb_uint_t*, I:ydb_float_t*, IO:ydb_double_t*)
+  concat1: ydb_string_t* concat^unittest(I:ydb_char_t*, I:ydb_string_t*, IO:ydb_char_t*, O:ydb_char_t*)
+  concat2: ydb_string_t* concat^unittest(I:ydb_char_t*, I:ydb_string_t*, IO:ydb_char_t*, O:ydb_string_t*)
+  concat3: ydb_string_t* concat^unittest(I:ydb_char_t*, I:ydb_string_t*, IO:ydb_string_t*, O:ydb_string_t*)
+]=]
+
 function test_callin()
-  yottadb.require('mumps.ci')
+  ydb.set("$ZROUTINES", "tests")
+  local table1 = yottadb.require(ci_table1)
+  assert(table1.add(1,2,3,4,5,6,7,8) == 36)
+  assert(table1.add(1,2147483648,3,4,5,6,7,8) == 1+2147483648+3+4+5+6+7+8)
+  assert(not pcall(table1.add, 2147483648,2,3,4,5,6,7,8))
+  assert(not pcall(table1.add, 1,-1,3,4,5,6,7,8))
+
+  assert(table1.add_floats(1,2,3,4,5,6,7.6,8.6) == 37)
+  local out1, out2 = table1.ret_float(1,2,3,4,5,6,7.6,8.6)
+  assert(out1==1+2+3+4+5+6+7.6+8.6 and out2==8.6)
+
+  local out1, out2, out3 = table1.concat1('a','b','c', '')
+  assert(out1=='a\0b\0c' and out2=='abcdefghijklmnopqrstuvwxyz' and out3=='a')
+  out1, out2, out3 = table1.concat2('a','b','c', '')
+  assert(out1=='a\0b\0c' and out2=='abcdefghijklmnopqrstuvwxyz' and out3=='a\0b\0c')
+  out1, out2, out3 = pcall(table1.concat3, 'a','b','c', '')
+  assert(not out1 and out2==_yottadb.message(_yottadb.YDB_ERR_INVSTRLEN))
+--  assert(out1=='a\0b\0c' and out2=='abcdefghijklmnopqrstuvwxyz' and out3=='a')
 end
 
 function test_deprecated_readme()

@@ -1,9 +1,9 @@
 ;test function for lua_yottadb
-add(string,n1,n2)
- w string u $p
- quit n1+n2
+add(n1,n2,n3,n4,n5,n6,n7,n8)
+ quit n1+n2+n3+n4+n5+n6+n7+n8
 
-test1(string,n1,n2,byref)
- w "Passed ",n1,"+",n2,"(=",4+7,") and string: ",byref,!  u $p
+concat(cstring,lstring,byref,cout)
+ s concat=cstring_$C(0)_lstring_$C(0)_byref
+ s cout=concat
  s byref="abcdefghijklmnopqrstuvwxyz"
- quit n1+n2
+ quit concat

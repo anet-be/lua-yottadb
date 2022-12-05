@@ -48,7 +48,7 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
   ASSERT_STACK_TOP(L);
 }
 
-static const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
+const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
 // Returns an error message to match the supplied YDB error code
 // _yottadb.message(code)

@@ -585,6 +585,7 @@ local function pack_type(type_str, param_id)
   local preallocation = tonumber(alloc_str) or -1
   assert(preallocation==-1 or type_enum>0x80, string.format("preallocation is meaningless for number type call-in parameter %s: '%s'", param_id, typ))
   assert(preallocation==-1 or output==1, string.format("preallocation is pointless for input-only parameter %s: '%s'", param_id, typ))
+  assert(preallocation==-1 or typ~='ydb_char_t*', string.format("preallocation for ydb_char_t* output parameter %s is forced to [%d] to prevent overruns", param_id, _yottadb.YDB_MAX_STR))
   return string.pack('!=TBBBXT', preallocation, type_enum, input, output)
 end
 
@@ -594,7 +595,6 @@ end
 -- Return routine_name, func
 -- On return nil, nil if the line did not contain a function prototype
 -- Assert any errors
-local entrypoint_cache = {}
 local function parse_prototype(line, ci_handle)
   line = line:gsub('//.*', '')  -- remove comments
   -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
@@ -612,13 +612,7 @@ local function parse_prototype(line, ci_handle)
     table.insert(param_info, pack_type(type_str, i))
   end
   local param_info_string = table.concat(param_info)
-  -- check there is no double-entry in call-in table
-  local previous_entrypoint = entrypoint_cache[entrypoint]
-  if previous_entrypoint and previous_entrypoint ~= param_info_string then
-    io.stderr:write(string.format("Warning: entrypoint %q defined more than once: ydb will use the latest definition for all wrapper functions that use that entrypoint.\n", entrypoint))
-  end
-  entrypoint_cache[entrypoint] = param_info_string
-  local routine_name_handle = _yottadb.register_routine(routine_name)
+  local routine_name_handle = _yottadb.register_routine(routine_name, entrypoint)
   -- create a table used by func() below to reference the routine_name string to ensure it isn't garbage collected
   -- because it's used by C userdata in 'routine_name_handle', but and not referenced by Lua func()
   local routine_name_table = {routine_name_handle, routine_name}

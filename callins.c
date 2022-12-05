@@ -112,11 +112,12 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata 
     if (preallocation==-1) preallocation=YDB_MAX_STR;
     size_t length;
     char *s = lua_tolstring(L, argi, &length);
-    if (length > preallocation) length = preallocation; // prevent writing past preallocation
     if (!s) typeerror_cleanup(L, M, argi, "string");
     if (type == YDB_CHAR_T_PTR) {
       // handle ydb_char_t* type
       if (isoutput) {
+        preallocation = YDB_MAX_STR;  // always full size since YDB cannot check for overruns
+        if (length > preallocation) length = preallocation; // prevent writing past preallocation
         param.char_ptr = add_malloc(M, preallocation+1); // +1 for null safety-terminator
         if (isinput) {
           memcpy(param.char_ptr, s, length); // also copy Lua's NUL safety-terminator
@@ -130,6 +131,7 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata 
       byref_slot *slot = get_slot(M);
       param.string_ptr = &slot->string;
       if (isoutput) {
+        if (length > preallocation) length = preallocation; // prevent writing past preallocation
         slot->string.address = add_malloc(M, preallocation);
         slot->string.length = preallocation;
         if (isinput) {
@@ -145,6 +147,7 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata 
       byref_slot *slot = get_slot(M);
       param.buffer_ptr = &slot->buffer;
       if (isoutput) {
+        if (length > preallocation) length = preallocation; // prevent writing past preallocation
         slot->buffer.buf_addr = add_malloc(M, preallocation);
         slot->buffer.len_alloc = preallocation;
         slot->buffer.len_used = 0;
@@ -171,8 +174,10 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata 
         if (!success) typeerror_cleanup(L, M, argi, "integer");
         if (YDB_TYPE_IS32BIT(type)) {
           // handle int32 (ydb_int_t is specifically 32-bits)
-          if (param.long_n > 0x7fffffffL || param.long_n < -0x80000000L)
-            typeerror_cleanup(L, M, argi, "number that will fit in 32-bit integer");
+          if (!YDB_TYPE_ISUNSIGNED(type) && (param.long_n > 0x7fffffffL || param.long_n < -0x80000000L))
+            typeerror_cleanup(L, M, argi, "number that will fit in 32-bit signed integer");
+          if (YDB_TYPE_ISUNSIGNED(type) && (param.long_n > 0xffffffffL || param.long_n < 0))
+            typeerror_cleanup(L, M, argi, "number that will fit in 32-bit unsigned integer");
           param.int_n = param.long_n; // cast in case we're running big-endian which won't auto-cast
         }
       } else if (YDB_TYPE_ISREAL(type)) {
@@ -253,8 +258,9 @@ int ydb_ci_stub(char *name, ...) { //ydb_string_t *retval, ydb_string_t *n, long
 
 static char *_name_struct_id = "Mroutine";  // any random 8-byte ID so we can double-check this is our own struct type
 typedef struct {
-  ci_name_descriptor ci_info; // a ydb type
   int typeid;
+  char *entrypoint;
+  ci_name_descriptor ci_info; // a ydb type
 } ci_name_userdata;
 
 
@@ -337,6 +343,8 @@ int cip(lua_State *L) {
   // Restore ci_table if we set it
   int status2 = ydb_ci_tab_switch(old_handle, &ci_handle);
   if (status == YDB_OK) status=status2; // report the first error
+  if (status == -150373978)
+    luaL_error(L, "%s%d: %%YDB-E-ZLINKFILE, Error while zlinking M entrypoint '%s')", LUA_YDB_ERR_PREFIX, status, u->entrypoint);
   if (status != YDB_OK) { free_mallocs(M); ydb_assert(L, status); }
   lua_pop(L, lua_args); // pop all args
 
@@ -353,7 +361,9 @@ int cip(lua_State *L) {
 }
 
 // Register a routine name for subsequent passing to cip()
-// _yottadb.register_routine(routine_name)
+// _yottadb.register_routine(routine_name, entrypoint,)
+// @routine_name is the C name of the M routine (first field in the call-in table)
+// @entrypoint is the M entrypoint specified in the call-in table
 // return the handle (a ydb ci_name_descriptor struct in a new Lua userdata object)
 int register_routine(lua_State *L) {
   ci_name_userdata *u;
@@ -361,11 +371,13 @@ int register_routine(lua_State *L) {
   u->typeid = *(int *)_name_struct_id;
   u->ci_info.rtn_name.address = luaL_checklstring(L, 1, &u->ci_info.rtn_name.length);
   u->ci_info.handle = NULL;
+  u->entrypoint = luaL_checkstring(L, 2);
   return 1;
 }
 
 // Open a call-in table using ydb_ci_tab_open()
 // _yottadb.ci_tab_open(ci_table_filename)
+// @param ci_table_filename refers to the ydb call-in table file to open
 // return: integer handle to call-in table
 int ci_tab_open(lua_State *L) {
   uintptr_t ci_handle;
