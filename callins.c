@@ -89,8 +89,15 @@ static void typeerror_cleanup(lua_State* L, metadata *M, int argi, char *expecte
 // Cast Lua parameter at Lua stack index argi to ydb type type->type
 // Store any malloc'ed data in metadata struct M
 // On error, free all mallocs tracked in M and raise a Lua error
-// Note: this is inner loop param processing, so limit cast_2ydb() args to 4 for speedy register params
-static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
+// Note1: this is inner loop param processing, so limit cast2ydb() args to 4 to use speedy register params
+// Note2:
+//  - gcc passes double/float types in FPU registers instead of in the parameter array
+//    which means we cannot pass them in gparam_list. (YDB should have used sseregparm attribute on ydb_ci)
+//  - similarly for ydb_int_t in some architectures, although my gcc seems to pass 32-bit params as 64-bits;
+//    see: https://en.wikipedia.org/wiki/X86_calling_conventions
+// All of this means we must pass float, double, and int as pointers instead of actuals.
+// The wrapper in yottadb.lua will auto-convert the call-in table to these ideals.
+static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
   ydb_param param;
   int isint;
   int success;
@@ -102,7 +109,7 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
   if (YDB_TYPE_ISSTR(type)) {
     // first handle all string types (number types later)
     size_t preallocation = ydb_type->preallocation;
-    if (!preallocation) preallocation=YDB_MAX_STR;
+    if (preallocation==-1) preallocation=YDB_MAX_STR;
     size_t length;
     char *s = lua_tolstring(L, argi, &length);
     if (length > preallocation) length = preallocation; // prevent writing past preallocation
@@ -193,8 +200,8 @@ static ydb_param cast_2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata
 // Cast retval/output param from ydb_type to a Lua type and push onto the Lua stack as a return value.
 // Only called for output types
 // There are no errors
-// Note: this is inner loop param processing, so limit cast_2lua() args to 4 for speedy register params
-static void cast_2lua(lua_State *L, ydb_param *param, ydb_type_id type) {
+// Note: this is inner loop param processing, so limit cast2lua() args to 4 for speedy register params
+static void cast2lua(lua_State *L, ydb_param *param, ydb_type_id type) {
   // Use IF statement -- faster than SWITCH (even if table lookup) due to pipelining (untested)
   if (YDB_TYPE_ISSTR(type)) {
     // first handle all string types (number types later)
@@ -222,13 +229,7 @@ static void cast_2lua(lua_State *L, ydb_param *param, ydb_type_id type) {
 }
 
 // Turn on the following code to debug problems with the array of parameters passed to ydb_ci
-// For example:
-//  - gcc passes double/float types in FPU registers instead of in the parameter array
-//    which means we cannot pass them in gparam_list. (YDB should have used sseregparm attribute on ydb_ci)
-//  - similarly, gcc passes 32-bit params like ydb_int_t as only 32-bits which upsets our 64-bit array
-//    and gcc also rearranges them to align them
-// All this means we must pass float, double, and int as pointers (or int as long) instead of actuals.
-// The wrapper in yottadb.lua will auto-convert the call-in table to these ideals.
+// For example, see the comments on floats under cast2ydb()
 #define DEBUG_VA_ARGS 0
 #if DEBUG_VA_ARGS
 void dump(void *p, size_t n, int inc) {
@@ -263,11 +264,13 @@ int ydb_ci_stub(char *name, ...) { //ydb_string_t *retval, ydb_string_t *n, long
 //    if too many parameters are supplied, they are ignored (typical Lua behaviour)
 // return: function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table
 //    returned values are all converted from the call-in table type to Lua types
-// NOTE: This is designed for speed, which means all temporary data is allotted on the stack
+// Note1: Must pass float, double, and int as pointers instead of actuals: see note in cast2ydb()
+// Note2: This is designed for speed, which means all temporary data is allotted on the stack
 //    and it does no mallocs unless it has to return strings (which can be large so need malloc)
 //    (because mallocs take ~50 CPU cycles each, according to google)
-//    So don't return strings or make them outputs, if you want it to be super fast!
-// TODO: could improve speed by having caller metadata remember total string-malloc space required and doing just one malloc for all
+//    So if you want it to be super fast, don't return strings or make them outputs!
+// TODO: could improve speed by having caller metadata remember total string-malloc space required and doing just one malloc for all.
+//    But first check benchmarks first to see if YDB end is slow enough to make optimization meaningless
 int ci(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
   char *routine_name = luaL_checkstring(L, 2);
@@ -294,7 +297,7 @@ int ci(lua_State *L) {
   ci_arg.arg[argi++].char_ptr = routine_name;
   type_spec *typeptr = type_list;
   for (; typeptr<types_end; typeptr++, argi++) {
-    ci_arg.arg[argi] = cast_2ydb(L, argi+3-has_retval, typeptr, M);
+    ci_arg.arg[argi] = cast2ydb(L, argi+3-has_retval, typeptr, M);
   }
 
   // Set new ci_table
@@ -327,7 +330,7 @@ int ci(lua_State *L) {
   typeptr = type_list;
   for (argi=1;  typeptr<types_end;  typeptr++, argi++) {
     if (!typeptr->output) continue;
-    cast_2lua(L, &ci_arg.arg[argi], typeptr->type);
+    cast2lua(L, &ci_arg.arg[argi], typeptr->type);
     nreturns++;
   }
   free_mallocs(M);

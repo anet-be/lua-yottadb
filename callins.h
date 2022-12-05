@@ -21,7 +21,7 @@ extern const const_Reg yottadb_types[];
 #define _YDB_TYPE_IS64BIT    0x04  /* not set for LONG types which are build-dependent in YDB */
 #define _YDB_TYPE_ISPTR      0x08
 #define _YDB_TYPE_ISREAL     0x10  /* float or double */
-#define _YDB_TYPE_ISSTR      0x80  /* Note: for string types, other bits have different: to distinguish string types */
+#define _YDB_TYPE_ISSTR      0x80  /* Note: for string types, other bits have different meaning: to distinguish string types */
 
 enum ydb_types {
   YDB_LONG_T  = 0, YDB_ULONG_T,
@@ -115,7 +115,7 @@ typedef unsigned char ydb_type_id;  // Must be unsigned to make comparison again
 // specify type and IO of call-in parameter from call-in table
 // (specify __packed__ since these structs are packed end-to-end into a Lua string -- may not be necessary since they're all chars)
 typedef struct {
-  size_t preallocation; // amount of string space to preallocate -- first for alignment reasons
+  size_t preallocation; // amount of string space to preallocate: -1 = use YDB_MAX_STR
   ydb_type_id type;  // index into enum ydb_types
   char input, output;  // 1 char boolean flags
 } type_spec;
