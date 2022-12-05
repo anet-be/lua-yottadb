@@ -79,8 +79,8 @@ static inline byref_slot *get_slot(metadata *M) {
 }
 
 // Free mallocs and assert type error
-// Prints argument # of M routine rather than argument of ci()
-// assumes there are 3 arguments to ci() before the M arguments
+// Prints argument # of M routine rather than argument of cip()
+// assumes there are 3 arguments to cip() before the M arguments
 static void typeerror_cleanup(lua_State* L, metadata *M, int argi, char *expected_type) {
   free_mallocs(M);
   luaL_error(L, "bad argument #%d of M routine wrapper (expected %s, got %s)", argi-3, expected_type, lua_typename(L, lua_type(L, argi)));
@@ -250,11 +250,20 @@ int ydb_ci_stub(char *name, ...) { //ydb_string_t *retval, ydb_string_t *n, long
 }
 #endif
 
-// Call an M routine using ydb_ci()
+
+static char *_name_struct_id = "Mroutine";  // any random 8-byte ID so we can double-check this is our own struct type
+typedef struct {
+  ci_name_descriptor ci_info; // a ydb type
+  int typeid;
+} ci_name_userdata;
+
+
+// Call an M routine using ydb_cip()
 // Note: this function is intended to be called by a wrapper in yottadb.lua rather than by the user
 //    (so validity of type_list array is not checked)
-// _yottadb.ci(ci_handle, routine_name, type_list[, param1][, param2][, ...])
-// Call M routine routine_name which was specified in call-in table ci_handle, cf. ci_tab_open()
+// _yottadb.cip(ci_handle, routine_name_handle, type_list[, param1][, param2][, ...])
+// @param ci_handle is a call-in table opened by ci_tab_open() that contains routine_name
+// @param routine_name_handle is the handle of an M routine registered by _yottadb.register_routine()
 // @param type_list is a Lua string containing an array of type_spec[] specifying for ret_val and each parameter per the call-in table
 //    (so the number of type_spec array elements must equal (1+n) where n is the number of parameters in the call-in file)
 // @param<n> must list the parameters specified specified in the call-in table
@@ -271,9 +280,13 @@ int ydb_ci_stub(char *name, ...) { //ydb_string_t *retval, ydb_string_t *n, long
 //    So if you want it to be super fast, don't return strings or make them outputs!
 // TODO: could improve speed by having caller metadata remember total string-malloc space required and doing just one malloc for all.
 //    But first check benchmarks first to see if YDB end is slow enough to make optimization meaningless
-int ci(lua_State *L) {
+int cip(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
-  char *routine_name = luaL_checkstring(L, 2);
+  if (!lua_isuserdata(L, 2))
+    luaL_error(L, "parameter #2 must be userdata returned by register_routine()");
+  ci_name_userdata *u = lua_touserdata(L, 2);
+  if (!u || u->typeid != *(int *)_name_struct_id)
+    luaL_error(L, "parameter #2 must be userdata returned by register_routine()");
 
   size_t type_list_len;
   char *type_string = lua_tolstring(L, 3, &type_list_len);
@@ -282,26 +295,27 @@ int ci(lua_State *L) {
   bool has_retval = type_list->type != VOID;
   if (!has_retval) type_list++; // Don't need the first type any more if its type is VOID
 
-  gparam_list_alltypes ci_arg; // list of args to send to ydb_ci()
+  gparam_list_alltypes ci_arg; // list of args to send to ydb_cip()
   int lua_args = lua_gettop(L);
-  ci_arg.n = (intptr_t)(types_end - type_list + 1); // +1 for routine_name
+  ci_arg.n = (intptr_t)(types_end - type_list + 1); // +1 for ci_info
   if (lua_args-3 < ci_arg.n-1-has_retval)
-    luaL_error(L, "not enough parameters to M routine %s() to match call-in specification", routine_name);
+    luaL_error(L, "not enough parameters to M routine %s() to match call-in specification", u->ci_info.rtn_name.address);
 
-  // Allocate space to store a metadata for each param to ydb_ci() except routine_name
-  // (actually we only need one per output_type parameter, but we don't have that count handy)
-  // Note: after this, must not error out without first calling free_mallocs(M)
+  // Allocate space to store metadata for each param to ydb_cip() except routine_name_handle
+  // (actually we only use one metadata entry per output_type parameter, but we don't have that count handy)
+  // Note: after this, we must not error out without first calling free_mallocs(M)
   metadata *M = create_metadata(ci_arg.n-1);
 
   int argi=0;  // output argument index
-  ci_arg.arg[argi++].char_ptr = routine_name;
+  ci_arg.arg[argi++].ci_info_ptr = &u->ci_info;
   type_spec *typeptr = type_list;
   for (; typeptr<types_end; typeptr++, argi++) {
     ci_arg.arg[argi] = cast2ydb(L, argi+3-has_retval, typeptr, M);
   }
 
-  // Set new ci_table
-  int status = ydb_ci_tab_switch(ci_handle, &old_handle);
+  // Set new ci_table if we haven't previously populated ci_info.handle by calling ydb_cip()
+  int status;
+  status = ydb_ci_tab_switch(ci_handle, &old_handle);
   if (status != YDB_OK) { free_mallocs(M); ydb_assert(L, status); }
 
   // Call the M routine
@@ -309,17 +323,18 @@ int ci(lua_State *L) {
 
   // Note: ydb function ydb_call_variadic_plist_func() assumes all parameters passed are sizeof(void*)
   // So ydb_int_t must not be used,
-  // float/double must be passed as pointers because ydb_ci() expects them in FPU registers per calling convention
-  // (YDB could have used sseregparam attribute on ydb_ci() to avoid this, but pointers will have to suffice)
+  // float/double must be passed as pointers because ydb_cip() expects them in FPU registers per calling convention
+  // (YDB could have used sseregparam attribute on ydb_cip() to avoid this, but pointers will have to suffice)
 
   #if DEBUG_VA_ARGS
     dump(ci_arg.arg, 8, ci_arg.n);
     _num_params = ci_arg.n;
     ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci_stub, (gparam_list*)&ci_arg);
   #endif
-  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_ci, (gparam_list*)&ci_arg);
 
-  // Restore ci_table
+  status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_cip, (gparam_list*)&ci_arg);
+
+  // Restore ci_table if we set it
   int status2 = ydb_ci_tab_switch(old_handle, &ci_handle);
   if (status == YDB_OK) status=status2; // report the first error
   if (status != YDB_OK) { free_mallocs(M); ydb_assert(L, status); }
@@ -335,6 +350,18 @@ int ci(lua_State *L) {
   }
   free_mallocs(M);
   return nreturns;
+}
+
+// Register a routine name for subsequent passing to cip()
+// _yottadb.register_routine(routine_name)
+// return the handle (a ydb ci_name_descriptor struct in a new Lua userdata object)
+int register_routine(lua_State *L) {
+  ci_name_userdata *u;
+  u = lua_newuserdata(L, sizeof(ci_name_userdata));
+  u->typeid = *(int *)_name_struct_id;
+  u->ci_info.rtn_name.address = luaL_checklstring(L, 1, &u->ci_info.rtn_name.length);
+  u->ci_info.handle = NULL;
+  return 1;
 }
 
 // Open a call-in table using ydb_ci_tab_open()

@@ -2124,6 +2124,10 @@ function test_settree()
   assert(tree_dump2 == expected_tree_dump2)
 end
 
+function test_callin()
+  yottadb.require('mumps.ci')
+end
+
 function test_deprecated_readme()
   -- Create key objects for conveniently accessing and manipulating database nodes.
   local key1 = yottadb.key('^hello')

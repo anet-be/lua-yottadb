@@ -17,4 +17,4 @@
 // where <direction> may be: I, O, or IO (in/out to M; outputs may only be pointer types)
 
 test_add: ydb_string_t* add^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
-test_test1: ydb_long_t* test^test1(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t, IO:ydb_char_t* [100] )
+test_test1: ydb_long_t* test1^test(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t, IO:ydb_char_t* [100] )

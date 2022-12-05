@@ -618,9 +618,13 @@ local function parse_prototype(line, ci_handle)
     io.stderr:write(string.format("Warning: entrypoint %q defined more than once: ydb will use the latest definition for all wrapper functions that use that entrypoint.\n", entrypoint))
   end
   entrypoint_cache[entrypoint] = param_info_string
+  local routine_name_handle = _yottadb.register_routine(routine_name)
+  -- create a table used by func() below to reference the routine_name string to ensure it isn't garbage collected
+  -- because it's used by C userdata in 'routine_name_handle', but and not referenced by Lua func()
+  local routine_name_table = {routine_name_handle, routine_name}
   -- create the actual wrapper function
   local function func(...)
-    return _yottadb.ci(ci_handle, routine_name, param_info_string, ...)
+    return _yottadb.cip(ci_handle, routine_name_table[1], param_info_string, ...)
   end
   return routine_name, func
 end

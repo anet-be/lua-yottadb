@@ -639,7 +639,8 @@ static const luaL_Reg yottadb_functions[] = {
   {"zwr2str", zwr2str},
   {"message", message},
   {"ci_tab_open", ci_tab_open},
-  {"ci", ci},
+  {"cip", cip},
+  {"register_routine", register_routine},
   {"init", _ydb_init},
   {NULL, NULL}
 };

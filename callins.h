@@ -55,7 +55,6 @@ typedef union {
   ydb_ulong_t ulong_n;
   ydb_float_t float_n;
 
-  void* any_ptr; // for storing pointer to any pointer type
   ydb_int_t* int_ptr;
   ydb_uint_t* uint_ptr;
   ydb_long_t* long_ptr;
@@ -66,6 +65,9 @@ typedef union {
   ydb_char_t* char_ptr;
   ydb_string_t* string_ptr;
   ydb_buffer_t* buffer_ptr; // Note: only works with call-in from YDB r1.36 onward
+
+  ci_name_descriptor *ci_info_ptr;
+  void* any_ptr; // for storing pointer to any pointer type
 
   #if UINTPTR_MAX == 0xffffffffffffffff
     // ydb_double_t doesn't fit in (void*) on 32-bit builds. Instead, use pointer type ydb_double_t*
@@ -135,7 +137,8 @@ typedef struct {
 } metadata;
 
 
+int cip(lua_State *L);
+int register_routine(lua_State *L);
 int ci_tab_open(lua_State *L);
-int ci(lua_State *L);
 
 #endif // CALLINS_H
