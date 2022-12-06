@@ -719,6 +719,13 @@ function node:_subscripts(reverse)
   return iterator, subsarray, ''  -- iterate using child from ''
 end
 
+-- Define methods to fetch node properties
+-- @param node is the node to fetch the property of
+function node:name(self)  return self._subsarray[#self._subsarray] or self._varname  end
+function node:data(self)  return M.data(self._varname, self._subsarray)  end
+function node:has_value(self)  return self._data%2 == 1  end
+function node:has_tree(self)  return self._data   >= 10  end
+
 -- Makes pairs() work - iterate over the child subscripts, values of given node
 -- If you need to iterate in reverse, use node:__pairs(reverse) instead of pairs(node)
 -- @usage: for subscript,subnode in pairs(node) do ...
@@ -749,17 +756,30 @@ end
 --    but node[1]  => would have to produce value note(1)._value so ipairs() works
 --  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation
 
+n:method() => n.method(n, ...)
+if n=parent => if getmetatable(self)==node and node.name(self._parent)==self._subsarray[#self._subsarray-1] then
+  mt(n).method(n, ...) => parent=self._subsarray[#self._subsarray-1] node[node.name(self)](parent, ...)
+end
+
 -- Creates and returns a new node with the given subscript(s) ... added.
 -- If no subscripts supplied, return the value of the node
 -- @param ... subscript array
 function node:__call(...)
+  -- implement fetching with: mynode()
   if not ... then  return M.get(self._varname, self._subsarray)  end
+  -- implement invoking method with mynode.method()
+  if getmetatable(...)==node then  -- could add extra check: "and node.name(...)==self._subsarray[#self._subsarray-1] then"
+    local method = node[node.name(self)]
+    assert(method, string.format("could not find node method '%s()' on node %s", node.name(self), ...))
+    return method(...) -- first parameter of '...' is parent, as the method call will expect
+  end
   -- Provide more helpful error when someone does, e.g. node:get() instead of node:_get() -- or some other node method
   if type(...) == 'table' then
     local _name = '_'..self._subsarray[#self._subsarray]
     if node[_name] then  error(string.format("cannot add table as a subscript added to '%s' -- did you mean %s()?", self, _name))  end
   end
   local new_node = self.___new(self._varname, self._subsarray)
+  rawset(new_node, '_parent', self)
   for i = 1, select('#', ...) do
     local name = select(i, ...)
     if type(name) ~= 'string' and not isinteger(name) then
@@ -781,24 +801,25 @@ node.___new = M.node
 --   equivalent to tostring(self)==tostring(other)
 -- @param other Alternate node to compare self against
 function node:__eq(other)
-  if getmetatable(self) ~= getmetatable(other) then return false end
-  if self._varname ~= other._varname then return false end
-  if #self._subsarray ~= #other._subsarray then return false end
+  if getmetatable(self) ~= getmetatable(other)
+  or self._varname ~= other._varname
+  or #self._subsarray ~= #other._subsarray
+  then  return false  end
   for i, value in ipairs(self._subsarray) do
-    if value ~= other._subsarray[i] then return false end
+    if value ~= other._subsarray[i] then  return false  end
   end
   return true
 end
 
 -- @see incr
 function node:__add(value)
-  self:_incr(assert_type(value, 'string/number', 1))
+  self:incr(assert_type(value, 'string/number', 1))
   return self
 end
 
 -- @see incr
 function node:__sub(value)
-  self:_incr(-assert_type(value, 'string/number', 1))
+  self:incr(-assert_type(value, 'string/number', 1))
   return self
 end
 
@@ -807,41 +828,33 @@ function node:__tostring()
   local subs = {}
   for i, name in ipairs(self._subsarray) do subs[i] = M.str2zwr(name) end
   local subscripts = table.concat(subs, ',')
-  return subscripts ~= '' and string.format('%s(%s)', self._varname, subscripts) or self._varname
+  return subscripts == '' and self._varname or string.format('%s(%s)', self._varname, subscripts)
 end
-
--- Define functions to fetch node properties
--- @param node is the node to fetch the property of
-local node_properties = {}
-function node_properties._name(node)  return node._subsarray[#node._subsarray] or node._varname  end
-function node_properties._data(node)  return M.data(node._varname, node._subsarray)  end
-function node_properties._has_value(node)  return node._data%2 == 1  end
-function node_properties._has_tree(node)  return node._data   >= 10  end
-function node_properties._value(node)  return node:_get()  end
-node_properties._ = node_properties._value
 
 -- Returns indexes into the node
 -- Search order for node attribute k:
 --   self[k] (implemented by Lua -- finds self._varname, self._subsarray, self._nextsubsarray)
---   node_properties[k]
---   node[k] (i.e. look up in class named 'node' -- finds node._get, node.__call, etc)
---   if nothing found, returns a new dbase sub-node with subscript k
+--   node value if k=='_' (the only node property)
+--   if nothing found, returns a new dbase subnode with subscript k
+--   node:method() also works as a method as follows:
+--      lua translates the ':' to node.method(self)
+--      so first as subnode called node.method is created
+--      and when invoked with () it checks whether the first parameter is self
+--      and if so, invokes the method itself if it is a member of metatable 'node'
 -- @param k Node attribute to look up
 function node.__index(self, k)
-  local property = node_properties[k]
-  if property then  return property(self)  end
-  return node[k] or self(k)
+  if k == '_' then  return M.get(self._varname, self._subsarray)  end
+  return self(k)
 end
 
--- Sets node's value if k='_' or '_value'
+-- Sets node's value if k='_'
 -- It's tempting to implement db assignment node.subnode = 3
 -- but that would not work consistently, e.g. node = 3 would set lua local
 function node:__newindex(k, v)
-  if k=='_value' or k=='_' then
-    self:_set(v)
+  if k=='_' then
+    M.set(self._varname, self._subsarray, assert_type(v, 'string/number', 1))
   else
-    assert(not node_properties[k], 'read-only property')
-    assert(false, string.format("Tried to set node object %s. Did you mean to set %s._value instead?", self(k), self(k)))
+    error(string.format("Tried to set node object %s. Did you mean to set %s._value instead?", self(k), self(k)), 2)
   end
 end
 
@@ -860,22 +873,15 @@ function M.key(varname, subsarray)
   return new_key
 end
 
--- Make target table inherit all the attributes of origin table
--- PLUS copies of attributes starting with '_', renamed to be without '_'
--- return target
-local function inherit_plus(target, origin)
-  for k, v in pairs(origin) do
-    target[k] = v
-    local attr = k:match('^_(%w[_%w]*)')
-    if attr then  target[attr] = v  end
-  end
-  return target
-end
-
-local key_properties = {}
-inherit_plus(key_properties, node_properties)
-inherit_plus(key, node)
+for k, v in pairs(node) do  key[k]=v  end
 key.___new = M.key
+
+key_properties = {
+  name = key.name,
+  data = key.data,
+  has_value = key.has_value
+  value = key.get
+}
 
 -- Returns indexes into the key
 -- Search order for key attribute k:
@@ -933,7 +939,6 @@ end
 -- @deprecated because:
 --   a) pairs() is more Lua-esque
 --   b) it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts
--- Note that key:_subscripts() is the version inherited from node that operates differently than key:subscripts()
 function key:subscripts(reverse)
   return M.subscripts(self._varname, #self._subsarray > 0 and self._subsarray or {''}, reverse)
 end
@@ -976,10 +981,8 @@ end
 -- Handy for debugging
 if os.getenv('developer_mode') then
   M._key_properties = key_properties
-  M._node_properties = node_properties
   M._key = key
   M._node = node
-  M._inherit_plus = inherit_plus
 end
 
 return M
