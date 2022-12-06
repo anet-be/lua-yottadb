@@ -823,8 +823,8 @@ node_properties._ = node_properties._value
 -- Returns indexes into the node
 -- Search order for node attribute k:
 --   self[k] (implemented by Lua -- finds self._varname, self._subsarray, self._nextsubsarray)
---   node[k] (i.e. look up in class named 'node' -- finds node._get, node.__call, etc)
 --   node_properties[k]
+--   node[k] (i.e. look up in class named 'node' -- finds node._get, node.__call, etc)
 --   if nothing found, returns a new dbase sub-node with subscript k
 -- @param k Node attribute to look up
 function node.__index(self, k)
@@ -834,14 +834,12 @@ function node.__index(self, k)
 end
 
 -- Sets node's value if k='_' or '_value'
--- otherwise sets the value of dbase sub-node self(k)
 -- It's tempting to implement db assignment node.subnode = 3
 -- but that would not work consistently, e.g. node = 3 would set lua local
 function node:__newindex(k, v)
   if k=='_value' or k=='_' then
     self:_set(v)
   else
-    -- set sub-node[k] equal to value
     assert(not node_properties[k], 'read-only property')
     assert(false, string.format("Tried to set node object %s. Did you mean to set %s._value instead?", self(k), self(k)))
   end
@@ -882,8 +880,8 @@ key.___new = M.key
 -- Returns indexes into the key
 -- Search order for key attribute k:
 --   self[k] (implemented by Lua -- finds self._varname, self.varname, etc.)
---   key[k] (i.e. look up in class named 'key' -- finds key._get, key.get, key.__call, etc.)
 --   key_properties[k]
+--   key[k] (i.e. look up in class named 'key' -- finds key._get, key.get, key.__call, etc.)
 --   if nothing found, returns nil
 -- @param k Node attribute to look up
 function key.__index(self, k)
@@ -892,8 +890,8 @@ function key.__index(self, k)
   return key[k]
 end
 
--- Sets key properties if possible.
--- Differs from node.__newindex() which can also set value of dbase sub-node k
+-- Sets dbase node value if k is 'value'; otherwise set self[k] = v
+-- Differs from node.__newindex() as this can also set fields of self
 function key:__newindex(k, v)
   if k == 'value' then
     self:set(v)
