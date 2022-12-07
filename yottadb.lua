@@ -604,7 +604,7 @@ end
 node.___new = M.node
 
 -- @see get
-function node:get() return M.get(self.__varname, self.__subsarray) end
+function node:get(default) return M.get(self.__varname, self.__subsarray) or default  end
 
 -- @see set
 function node:set(value) M.set(self.__varname, self.__subsarray, assert_type(value, 'string/number', 1)) end
@@ -766,9 +766,8 @@ node.pairs = node.__pairs
 -- If no subscripts supplied, return the value of the node
 -- @param ... subscript array
 function node:__call(...)
-  -- implement fetching with: mynode()
-  if not ... then  return M.get(self.__varname, self.__subsarray)  end
   -- implement invoking method with mynode.method()
+  assert(..., "no argument #1 supplied when creating new subnode")
   if getmetatable(...)==node then
     local method = node[node.name(self)]
     assert(method, string.format("could not find node method '%s()' on node %s", node.name(self), ...))
@@ -827,7 +826,7 @@ end
 -- Search order for node attribute k:
 --   self[k] (implemented by Lua -- finds self.__varname, self.__subsarray, self.__next_subsarray)
 --   node value, if k=='_' (the only node property)
---   node method, if k starts with '__' (k:__method() is the same as k:method() but 4x to 8x faster at ~1ms)
+--   node method, if k starts with '__' (k:__method() is the same as k:method() but 15x faster at ~200ns)
 --   if nothing found, returns a new dbase subnode with subscript k
 --   node:method() also works as a method as follows:
 --      lua translates the ':' to node.method(self)

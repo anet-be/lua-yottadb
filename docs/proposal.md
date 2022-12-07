@@ -69,7 +69,7 @@ The proposal has now been implemented and you run the code above and use several
   </tr>
   <tr>
     <td>Duplicate/cast<br />object</td>
-    <td><pre lang="lua">newk = ydb.key(k.varname, k._subsarray)</pre></td>
+    <td><pre lang="lua">newk = ydb.key(k.varname, k.subsarray)</pre></td>
     <td><pre lang="lua">n = ydb.node(k)</pre></td>
     <td>yes</td>
   </tr>
@@ -141,8 +141,8 @@ ydb.dump(n, sub1)
     <td>Property set*</td>
     <td><pre lang="lua">k1('angle').value = 3</pre></td>
     <td><pre lang="lua">
-n1.angle._value = 3  OR
-n1.angle._ = 3
+n1.angle:set(3)  OR
+n1.angle._ = 3  (4x faster)
 </pre></td>
     <td>no</td>
   </tr>
@@ -150,20 +150,24 @@ n1.angle._ = 3
     <td>Property get*</td>
     <td><pre lang="lua">angle = k1('angle').value</pre></td>
     <td><pre lang="lua">
-angle = n1._value    OR
-angle = n1.angle._   OR
-angle = n1.angle()
+angle = n1.angle:get() OR
+angle = n1.angle:get(default) OR
+angle = n1.angle._  (2.5x faster)
 </pre></td>
     <td>no</td>
   </tr>
   <tr>
     <td>Method run*</td>
     <td><pre lang="lua">k1:incr()</pre></td>
-    <td><pre lang="lua">n1:_incr()</pre></td>
-    <td>no</td>
+    <td><pre lang="lua">
+n1:name()  OR
+n1:__name()  (15x faster)
+</pre></td>
+    <td>yes</td>
   </tr>
 </tbody>
 </table>
+
 *the `_` attribute prefix in the new syntax prevents node methods from clobbering names of database subnodes.
 
 #### Additional visibility tools
@@ -208,12 +212,11 @@ The breakdown of changes needed to implement this solution includes the followin
    - works in Lua < 5.3 as number is treated as an integer if tostring(number) has no decimal point; this maintains source compatibility between Lua versions.
 3. Done: make node accept dot notation `node.subscript1.subscript2` -- this set syntax limitations on subscript name content which means the more general `()` syntax must also be retained.
 4. Skip: tempting to allow `node.subnode = 3`, but that would not work consistently, e.g. node = 3 would set Lua local
-5. Done: create more terse ways of getting/setting dbase node._value:
-   - Done: `node()` getter only. To me this is the most readable
+5. Done: create more terse ways of getting/setting dbase node.value:
    - Done: node._: good for `node._ = 3` since `node = 3` would set lua local `node` rather than dbase value.
    - Omit: access node.subscript.value by referencing `node.subscript` or node[subscript] -- but it would only work when there is no node.subscript.sub_subscript in the dbase (in which case it returns new node(subscript). This makes pretty code but turns out to be dangerous because if sub_subscripts are later added to the dbase, code accessing the node.subscript value will stop working. Plus, it only works on node.subscript not on node.
    - Omit: Could make unary operators access the node.value: ~node (lua>=5.3), #node (lua>=5.2), -node (lua>=5.0). This would be pretty, but are not the usual usage of these operators.
-6. Done: Rename node properties to start with `_`: `.value, .get, .data` become `._value, ._get, ._data`, etc., so they don't clobber common dbase subscript names.
+6. Done: Rename node properties to become methods: `.value, .get, .data` become `:get(), :data()`, etc., so they don't clobber common dbase subscript names. (The :method() is distinguished from .method() by the fact that in Lua it supplies self as the first parameter -- thanks, Alain)
 7. Done: Allow multiple subscripts as parameter lists or as a table in the follows new situations:
    - Done: `node(sub1, sub2, ...)` or `node({sub1, sub2})`
    - Done: make ydb.node(glvn, sub1, sub2, ...) to become equivalent to ydb.node(glvn, {sub1, sub2, ...})
@@ -221,14 +224,14 @@ The breakdown of changes needed to implement this solution includes the followin
    - Done: ydb.set(glvn, sub1, sub2, ..., value) to become equivalent to ydb.set(glvn, {sub1, sub2, ...}, value) for the sake of consistency with get() and node()
 8. 
 9. Done: make `pairs()` work as expected
-   - Also made iterator node._subscripts() work differently than key.subscripts(). The old one started at the current subscript and produced *sibling* subscripts at the same level until the end of the collation. The new one iterates all *child* subscripts of the specified node. I'm not sure whether the old one was intended or a bug, but the new one makes much more sense to me: to iterate over a whole node's children.
+   - Also made iterator node:subscripts() work differently than key.subscripts(). The old one started at the current subscript and produced *sibling* subscripts at the same level until the end of the collation. The new one iterates all *child* subscripts of the specified node. I'm not sure whether the old one was intended or a bug, but the new one makes much more sense to me: to iterate over a whole node's children.
 
 10. Skip: making nodes act like specific integer-indexed Lua list-type tables because it would generate inefficient db code; also unlikely to be used:
 
    - Considered making ipairs() work using `__index()` from Lua 5.2 but later Lua versions implement `ipairs()` by invoking `__index()`.  So that would require making node index by an *integer* to act differently than indexing a node by a *string* as follows:
 
      - `node['abc']`  => produces a new node so that `node.abc.def.ghi` works
-     - but `node[1]`  => would have to produce value `note(1)._value` for ipairs() to work
+     - but `node[1]`  => would have to produce value `note(1).value` for ipairs() to work
        This integer/string distinction can easily be done, but creates an unexpected syntax inconsistency.
 
      Instead, use pairs() with numeric subscripts or a numeric `for` as follows:
@@ -240,18 +243,20 @@ The breakdown of changes needed to implement this solution includes the followin
 
    - The consequence of the above is that standard Lua list functions (that use tables as integer-indexed lists) do not work. Specifically: `table.concat, table.insert, table.move, table.pack, table.remove, table.sort`
 
-11. Done: populate a ydb database global using Lua table constructors: `oaktree:set( {shadow=5, angle=30} )`
+11. Done: populate a ydb database global using Lua table constructors: `oaktree:settree( {shadow=5, angle=30} )`
 12. Done: add ability to cast a key to a node: key(node) and node(key)
 13. Done: Additional programmer usage improvements:
     - Done: Improve ydb.dump and add it to the standard library
     - Done: Make Lua table and db node display contents when typed at the Lua prompt -- implemented in startup.lua and table_dump.lua
-14. Todo: Ability for Lua to call an M function, e.g. using ydb_ci() and call-in table registration; consider adding invokation format: get(''$$routine^module")
+14. In another PR: Ability for Lua to call an M function using ydb_cip() and call-in table registration
+    - decided not to add M-style invocation format `get(''$$routine^module")` until it is more clearly useful.
+
 
 ## Future - Efficiency
 
 Key and node objects in lua-yottadb are inefficient for two main reasons that require attention in the future. Each time a node object or a subnode object is created:
 
-1. The subscript array is copied three times: twice in Lua (into node.\_subsarray and node.\_next\_subsarray) and once by every C function that uses the node. These could instead be cached in single C array.
+1. The subscript array is copied three times: twice in Lua (into `node:__subsarray` and `node.__next_subsarray`) and once by every C function that uses the node. These could instead be cached in single C array.
 2. Each subscript in the subscript array is checked for type validity twice: once by the node creator and once by the C function that uses the node.
 
 These overheads are repeated for every subnode, so `node.sub1.sub2.sub3` repeats all the above 4 times (once for each dot). These improvements are relatively low-hanging fruit, but will be postponed until feedback on the new syntax is received and the syntax solidified.
