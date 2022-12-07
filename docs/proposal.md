@@ -138,7 +138,7 @@ ydb.dump(n, sub1)
     <td>--</td>
   </tr>
   <tr>
-    <td>Property set*</td>
+    <td>Property set</td>
     <td><pre lang="lua">k1('angle').value = 3</pre></td>
     <td><pre lang="lua">
 n1.angle:set(3)  OR
@@ -147,7 +147,7 @@ n1.angle._ = 3  (4x faster)
     <td>no</td>
   </tr>
   <tr>
-    <td>Property get*</td>
+    <td>Property get</td>
     <td><pre lang="lua">angle = k1('angle').value</pre></td>
     <td><pre lang="lua">
 angle = n1.angle:get() OR
@@ -157,7 +157,7 @@ angle = n1.angle._  (2.5x faster)
     <td>no</td>
   </tr>
   <tr>
-    <td>Method run*</td>
+    <td>Method run</td>
     <td><pre lang="lua">k1:incr()</pre></td>
     <td><pre lang="lua">
 n1:name()  OR
@@ -168,7 +168,6 @@ n1:__name()  (15x faster)
 </tbody>
 </table>
 
-*the `_` attribute prefix in the new syntax prevents node methods from clobbering names of database subnodes.
 
 #### Additional visibility tools
 
