@@ -827,7 +827,7 @@ end
 -- Search order for node attribute k:
 --   self[k] (implemented by Lua -- finds self.__varname, self.__subsarray, self.__next_subsarray)
 --   node value, if k=='_' (the only node property)
---   node method, if k starts with '__' (so k:method() is the same as k:__method() but 8x slower at ~240us)
+--   node method, if k starts with '__' (k:__method() is the same as k:method() but 4x to 8x faster at ~1ms)
 --   if nothing found, returns a new dbase subnode with subscript k
 --   node:method() also works as a method as follows:
 --      lua translates the ':' to node.method(self)
