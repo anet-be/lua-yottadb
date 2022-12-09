@@ -61,9 +61,10 @@
 # if module and not ldoc.no_summary and #module.items > 0 then
 <h2>Contents</h2>
 <ul>
+<li><a href=""><b>Summary</b></a></li>
 # for kind, items in module.kinds() do
-<li><a href="">Summary</a></li>
-# -- # end
+<br/>
+<li><a href="#$(no_spaces(kind))"><b>$(kind)</b></a></li>
 # for item in items() do
     <li><a href="#$(item.name)">$(display_name(item))</a></li>
 # end

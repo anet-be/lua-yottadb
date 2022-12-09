@@ -1,11 +1,9 @@
 -- Copyright 2021-2022 Mitchell and Berwyn Hoyt. See LICENSE.
 
-local M = {}
+--- Lua-bindings for YottaDB, sponsored by the [University of Antwerp Library](https://www.uantwerpen.be/en/library/)
+-- @module yottadb
 
---[[ This comment is for LuaDoc.
----
--- Lua-bindings for YottaDB, sponsored by the Library of UAntwerpen, http://www.uantwerpen.be/.
-module('yottadb')]]
+local M = {}
 
 local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
 
@@ -20,7 +18,15 @@ _table_string_number = {table=true, string=true, number=true}
 _string_number = {string=true, number=true}
 _string_number_nil = {string=true, number=true, ['nil']=true}
 
--- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
+-- The following 5 lines at the start of this file makes this the first-documented
+-- section after 'Functions', but the blank lines in between are necessary
+
+--- High level functions
+-- @section
+
+--- @section end
+
+--- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
 -- This is intended to be used with API function arguments so users receive more helpful error
 -- messages.
@@ -46,7 +52,7 @@ local function assert_type(v, expected_type, narg)
     debug.getinfo(2, 'n').name or '?', expected_type, type(v)), 3)
 end
 
--- Asserts that all items in table *t* are strings, or calls `error()` with an error message
+--- Asserts that all items in table *t* are strings, or calls `error()` with an error message
 -- that implicates function argument number *narg* named *name*.
 -- Like `assert_type()`, this is intended for improved readability of API input errors.
 -- @param t Table to check. If it is not a table, the assertion passes.
@@ -64,7 +70,10 @@ local function assert_strings(t, name, narg)
   return t
 end
 
--- create isinteger(n) that also works in Lua < 5.3 but is fast in Lua >=5.3
+--- Create isinteger(n) that also works in Lua < 5.3 but is fast in Lua >=5.3
+-- @function isinteger
+-- @param n number to test
+-- @local
 local isinteger
 if lua_version >= 5.3 then
   function isinteger(n)
@@ -76,8 +85,8 @@ else
   end
 end
 
--- Asserts that all items in table *t* are strings or integers, as befits subscripts;
--- otherwise calls `error()` with an error message
+--- Asserts that all items in table *t* are strings or integers, as befits subscripts.
+-- Otherwise calls `error()` with an error message
 -- that implicates function argument number *narg* named *name*.
 -- Like `assert_type()`, this is intended for improved readability of API input errors.
 -- @param t Table to check. If it is not a table, the assertion passes.
@@ -96,29 +105,28 @@ local function assert_subscripts(t, name, narg)
   return t
 end
 
----
--- Get the YDB error code (if any) for the given error message.
+--- Get the YDB error code (if any) contained in the given error message.
 -- @param message String error message.
--- @return the YDB error code (if any) for the given error message.
--- @return `nil` if the message is not a YDB error.
+-- @return the YDB error code (if any) for the given error message,
+-- @return or `nil` if the message is not a YDB error.
 function M.get_error_code(message)
   return tonumber(assert_type(message, 'string', 1):match('YDB Error: (%-?%d+):'))
 end
 
--- Object that represents a YDB node
--- @class table
--- @name
+-- Object that represents a YDB node.
 local node = {}
+
+-- Deprecated object that represents a YDB node.
 -- old name of YDB node object -- retains the deprecated syntax for backward compatibility
 local key = {}
 
 --- Get information about a variable/node (except intrinsic variables).
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
--- @return yottadb.YDB_DATA_UNDEF (no value or subtree) or
---   yottadb.YDB_DATA_VALUE_NODESC (value, no subtree) or
---   yottadb.YDB_DATA_NOVALUE_DESC (no value, subtree) or
---   yottadb.YDB_DATA_VALUE_NODESC (value and subtree)
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
+-- @return yottadb.YDB_DATA_UNDEF (no value or subtree)
+-- @return or yottadb.YDB_DATA_VALUE_NODESC (value, no subtree)
+-- @return or yottadb.YDB_DATA_NOVALUE_DESC (no value, subtree)
+-- @return or yottadb.YDB_DATA_VALUE_NODESC (value and subtree)
 function M.data(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -127,10 +135,9 @@ function M.data(varname, ...)
   return _yottadb.data(varname, subsarray)
 end
 
----
--- Deletes the value of a single variable/node.
+--- Deletes the value of a single database variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 function M.delete_node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -139,10 +146,9 @@ function M.delete_node(varname, ...)
   _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_NODE)
 end
 
----
--- Deletes a variable/node tree/subtree.
+--- Deletes a database variable/node tree/subtree.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 function M.delete_tree(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -151,10 +157,9 @@ function M.delete_tree(varname, ...)
   _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_TREE)
 end
 
----
--- Gets and returns the value of a variable/node, or `nil` if the variable/node does not exist.
+--- Gets and returns the value of a database variable/node, or `nil` if the variable/node does not exist.
 -- @param varname String variable name.
--- @param subsarray ... Optional list of subscripts or table {subscripts}
+-- @param[opt] ... list of subscripts or table {subscripts}
 -- @return string value or `nil`
 function M.get(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
@@ -168,13 +173,12 @@ function M.get(varname, ...)
   error(value) -- propagate
 end
 
----
--- Increments the numeric value of a variable/node.
+--- Increments the numeric value of a database variable/node.
 -- Raises an error on overflow.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @param increment String or number amount to increment by.
---     Optional only if subsarray is a table.
+--  Optional only if subsarray is a table.
 -- @return the new value
 function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR  sub1, sub2, ..., increment
   local subsarray, increment
@@ -198,12 +202,11 @@ function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR
   return _yottadb.incr(varname, subsarray, increment)
 end
 
----
--- Releases all locks held and attempts to acquire all requested locks, waiting if requested.
--- Returns 0 (always)
--- Raises a error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
--- @param nodes Optional list containing {varname[, subs]} or node objects that specify the lock names to lock.
--- @param timeout Optional timeout in seconds to wait for the lock.
+--- Releases all locks held and attempts to acquire all requested locks, waiting if requested.
+-- Returns 0 (always).
+-- Raises an error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
+-- @param[opt] nodes list containing {varname[, subs]} or node objects that specify the lock names to lock.
+-- @param[opt] timeout timeout in seconds to wait for the lock.
 function M.lock(nodes, timeout)
   if not timeout then
     assert_type(nodes, 'table/number/nil', 1)
@@ -222,14 +225,13 @@ function M.lock(nodes, timeout)
   _yottadb.lock(nodes, timeout)
 end
 
----
--- Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
+--- Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
 -- Returns 0 (always)
 -- Raises a error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @param timeout Seconds to wait for the lock.
---          Optional only if subscripts is a table.
+--  Optional only if subscripts is a table.
 function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout  OR  sub1, sub2, ..., timeout
   local subsarray, timeout
   if ... and type(...)=='table' then
@@ -252,12 +254,11 @@ function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout 
   _yottadb.lock_incr(varname, subsarray, timeout)
 end
 
----
--- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
--- Returns 0 (always)
--- Releasing a lock cannot create an error unless the varname/subsarray names are invalid
+--- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
+-- Returns 0 (always).
+-- Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 function M.lock_decr(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -266,10 +267,9 @@ function M.lock_decr(varname, ...)
   return _yottadb.lock_decr(varname, subsarray)
 end
 
----
--- Returns the next node for a variable/node, or `nil` if there isn't one.
+--- Returns the next node for a database variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil
 function M.node_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
@@ -281,10 +281,9 @@ function M.node_next(varname, ...)
   return ok and node_next or nil
 end
 
----
--- Returns the previous node for a variable/node, or `nil` if there isn't one.
+--- Returns the previous node for a database variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil
 function M.node_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
@@ -296,12 +295,11 @@ function M.node_previous(varname, ...)
   return ok and node_prev or nil
 end
 
----
--- Returns an iterator for iterating over all nodes in a variable/node.
+--- Returns an iterator for iterating over all nodes in a database variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}
+-- @param[opt] subsarray list of subscripts or table {subscripts}
 -- @param reverse Flag that indicates whether to iterate backwards.
---          Optional only if subscripts is a table.
+--   Optional only if subscripts is a table.
 -- @return iterator
 -- @usage for node_subscripts in yottadb.nodes(varname, subsarray) do ... end
 function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
@@ -354,10 +352,9 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
   end
 end
 
----
--- Sets the value of a variable/node.
+--- Sets the value of a database variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @param value String value to set. If this is a number, it is converted to a string.
 function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  sub1, sub2, ..., value
   local subsarray, value
@@ -381,16 +378,9 @@ function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  su
   _yottadb.set(varname, subsarray, value)
 end
 
----
--- Returns the zwrite-formatted version of the given string.
--- @param s String to format.
--- @return formatted string
-function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
-
----
--- Returns the next subscript for a variable/node, or `nil` if there isn't one.
+--- Returns the next subscript for a database variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @return string subscript name or nil
 function M.subscript_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
@@ -402,10 +392,9 @@ function M.subscript_next(varname, ...)
   return ok and sub_next or nil
 end
 
----
--- Returns the previous subscript for a variable/node, or `nil` if there isn't one.
+--- Returns the previous subscript for a database variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}.
+-- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @return string subscript name or nil
 function M.subscript_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
@@ -417,12 +406,11 @@ function M.subscript_previous(varname, ...)
   return ok and sub_prev or nil
 end
 
----
--- Returns an iterator for iterating over all subscripts in a variable/node.
+--- Returns an iterator for iterating over all subscripts in a database variable/node.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}
+-- @param[opt] subsarray list of subscripts or table {subscripts}
 -- @param reverse Flag that indicates whether to iterate backwards. 
---          Optional only if subscripts is a table.
+--   Optional only if subscripts is a table.
 -- @return iterator
 -- @usage for name in yottadb.subscripts(varname, subsarray) do ... end
 function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
@@ -458,18 +446,29 @@ function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, revers
   end
 end
 
----
--- Initiates a transaction.
--- @param id Optional string transaction id. See ydb docs for special ids 'BA' or 'BATCH':
---   https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing
--- @param varnames Optional table of local M variable names to restore on transaction restart
---   (or {'*'} for all locals) -- restoration does apply to rollback
+--- Returns the zwrite-formatted version of the given string.
+-- @param s String to format.
+-- @return formatted string
+function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
+
+--- Returns the string described by the given zwrite-formatted string.
+-- @param s String in zwrite format.
+-- @return string
+function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
+
+--- Transactions
+-- @section
+
+--- Initiates a transaction.
+-- @param id[opt] string transaction id. For special ids `BA` or `BATCH`, see [ydb docs here](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing).
+-- @param varnames[opt] table of local M variable names to restore on transaction restart
+--   (or `{'*'}` for all locals) -- restoration does apply to rollback
 -- @param f Function to call. The transaction's affected globals are committed if the function returns nothing or
---   yottadb.YDB_OK, restarted if the function returns yottadb.YDB_TP_RESTART (f will be called
---   again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
---   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
--- @param ... Optional arguments to pass to f.
-function M.tp(id, varnames, f, ...) -- optional: id, varnames
+--   `yottadb.YDB_OK`; restarted if the function returns `yottadb.YDB_TP_RESTART` (`f` will be called
+--   again); or not committed if the function returns `yottadb.YDB_TP_ROLLBACK` or errors.
+--   Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
+-- @param[opt] ... arguments to pass to `f`.
+function M.tp(id, varnames, f, ...)
   -- fill in missing inputs if necessary
   local args={id, varnames, f, ...}
   local inserted = 0
@@ -484,20 +483,18 @@ function M.tp(id, varnames, f, ...) -- optional: id, varnames
   _yottadb.tp(id, varnames, f, table.unpack(args, 4))
 end
 
----
--- Returns a transaction-safed version of the given function such that it will be called within
+--- Returns a transaction-safed version of the given function such that it will be called within
 --   a yottadb transaction and the dbase globals restored on error or rollback()
--- @param id Optional string transaction id. See ydb docs for special ids 'BA' or 'BATCH':
---   https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing
--- @param varnames Optional table of local M variable names to restore on transaction restart
---   (or {'*'} for all locals) -- restoration does apply to rollback
+-- @param[opt] id string transaction id. For special ids `BA` or `BATCH`, see [ydb docs here](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing).
+-- @param[opt] varnames table of local M variable names to restore on transaction restart
+--   (or `{'*'}` for all locals) -- restoration does apply to rollback
 -- @param f Function to convert. The transaction's affected globals are committed if the function returns nothing
---   or yottadb.YDB_OK, restarted if the function returns yottadb.YDB_TP_RESTART (f will be
---   called again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
---   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
+--   or `yottadb.YDB_OK`; restarted if the function returns `yottadb.YDB_TP_RESTART` (`f` will be
+--   called again); or not committed if the function returns `yottadb.YDB_TP_ROLLBACK` or errors.
+--   Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
 -- @return transaction-safed function.
 -- @see tp
-function M.transaction(id, varnames, f) -- optional: id, varnames
+function M.transaction(id, varnames, f)
   -- fill in missing inputs if necessary
   if type(id) ~= 'string' then  id, varnames, f = "", id, varnames  end
   if type(varnames) ~= 'table' then  varnames, f = {}, varnames  end
@@ -521,33 +518,24 @@ function M.transaction(id, varnames, f) -- optional: id, varnames
   end
 end
 
--- Make the currently running transaction function restart immediately.
+--- Make the currently running transaction function restart immediately.
 function M.trestart()
   error(_yottadb.message(_yottadb.YDB_TP_RESTART))
 end
 
--- Make the currently running transaction function rollback immediately and produce a rollback error.
+--- Make the currently running transaction function rollback immediately and produce a rollback error.
 function M.trollback()
   error(_yottadb.message(_yottadb.YDB_TP_ROLLBACK))
 end
 
----
--- Returns the string described by the given zwrite-formatted string.
--- @param s String in zwrite format.
--- @return string
-function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
+--- Node object creation
+-- @section
 
----
--- Creates and returns a new YottaDB node object.
--- This node has all of the class methods defined below it as well as the following properties:
---   * _name (this node's subscript or variable name)
---   * _value (this node's value in the YottaDB database)
---   * _data (see data())
---   * _has_value (whether or not this node has a value)
---   * _has_tree (whether or not this node has a subtree)
--- Calling the node with a string value returns a new node further subscripted by string.
+--- Creates and returns a new YottaDB node object.
+-- This node has all of the class methods defined below.
+-- Calling the returned node with a string value returns a new node further subscripted by string.
 -- @param varname String variable name.
--- @param subsarray Optional list of subscripts or table {subscripts}
+-- @param[opt] subsarray list of subscripts or table {subscripts}
 -- @return node
 -- @usage yottadb.node('varname')
 -- @usage yottadb.node('varname')('subscript')
@@ -587,50 +575,92 @@ end
 -- Define this to tell __call() whether to create new node using M.node or M.key
 node.___new = M.node
 
+--- Object that represents a YDB node. </br></br>
+-- **Note:** Although `node:method()` is pretty, it is slow. If you are concerned about speed,
+-- use `node:__method()` which is equivalent but 15x faster.
+-- This is because Lua expands `node:method()` to `node.method(node)`, so we have to create
+-- intermediate subnode called `node.method` and then when it gets called with `()` we discover
+-- that its first parameter is of type `node` so that we know to invoke `node.__method()` instead
+-- @type node
+
+--- Get node's value.
+-- Equivalent to (but 2.5x slower than) `node._`
+-- @param[opt] default return value if the node has no data; if not supplied, nil is the default
 -- @see get
 function node:get(default) return M.get(self.__varname, self.__subsarray) or default  end
 
+--- Set node's value.
+-- Equivalent to (but 4x slower than) `node._ = x`
 -- @see set
 function node:set(value) M.set(self.__varname, self.__subsarray, assert_type(value, 'string/number', 1)) end
 
+--- Delete database node pointed to by node object
 -- @see delete_node
 function node:delete_node() M.delete_node(self.__varname, self.__subsarray) end
 
+--- Delete database tree pointed to by node object
 -- @see delete_tree
 function node:delete_tree() M.delete_tree(self.__varname, self.__subsarray) end
 
+--- Increment node's value
 -- @see incr
 function node:incr(value)
   return M.incr(self.__varname, self.__subsarray, assert_type(value, 'string/number/nil', 1))
 end
 
+--- Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.
 -- @see lock
 function node:lock(timeout) return M.lock({self}, assert_type('number/nil', 1)) end
 
+--- Attempts to acquire or increment a lock matching this node, waiting if requested.
 -- @see lock_incr
 function node:lock_incr(timeout) return M.lock_incr(self.__varname, self.__subsarray, assert_type(timeout, 'number/nil', 1)) end
 
+--- Decrements a lock matching this node, releasing it if possible.
 -- @see lock_decr
 function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) end
 
+--- Return iterator over the child subscripts of a node (in M terms, collate from "" to "").
+-- Unlike the deprecated `key:subscripts()`, `node:subscripts()` returns all *child* subscripts, not all subsequent subscripts in the same level.
+-- Note that subscripts() order is guaranteed to equal the M collation sequence order.
+-- @param[opt] reverse set to true to iterate in reverse order
+-- @usage for subscript in node:subscripts() do ...
+function node:subscripts(reverse)
+  local actuator = not reverse and M.subscript_next or M.subscript_previous
+  local subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
+  table.insert(subsarray, '')  -- empty subscript is starting point for iterating all subscripts
+  local function iterator()
+    local next_or_prev = actuator(self.__varname, subsarray)
+    subsarray[#subsarray] = next_or_prev
+    return next_or_prev
+  end
+  return iterator, subsarray, ''  -- iterate using child from ''
+end
+
+-- Constant that may be passed to `node:settree()`
 -- declare a unique flag value yottadb.DELETE to pass to settree to instruct deletion of a value
+-- @see node:settree
 M.DELETE = {}
 
--- Populate db from tbl. In its simpest form:
---    > node:settree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
--- @param tbl is the table to store into the databse
---    special field name _ sets the value of the node itself, as opposed to a subnode
---    assign special value yottadb.DELETE to a node to delete the _value of the node. You cannot delete the whole subtree
--- @param filter Optional function(node, key, value) or nil
---    if filter is nil, all values are set unfiltered
---    if filter is a function(node, key, value) it is invoked on every node
---        to allow it to cast/alter every key name and value
---    it must return the same or altered: key, value
---    type errors can be handled (or ignored) using this function, too.
---    if filter returns yottadb.DELETE as value, the key is deleted
---    if filter returns nil as key or value,
---        _settree will simply not update the current database value
--- @param _seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
+--- High level functions
+-- @section
+
+--- Populate database from a table. In its simpest form:
+--    node:settree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
+-- @param tbl is the table to store into the database:
+--
+-- * special field name `_` sets the value of the node itself, as opposed to a subnode
+-- * assign special value `yottadb.DELETE` to a node to delete the value of the node. You cannot delete the whole subtree
+-- @param[opt] filter function(node, key, value) or nil
+-- 
+-- * if filter is nil, all values are set unfiltered
+-- * if filter is a function(node, key, value) it is invoked on every node
+-- to allow it to cast/alter every key name and value
+-- * filter must return the same or altered: key, value
+-- * type errors can be handled (or ignored) using this function, too.
+-- * if filter returns yottadb.DELETE as value, the key is deleted
+-- * if filter returns nil as key or value, settree will simply not update the current database value
+-- @param[opt] _seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
 function node:settree(tbl, filter, _seen)
   _seen = _seen or {}
   for k,v in pairs(tbl) do
@@ -653,22 +683,22 @@ function node:settree(tbl, filter, _seen)
   end
 end
 
--- Fetch database node and subtree and return a Lua table of it. But be aware that order is not preserved by Lua tables.
+--- Fetch database node and subtree and return a Lua table of it. But be aware that order is not preserved by Lua tables.
 -- In its simplest form:
---    > node:gettree()
---    {_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=49}
+--      t = node:gettree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=49})
 --  Note: special field name _ indicates the value of the node itself
--- @param maxdepth Optional subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
--- @param filter Optional function(node, node_subscript, value, recurse, depth) or nil
---    if filter is nil, all values are fetched unfiltered
---    if filter is a function(node, node_subscript, value, recurse, depth) it is invoked on every subscript
---        to allow it to cast/alter every _value and recurse flag
---        note that at node root (depth=0), subscript passed to filter is ''
---    it must return the same or an altered _value (string/number/nil) and recurse flag
---    if filter returns a nil _value then _gettree will store nothing in the table for that database value
---    if filter return false recurse flag, it will prevent recursion deeper into that particular subscript
--- @param _value is for internal use only (to avoid duplicate value fetches, for speed)
--- @param _depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
+-- @param[opt] maxdepth subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
+-- @param[opt] filter function(node, node_subscript, value, recurse, depth) or nil
+--
+-- * if filter is nil, all values are fetched unfiltered
+-- * if filter is a function(node, node_subscript, value, recurse, depth) it is invoked on every subscript
+-- to allow it to cast/alter every _value and recurse flag;
+-- note that at node root (depth=0), subscript passed to filter is ''
+-- * it must return the same or an altered _value (string/number/nil) and recurse flag
+-- * if filter returns a nil _value then _gettree will store nothing in the table for that database value
+-- * if filter return false recurse flag, it will prevent recursion deeper into that particular subscript
+-- @param[opt] _value is for internal use only (to avoid duplicate value fetches, for speed)
+-- @param[opt] _depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
 function node:gettree(maxdepth, filter, _value, _depth)
   if not _depth then  -- i.e. if this is the first time the function is called
     _depth = _depth or 0
@@ -691,28 +721,16 @@ function node:gettree(maxdepth, filter, _value, _depth)
   return tbl
 end
 
--- Return iterator over the child subscripts of a node (in M terms, collate from "" to "")
--- Unlike the deprecated key:subscripts(), node:subscripts() returns all *child* subscripts, not all subsequent subscripts in the same level
--- @param reverse Optional set to true to iterate in reverse order
--- @usage: for subscript in node:subscripts() do ...
--- @Note that subscripts() order is guaranteed to equal the M collation sequence order
-function node:subscripts(reverse)
-  local actuator = not reverse and M.subscript_next or M.subscript_previous
-  local subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
-  table.insert(subsarray, '')  -- empty subscript is starting point for iterating all subscripts
-  local function iterator()
-    local next_or_prev = actuator(self.__varname, subsarray)
-    subsarray[#subsarray] = next_or_prev
-    return next_or_prev
-  end
-  return iterator, subsarray, ''  -- iterate using child from ''
-end
+--- Get node properties
+-- @section
 
--- Define methods to fetch node properties
--- @param node is the node to fetch the property of
+--- Fetch the name of the node, i.e. the rightmost subscript
 function node:name()  return self.__subsarray[#self.__subsarray] or self.__varname  end
+--- Fetch the 'data' flags of the node @see data
 function node:data()  return M.data(self.__varname, self.__subsarray)  end
+--- Return true if the node has a value; otherwise false
 function node:has_value()  return node.data(self)%2 == 1  end
+--- Return true if the node has a tree; otherwise false
 function node:has_tree()  return node.data(self)   >= 10  end
 
 -- Makes pairs() work - iterate over the child subscripts, values of given node
@@ -838,12 +856,27 @@ function node:__newindex(k, v)
   end
 end
 
+--- @section end
 
--- ~~~ Deprecated M.key() ~~~
--- M.key() is the same as M.node() except that it retains:
---   deprecated attribute behaviour and property names (without '_' prefix) for backward compatibility
---   deprecated defintions of key:subscript(), key:subscript_next(), key:subscript_previous()
--- @see M.node
+
+-- ~~~ Deprecated object that represents a YDB node ~~~
+
+--- Node object creation
+-- @section
+
+--- Deprecated object that represents a YDB node. <br/>
+--- `key` is the same as `node` except that it retains
+-- deprecated property names as follows for backward compatibility: <br/>
+--   * `name` (this node's subscript or variable name) <br/>
+--   * `value` (this node's value in the YottaDB database) <br/>
+--   * `data` (see data()) <br/>
+--   * `has_value` (whether or not this node has a value) <br/>
+--   * `has_tree` (whether or not this node has a subtree) <br/>
+-- and deprecated defintions of `key:subscript()`, `key:subscript_next()`, `key:subscript_previous()`
+-- @param varname String variable name.
+-- @param[opt] subsarray list of subscripts or table {subscripts}
+-- @return node
+-- @see node, data
 function M.key(varname, subsarray)
   assert_type(subsarray, 'table/nil', 2)
   local new_key = M.node(varname, subsarray)
@@ -853,12 +886,22 @@ function M.key(varname, subsarray)
   return new_key
 end
 
+--- Deprecated object that represents a YDB node.
+--- @type key
+
 for k, v in pairs(node) do  key[k]=v  end
 key.___new = M.key
 
+--- Properties of key object
+-- @table property
+-- @field name equivalent to `node:name()`
+-- @field data equivalent to `node:data()`
+-- @field has_value equivalent to `node:has_value()`
+-- @field has_tree equivalent to `node:has_tree()`
+-- @field value equivalent to `node._`
 key_properties = {
-  name = key.name,
-  data = key.data,
+  name = key.name, -- equivalent to node::name()
+  data = key.data, -- :name()
   has_value = key.has_value,
   has_tree = key.has_tree,
   value = key.get,
@@ -890,14 +933,16 @@ end
 
 -- ~~~ Deprecated functionality for M.key() as it's not Lua-esque: use pairs(key) instead ~~~
 
--- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
---   or subscript_previous()
--- @see subscript_next
--- @deprecated because:
---   a) it keeps dangerous state in the object: causes bugs where old references to it think it's still original
---   b) it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
---   c) if this is a common use-case, it should be reimplemented for node:subscript_next() by
+--- Deprecated way to get next subscript.
+-- Deprecated because:
+--
+-- * it keeps dangerous state in the object: causes bugs where old references to it think it's still original
+-- * it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
+-- * if this is a common use-case, it should be reimplemented for node:subscript_next() by
 --      returning a fresh node object (after node efficiency improvement to avoid subsarray duplication)
+-- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
+--   or subscript_previous()
+-- @see pairs, subscript_next
 function key:subscript_next(reset)
   if reset then self.__next_subsarray[#self.__next_subsarray] = '' end
   local next_sub = M.subscript_next(self.__varname, self.__next_subsarray)
@@ -905,10 +950,11 @@ function key:subscript_next(reset)
   return next_sub
 end
 
--- @param reset If `true`, resets to the original subscript before any calls to subscript_next()
+
+--- Deprecated way to get previous subscript.
+-- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
--- @see subscript_previous
--- @deprecated: see key:subscript_next()
+-- @see key:subscript_previous, pairs
 function key:subscript_previous(reset)
   if reset then self.__next_subsarray[#self.__next_subsarray] = '' end
   local prev_sub = M.subscript_previous(self.__varname, self.__next_subsarray)
@@ -916,22 +962,29 @@ function key:subscript_previous(reset)
   return prev_sub
 end
 
+--- Deprecated way to get same-level subscripts from this node onward.
+-- Deprecated because:
+--
+-- * pairs() is more Lua-esque
+-- * it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts
+-- @param[opt] reverse boolean
 -- @see subscripts
--- @deprecated because:
---   a) pairs() is more Lua-esque
---   b) it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts
 function key:subscripts(reverse)
   return M.subscripts(self.__varname, #self.__subsarray > 0 and self.__subsarray or {''}, reverse)
 end
 
+--- @section end
 
 -- ~~~ High level utility functions ~~~
 
--- Dump the specified node and its children
+--- High level functions
+-- @section
+
+--- Dump the specified node and its children
 -- @usage: ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
--- @param node: Either a node object with `...` subscripts or glvn varname with `...` subsarray
--- @param maxlines: maximum number of lines to output before stopping dump
--- return dump as a string
+-- @param node Either a node object with `...` subscripts or glvn varname with `...` subsarray
+-- @param maxlines Maximum number of lines to output before stopping dump
+-- @return dump as a string
 function M.dump(node, ...)
   -- check whether maxlines was supplied as last parameter
   local subs, maxlines
