@@ -2078,14 +2078,14 @@ function test_settree()
   
   -- check that a fetched table creates the correct table dump
   local t = node:gettree()
-  local actual_table_dump = table_dump.dump(t, nil, true)
+  local actual_table_dump = table_dump.dump(t, nil, nil, true)
   table.sort(actual_table_dump)
   local table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
   assert(table_formatted == expected_table_dump)
 
   -- check that _get_tree() maxdepth param works
   t = node:gettree(0)
-  actual_table_dump = table_dump.dump(t, nil, true)
+  actual_table_dump = table_dump.dump(t, nil, nil, true)
   table.sort(actual_table_dump)
   table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
   assert(table_formatted == expected_level0_table_dump)
@@ -2093,7 +2093,7 @@ function test_settree()
   -- check that _get_tree() filter param works
   local function filter(node, key, value, recurse, depth)  if key=='appearance' then value,recurse='ugly',false end  return value, recurse  end
   t = node:gettree(nil, filter)
-  actual_table_dump = table_dump.dump(t, nil, true)
+  actual_table_dump = table_dump.dump(t, nil, nil, true)
   table.sort(actual_table_dump)
   table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
   assert(table_formatted == expected_level0_table_dump:gsub('handsome','ugly'))
