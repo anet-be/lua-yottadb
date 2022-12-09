@@ -97,11 +97,10 @@ local function assert_subscripts(t, name, narg)
 end
 
 ---
--- Returns the YDB error code (if any) for the given error message.
--- Returns `nil` if the message is not a YDB error.
+-- Get the YDB error code (if any) for the given error message.
 -- @param message String error message.
--- @return numeric YDB error code or nil
--- @name get_error_code
+-- @return the YDB error code (if any) for the given error message.
+-- @return `nil` if the message is not a YDB error.
 function M.get_error_code(message)
   return tonumber(assert_type(message, 'string', 1):match('YDB Error: (%-?%d+):'))
 end
@@ -113,11 +112,9 @@ local node = {}
 -- old name of YDB node object -- retains the deprecated syntax for backward compatibility
 local key = {}
 
----
--- Returns information about a variable/node (except intrinsic variables).
+--- Get information about a variable/node (except intrinsic variables).
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
--- @name data
 -- @return yottadb.YDB_DATA_UNDEF (no value or subtree) or
 --   yottadb.YDB_DATA_VALUE_NODESC (value, no subtree) or
 --   yottadb.YDB_DATA_NOVALUE_DESC (no value, subtree) or
@@ -134,7 +131,6 @@ end
 -- Deletes the value of a single variable/node.
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
--- @name delete_node
 function M.delete_node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -147,7 +143,6 @@ end
 -- Deletes a variable/node tree/subtree.
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
--- @name delete_tree
 function M.delete_tree(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -161,7 +156,6 @@ end
 -- @param varname String variable name.
 -- @param subsarray ... Optional list of subscripts or table {subscripts}
 -- @return string value or `nil`
--- @name get
 function M.get(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -182,7 +176,6 @@ end
 -- @param increment String or number amount to increment by.
 --     Optional only if subsarray is a table.
 -- @return the new value
--- @name incr
 function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR  sub1, sub2, ..., increment
   local subsarray, increment
   if ... and type(...)=='table' then
@@ -211,7 +204,6 @@ end
 -- Raises a error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
 -- @param nodes Optional list containing {varname[, subs]} or node objects that specify the lock names to lock.
 -- @param timeout Optional timeout in seconds to wait for the lock.
--- @name lock
 function M.lock(nodes, timeout)
   if not timeout then
     assert_type(nodes, 'table/number/nil', 1)
@@ -238,7 +230,6 @@ end
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @param timeout Seconds to wait for the lock.
 --          Optional only if subscripts is a table.
--- @name lock_incr
 function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout  OR  sub1, sub2, ..., timeout
   local subsarray, timeout
   if ... and type(...)=='table' then
@@ -267,7 +258,6 @@ end
 -- Releasing a lock cannot create an error unless the varname/subsarray names are invalid
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
--- @name lock_decr
 function M.lock_decr(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -281,7 +271,6 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil
--- @name node_next
 function M.node_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -297,7 +286,6 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil
--- @name node_previous
 function M.node_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -316,7 +304,6 @@ end
 --          Optional only if subscripts is a table.
 -- @return iterator
 -- @usage for node_subscripts in yottadb.nodes(varname, subsarray) do ... end
--- @name nodes
 function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
   local subsarray, reverse
   if ... and type(...)=='table' then
@@ -372,7 +359,6 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @param value String value to set. If this is a number, it is converted to a string.
--- @name set
 function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  sub1, sub2, ..., value
   local subsarray, value
   if ... and type(...)=='table' then
@@ -399,7 +385,6 @@ end
 -- Returns the zwrite-formatted version of the given string.
 -- @param s String to format.
 -- @return formatted string
--- @name str2zwr
 function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
 
 ---
@@ -407,7 +392,6 @@ function M.str2zwr(s) return _yottadb.str2zwr(assert_type(s, 'string', 1)) end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return string subscript name or nil
--- @name subscript_next
 function M.subscript_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -423,7 +407,6 @@ end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}.
 -- @return string subscript name or nil
--- @name subscript_previous
 function M.subscript_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
@@ -442,7 +425,6 @@ end
 --          Optional only if subscripts is a table.
 -- @return iterator
 -- @usage for name in yottadb.subscripts(varname, subsarray) do ... end
--- @name subscripts
 function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
   local subsarray, reverse
   if ... and type(...)=='table' then
@@ -487,7 +469,6 @@ end
 --   again), or not committed if the function returns yottadb.YDB_TP_ROLLBACK or errors.
 --   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
 -- @param ... Optional arguments to pass to f.
--- @name tp
 function M.tp(id, varnames, f, ...) -- optional: id, varnames
   -- fill in missing inputs if necessary
   local args={id, varnames, f, ...}
@@ -516,7 +497,6 @@ end
 --   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
 -- @return transaction-safed function.
 -- @see tp
--- @name transaction
 function M.transaction(id, varnames, f) -- optional: id, varnames
   -- fill in missing inputs if necessary
   if type(id) ~= 'string' then  id, varnames, f = "", id, varnames  end
@@ -555,7 +535,6 @@ end
 -- Returns the string described by the given zwrite-formatted string.
 -- @param s String in zwrite format.
 -- @return string
--- @name zwr2str
 function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 
 ---
@@ -570,7 +549,6 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 -- @param varname String variable name.
 -- @param subsarray Optional list of subscripts or table {subscripts}
 -- @return node
--- @name node
 -- @usage yottadb.node('varname')
 -- @usage yottadb.node('varname')('subscript')
 function M.node(varname, ...)

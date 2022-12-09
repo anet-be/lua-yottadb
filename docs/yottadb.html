@@ -1,0 +1,781 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>lua-yottadb documentation</title>
+    <link rel="stylesheet" href="ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-yottadb</h1>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><strong>yottadb</strong></li>
+</ul>
+<h2>Contents</h2>
+<ul>
+<li><a href="">Summary</a></li>
+    <li><a href="#data">data (varname, subsarray)</a></li>
+    <li><a href="#delete_node">delete_node (varname, subsarray)</a></li>
+    <li><a href="#delete_tree">delete_tree (varname, subsarray)</a></li>
+    <li><a href="#get">get (varname, subsarray)</a></li>
+    <li><a href="#incr">incr (varname, subsarray, increment)</a></li>
+    <li><a href="#lock">lock (nodes, timeout)</a></li>
+    <li><a href="#lock_incr">lock_incr (varname, subsarray, timeout)</a></li>
+    <li><a href="#lock_decr">lock_decr (varname, subsarray)</a></li>
+    <li><a href="#node_next">node_next (varname, subsarray)</a></li>
+    <li><a href="#node_previous">node_previous (varname, subsarray)</a></li>
+    <li><a href="#nodes">nodes (varname, subsarray, reverse)</a></li>
+    <li><a href="#set">set (varname, subsarray, value)</a></li>
+    <li><a href="#str2zwr">str2zwr (s)</a></li>
+    <li><a href="#subscript_next">subscript_next (varname, subsarray)</a></li>
+    <li><a href="#subscript_previous">subscript_previous (varname, subsarray)</a></li>
+    <li><a href="#subscripts">subscripts (varname, subsarray, reverse)</a></li>
+    <li><a href="#tp">tp (id, varnames, f, ...)</a></li>
+    <li><a href="#transaction">transaction (id, varnames, f)</a></li>
+    <li><a href="#zwr2str">zwr2str (s)</a></li>
+    <li><a href="#node">node (varname, subsarray)</a></li>
+
+
+</ul>
+
+
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>yottadb</code></h1>
+<p>Get the YDB error code (if any) for the given error message.</p>
+<p>
+
+</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#data">data (varname, subsarray)</a></td>
+	<td class="summary">Get information about a variable/node (except intrinsic variables).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#delete_node">delete_node (varname, subsarray)</a></td>
+	<td class="summary">Deletes the value of a single variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#delete_tree">delete_tree (varname, subsarray)</a></td>
+	<td class="summary">Deletes a variable/node tree/subtree.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get">get (varname, subsarray)</a></td>
+	<td class="summary">Gets and returns the value of a variable/node, or <code>nil</code> if the variable/node does not exist.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#incr">incr (varname, subsarray, increment)</a></td>
+	<td class="summary">Increments the numeric value of a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lock">lock (nodes, timeout)</a></td>
+	<td class="summary">Releases all locks held and attempts to acquire all requested locks, waiting if requested.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lock_incr">lock_incr (varname, subsarray, timeout)</a></td>
+	<td class="summary">Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lock_decr">lock_decr (varname, subsarray)</a></td>
+	<td class="summary">Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node_next">node_next (varname, subsarray)</a></td>
+	<td class="summary">Returns the next node for a variable/node, or <code>nil</code> if there isn't one.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node_previous">node_previous (varname, subsarray)</a></td>
+	<td class="summary">Returns the previous node for a variable/node, or <code>nil</code> if there isn't one.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nodes">nodes (varname, subsarray, reverse)</a></td>
+	<td class="summary">Returns an iterator for iterating over all nodes in a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set">set (varname, subsarray, value)</a></td>
+	<td class="summary">Sets the value of a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#str2zwr">str2zwr (s)</a></td>
+	<td class="summary">Returns the zwrite-formatted version of the given string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#subscript_next">subscript_next (varname, subsarray)</a></td>
+	<td class="summary">Returns the next subscript for a variable/node, or <code>nil</code> if there isn't one.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#subscript_previous">subscript_previous (varname, subsarray)</a></td>
+	<td class="summary">Returns the previous subscript for a variable/node, or <code>nil</code> if there isn't one.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#subscripts">subscripts (varname, subsarray, reverse)</a></td>
+	<td class="summary">Returns an iterator for iterating over all subscripts in a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tp">tp (id, varnames, f, ...)</a></td>
+	<td class="summary">Initiates a transaction.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#transaction">transaction (id, varnames, f)</a></td>
+	<td class="summary">Returns a transaction-safed version of the given function such that it will be called within
+   a yottadb transaction and the dbase globals restored on error or rollback()</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#zwr2str">zwr2str (s)</a></td>
+	<td class="summary">Returns the string described by the given zwrite-formatted string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node">node (varname, subsarray)</a></td>
+	<td class="summary">Creates and returns a new YottaDB node object.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "data"></a>
+    <strong>data (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Get information about a variable/node (except intrinsic variables).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+         yottadb.YDB<em>DATA</em>UNDEF (no value or subtree) or
+   yottadb.YDB<em>DATA</em>VALUE<em>NODESC (value, no subtree) or
+   yottadb.YDB</em>DATA<em>NOVALUE</em>DESC (no value, subtree) or
+   yottadb.YDB<em>DATA</em>VALUE_NODESC (value and subtree)
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "delete_node"></a>
+    <strong>delete_node (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Deletes the value of a single variable/node.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "delete_tree"></a>
+    <strong>delete_tree (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Deletes a variable/node tree/subtree.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get"></a>
+    <strong>get (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Gets and returns the value of a variable/node, or <code>nil</code> if the variable/node does not exist.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         ... Optional list of subscripts or table {subscripts}
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string value or <code>nil</code>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "incr"></a>
+    <strong>incr (varname, subsarray, increment)</strong>
+    </dt>
+    <dd>
+    Increments the numeric value of a variable/node.
+ Raises an error on overflow.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+        <li><span class="parameter">increment</span>
+
+<p> String or number amount to increment by.</p>
+<pre><code> Optional only if subsarray is a table.
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        the new value
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "lock"></a>
+    <strong>lock (nodes, timeout)</strong>
+    </dt>
+    <dd>
+    Releases all locks held and attempts to acquire all requested locks, waiting if requested.
+ Returns 0 (always)
+ Raises a error yottadb.YDB<em>LOCK</em>TIMEOUT if a lock could not be acquired.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">nodes</span>
+         Optional list containing {varname[, subs]} or node objects that specify the lock names to lock.
+        </li>
+        <li><span class="parameter">timeout</span>
+         Optional timeout in seconds to wait for the lock.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "lock_incr"></a>
+    <strong>lock_incr (varname, subsarray, timeout)</strong>
+    </dt>
+    <dd>
+    Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
+ Returns 0 (always)
+ Raises a error yottadb.YDB<em>LOCK</em>TIMEOUT if a lock could not be acquired.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+        <li><span class="parameter">timeout</span>
+
+<p> Seconds to wait for the lock.</p>
+<pre><code>      Optional only if subscripts is a table.
+</code></pre>
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "lock_decr"></a>
+    <strong>lock_decr (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
+ Returns 0 (always)
+ Releasing a lock cannot create an error unless the varname/subsarray names are invalid
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "node_next"></a>
+    <strong>node_next (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Returns the next node for a variable/node, or <code>nil</code> if there isn't one.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        list of subscripts for the node, or nil
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "node_previous"></a>
+    <strong>node_previous (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Returns the previous node for a variable/node, or <code>nil</code> if there isn't one.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        list of subscripts for the node, or nil
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nodes"></a>
+    <strong>nodes (varname, subsarray, reverse)</strong>
+    </dt>
+    <dd>
+    Returns an iterator for iterating over all nodes in a variable/node.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}
+        </li>
+        <li><span class="parameter">reverse</span>
+
+<p> Flag that indicates whether to iterate backwards.</p>
+<pre><code>      Optional only if subscripts is a table.
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        iterator
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">for</span> node_subscripts <span class="keyword">in</span> yottadb.nodes(varname, subsarray) <span class="keyword">do</span> ... <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "set"></a>
+    <strong>set (varname, subsarray, value)</strong>
+    </dt>
+    <dd>
+    Sets the value of a variable/node.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+        <li><span class="parameter">value</span>
+         String value to set. If this is a number, it is converted to a string.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "str2zwr"></a>
+    <strong>str2zwr (s)</strong>
+    </dt>
+    <dd>
+    Returns the zwrite-formatted version of the given string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">s</span>
+         String to format.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        formatted string
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "subscript_next"></a>
+    <strong>subscript_next (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Returns the next subscript for a variable/node, or <code>nil</code> if there isn't one.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string subscript name or nil
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "subscript_previous"></a>
+    <strong>subscript_previous (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Returns the previous subscript for a variable/node, or <code>nil</code> if there isn't one.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string subscript name or nil
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "subscripts"></a>
+    <strong>subscripts (varname, subsarray, reverse)</strong>
+    </dt>
+    <dd>
+    Returns an iterator for iterating over all subscripts in a variable/node.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}
+        </li>
+        <li><span class="parameter">reverse</span>
+
+<p> Flag that indicates whether to iterate backwards. </p>
+<pre><code>      Optional only if subscripts is a table.
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        iterator
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(varname, subsarray) <span class="keyword">do</span> ... <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "tp"></a>
+    <strong>tp (id, varnames, f, ...)</strong>
+    </dt>
+    <dd>
+    Initiates a transaction.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+         Optional string transaction id. See ydb docs for special ids 'BA' or 'BATCH':
+   https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing
+        </li>
+        <li><span class="parameter">varnames</span>
+         Optional table of local M variable names to restore on transaction restart
+   (or {'*'} for all locals) -- restoration does apply to rollback
+        </li>
+        <li><span class="parameter">f</span>
+         Function to call. The transaction's affected globals are committed if the function returns nothing or
+   yottadb.YDB<em>OK, restarted if the function returns yottadb.YDB</em>TP<em>RESTART (f will be called
+   again), or not committed if the function returns yottadb.YDB</em>TP_ROLLBACK or errors.
+   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
+        </li>
+        <li><span class="parameter">...</span>
+         Optional arguments to pass to f.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "transaction"></a>
+    <strong>transaction (id, varnames, f)</strong>
+    </dt>
+    <dd>
+    Returns a transaction-safed version of the given function such that it will be called within
+   a yottadb transaction and the dbase globals restored on error or rollback()
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">id</span>
+         Optional string transaction id. See ydb docs for special ids 'BA' or 'BATCH':
+   https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing
+        </li>
+        <li><span class="parameter">varnames</span>
+         Optional table of local M variable names to restore on transaction restart
+   (or {'*'} for all locals) -- restoration does apply to rollback
+        </li>
+        <li><span class="parameter">f</span>
+         Function to convert. The transaction's affected globals are committed if the function returns nothing
+   or yottadb.YDB<em>OK, restarted if the function returns yottadb.YDB</em>TP<em>RESTART (f will be
+   called again), or not committed if the function returns yottadb.YDB</em>TP_ROLLBACK or errors.
+   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        transaction-safed function.
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#tp">tp</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "zwr2str"></a>
+    <strong>zwr2str (s)</strong>
+    </dt>
+    <dd>
+    Returns the string described by the given zwrite-formatted string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">s</span>
+         String in zwrite format.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "node"></a>
+    <strong>node (varname, subsarray)</strong>
+    </dt>
+    <dd>
+    Creates and returns a new YottaDB node object.
+ This node has all of the class methods defined below it as well as the following properties:
+   * _name (this node's subscript or variable name)
+   * _value (this node's value in the YottaDB database)
+   * _data (see data())
+   * <em>has</em>value (whether or not this node has a value)
+   * <em>has</em>tree (whether or not this node has a subtree)
+ Calling the node with a string value returns a new node further subscripted by string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String variable name.
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Optional list of subscripts or table {subscripts}
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        node
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)</pre></li>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)(<span class="string">'subscript'</span>)</pre></li>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2022-12-09 15:12:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
