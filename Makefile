@@ -25,8 +25,14 @@ _yottadb.so: _yottadb.c
 %: %.c
 	$(CC) -g $(CFLAGS) -o $@ $< $(LDFLAGS)
 
+# Requires: 'luarocks install ldoc'
+docs: docs/yottadb.html
+docs/yottadb.html: config.ld docs/config/*
+	ldoc .
+
 clean:
 	rm -f *.so
+	rm -f docs/*.css docs/*.html
 
 PREFIX=/usr/local
 share_dir=$(PREFIX)/share/lua/

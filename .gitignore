@@ -1,1 +1,8 @@
 *.so
+t.lua
+t?.lua
+*.orig
+
+docs/styles
+docs/topics
+docs/trials
