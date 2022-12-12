@@ -1,88 +1,135 @@
 # Overview
 
-Lua bindings for YottaDB, sponsored by the [Library of UAntwerpen][]. These bindings were developed with reference to YottaDB's Python bindings.
+This project provides a shared library that lets the Lua language access a YottaDB database. Soon, it will also provide the means to invoke M routines from Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
 
-Note: these bindings are single-threaded and do not utilize YottaDB's multithreaded capabilities.
+This project was sponsored by the [Library of UAntwerpen][https://www.uantwerpen.be/en/library/]. These bindings were developed with reference to YottaDB's Python bindings.
 
-## Requirements
+## Intro by example
 
-* Lua 5.2 or greater. These bindings were built and tested with Lua 5.3. The Makefile will use
-  your system's lua version by default. To override this, run `make lua=/path/to/lua`.
-* YottaDB 1.34 or later.
+Full usage is documented [here](docs/yottadb.html), but here are some examples to get you started.
 
-## Documentation
-
-Full usage is documented [here](docs/yottadb.html). A sample is shown below:
+Let's tinker with setting some database values in different ways:
 
 ```lua
-local yottadb = require('yottadb')
+> ydb = require 'yottadb'
+> n = ydb.node('^hello')  -- create node object pointing to YottaDB global ^hello
 
--- Create key objects for conveniently accessing and manipulating database nodes.
-local key1 = yottadb.key('^hello')
+> n:get()  -- get current value of the node in the database
+nil
+> n:set('Hello World')
+> n:get()
+Hello World
 
-print(key1.name, key1.value) -- display current value of '^hello'
-key1.value = 'Hello World' -- set '^hello' to 'Hello World!'
-print(key1.name, key1.value)
+-- Equivalent ways to create a new subnode object pointing to an added 'cowboy' subscript
+> n2 = ydb.node('^hello')('cowboy')
+> n2 = ydb.node('^hello', 'cowboy')
+> n2 = n('cowboy')
+> n2 = n['cowboy']
+> n2 = n.cowboy
 
--- Add a 'cowboy' subscript to the global variable '^hello', creating a new key.
-local key2 = yottadb.key('^hello')('cowboy')
-key2.value = 'Howdy partner!' -- set '^hello('cowboy') to 'Howdy partner!'
-print(key2.name, key2.value)
+> n2:set('Howdy partner!')  -- set ^hello('cowboy') to 'Howdy partner!'
+> n2, n2:get()
+^hello("cowboy")	Howdy partner!
 
--- Add a second subscript to '^hello', creating a third key.
-local key3 = yottadb.key('^hello')('chinese')
-key3.value = '你好世界!' -- the value can be set to anything, including UTF-8
-print(key3.name, key3.value)
+> n2.ranches:set(3)  -- create subnode object ydb.node('^hello', 'cowboy', 'ranches') and set to 3
+> n2.ranches._ = 3   -- same as :set() but 3x faster (ugly but direct access to value)
 
-yottadb.dump('^hello') -- see what we've entered so far
-yottadb.dump(key1) -- ditto
-
-for subscript in key1:subscripts() do -- loop through all subscripts of a key
-  local sub_key = key1(subscript)
-  print(sub_key.name, sub_key.value)
-end
-
-key1:delete_node() -- delete the value of '^hello', but not any of its child nodes
-
-print(key1.name, key1.value) -- no value is printed
-for subscript in key1:subscripts() do -- the values of the child node are still in the database
-  local sub_key = key1(subscript)
-  print(sub_key.name, sub_key.value)
-end
-
-key1.value = 'Hello World' -- reset the value of '^hello'
-print(key1.name, key1.value) -- prints the value
-key1:delete_tree() -- delete both the value at the '^hello' node and all of its children
-print(key1.name, key1.value) -- prints no value
-for subscript in key1:subscripts() do -- loop terminates immediately and displays no subscripts
-  local sub_key = key1(subscript)
-  print(sub_key, sub_key.value)
-end
-
--- Database transactions are also available.
-local simple_transaction = yottadb.transaction(function(value)
-  -- Set values directly with the set() function.
-  yottadb.set('test1', value) -- set the local variable 'test1' to the given value
-  yottadb.set('test2', value) -- set the local variable 'test2' to the given value
-  local condition_a = false
-  local condition_b = false
-  if condition_a then
-    -- When a yottadb.YDBTPRollback exception is raised YottaDB will rollback the transaction
-    -- and then propagate the exception to the calling code.
-    return yottadb.YDB_TP_ROLLBACK
-  elseif condition_b then
-    -- When a yottadb.YDBTPRestart exception is raised YottaDB will call the transaction again.
-    -- Warning: This code is intentionally simplistic. An infinite loop will occur if
-    --   yottadb.YDBTPRestart is continually raised
-    return yottadb.YDB_TP_RESTART
-  end
-  return yottadb.YDB_OK -- success, transaction will be committed
-end)
-
-simple_transaction('test', db)
-print(db('test1'), db('test1').value)
-print(db('test2'), db('test2').value)
+> n3 = n.chinese  -- add a second subscript to '^hello', creating a third object
+> n3:set('你好世界!') -- value can be number or string, including UTF-8
+> n3, n3:get()
+hello("chinese")	你好世界!
 ```
+
+We can also use other [methods of the node object](docs/yottadb.html#Class_node) like `incr() name() has_value() has_key() lock_incr()`:
+
+```lua
+> n2.ranches:incr(2)  -- increment
+5
+> n2:name()
+cowboy
+> n2.__name()  -- uglier but 15x faster access to node object methods
+cowboy
+```
+
+(Note: lua-yottadb is able to distinguish n:method(n) from subnode creation n.method. See [details here](docs/yottadb.html#Class_node).)
+
+Now, let's try `dump` to see what we've got so far:
+
+```lua
+> n:dump()
+^hello="Hello World"
+^hello("chinese")="你好世界!"
+^hello("cowboy")="Howdy partner!"
+^hello("cowboy","ranches")="5"
+```
+
+We can delete a node -- either its *value* or its entire *tree*:
+
+```lua
+> n:set(nil)  -- delete the value of '^hello', but not any of its child nodes
+> n:get()
+nil
+> n:dump()  -- the values of the child node are still in the database
+hello("chinese")="你好世界!!"
+hello("cowboy")="Howdy partner!"
+
+> n:delete_tree() -- delete both the value at the '^hello' node and all of its children
+> n:dump()
+nil
+```
+
+
+
+### Doing something useful
+
+Let's use Lua to calculate the height of 3 oak trees, based on their shadow length and the angle of the sun. Method `settree()` is a handy way to enter literal data into the database from a Lua table constructor:
+
+```lua
+> trees = ydb.node('^oaks')  -- create node object pointing to YottaDB global ^oaks
+> -- store initial data values into database subnodes ^oaks('1', 'shadow'), etc.
+> trees:settree({{shadow=10, angle=30}, {shadow=13, angle=30}, {shadow=15, angle=45}})
+
+> for index, oaktree in pairs(trees) do
+     oaktree.height.__ = oaktree.shadow.__ * math.tan( math.rad(oaktree.angle.__) )
+     print( string.format('Oak %s is %.1fm high', index, oaktree.height.__) )
+  end
+Oak 1 is 5.8m high
+Oak 2 is 7.5m high
+Oak 3 is 15.0m high
+```
+
+Database transactions are also available:
+
+```lua
+> Znode = ydb.node('^Ztest')
+> transact = ydb.transaction(function(end_func)
+  print("^Ztest starts as", Znode:get())
+  Znode:set('value')
+  end_func()
+  end)
+
+> transact(ydb.trollback)  -- perform a rollback after setting Znode
+^Ztest starts as	nil
+YDB Error: 2147483645: YDB_TP_ROLLBACK
+> Znode.get()  -- see that the data didn't get set
+nil
+
+> tries = 2
+> function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
+> transact(trier)  -- restart with initial dbase state and try again
+^Ztest starts as	nil
+^Ztest starts as	nil
+> Znode:get()  -- check that the data got set after restart
+value
+
+> Znode:set(nil)
+> transact(function() end)  -- end the transaction normally without restart
+^Ztest starts as	nil
+> Znode:get()  -- check that the data got set
+value
+```
+
+
 
 ### Development aids
 
@@ -98,23 +145,39 @@ subtable (table: 0x56494c7dd5b0):
   x: 10
   y: 20
 > n=ydb.key('^oaks')
-> n:settree({_='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}, {shadow=15,angle=45}})
+> n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
 > n
 ^oaks="treedata"
 ^oaks("1","angle")="30"
 ^oaks("1","shadow")="10"
 ^oaks("2","angle")="30"
 ^oaks("2","shadow")="13"
-^oaks("3","angle")="45"
-^oaks("3","shadow")="15"
 ```
 
-## Developer Notes
+## Installation
 
-### Build & install
+### Requirements
 
-Build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install*
-is the path to your installation of YottaDB that contains its header and shared library files.
+* Lua 5.2 or greater. These bindings were built and tested with Lua 5.3. The Makefile will use
+  your system's lua version by default. To override this, run `make lua=/path/to/lua`.
+* YottaDB 1.34 or later.
+
+**Note:** these bindings do not currently support multi-threaded applications ([more information here](https://github.com/anet-be/mlua#thread-safety)).
+
+### Quickstart
+
+If you do not already have it, install [YottaDB here](https://yottadb.com/product/get-started/). Then install lua-yottadb as follows:
+
+```bash
+git clone https://github.com/anet-be/lua-yottadb.git
+cd lua-yottadb
+make
+sudo make install
+```
+
+### Detail
+
+If more specifics are needed, build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install* is the path to your installation of YottaDB that contains its header and shared library files.
 
 Install the bindings by running `make install` or `sudo make install`, or copy the newly built
 *_yottadb.so* and *yottadb.lua* files to somewhere in your Lua path. You can then use `local
@@ -123,13 +186,13 @@ your YDB environment as usual (i.e. source /path/to/YDB/install/ydb_env_set) bef
 your Lua scripts.
 
 The *Makefile* looks for Lua header files either in your compiler's default include path such
-as /usr/local/include (the lua install default) and also in */usr/include/luaX.Y*. Where *X.Y*
+as /usr/local/include (the lua install default) or in */usr/include/luaX.Y*. Where *X.Y*
 is the lua version installed on your system. If your Lua headers are elsewhere, run
 `make lua_include=/path/to/your/lua/headers`.
 
-### Sample build
+### Example install of yottadb with minimal privileges
 
-The following notes build and install a local copy of YottaDB to *YDB/install* in the current
+The following example builds and installs a local copy of YottaDB to *YDB/install* in the current
 working directory. The only admin privileges required are to change ownership of *gtmsecshr*
 to root, which YottaDB requires to run. (Normally, YottaDB's install script requires admin
 privileges.)

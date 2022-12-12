@@ -239,6 +239,28 @@ function test_delete()
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
 
+  -- test deleting a root node value by setting it to nil
+  _yottadb.set('test10', 'test10value')
+  assert(_yottadb.get('test10') == 'test10value')
+  yottadb.set('test10', nil)
+  ok, e = pcall(_yottadb.get, 'test10')
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+  -- test deleting subnode value by setting it to nil
+  _yottadb.set('test10', {'sub1'}, 'test10value')
+  assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
+  yottadb.set('test10', {'sub1'}, nil)
+  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+  -- test deleting subnode-list value by setting it to nil
+  _yottadb.set('test10', {'sub1'}, 'test10value')
+  assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
+  yottadb.set('test10', 'sub1', nil)
+  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+
   -- Delete tree.
   _yottadb.set('test12', 'test12 node value')
   _yottadb.set('test12', {'sub1'}, 'test12 subnode value')
@@ -1733,12 +1755,12 @@ function test_node()
 
   node = yottadb.node('test3local', 'sub1')
   assert(node:get('test') == 'test')
-  node._ = 'smoketest3local'
+  node.__ = 'smoketest3local'
   assert(rawget(node, '_') == nil)
   assert(node:get() == 'smoketest3local')
 
   node = yottadb.node('test3local', 'sub1')
-  node._ = 'smoketest4local'
+  node.__ = 'smoketest4local'
   assert(rawget(node, '_') == nil)
 
   node = yottadb.node('^nonexistent')
@@ -1763,19 +1785,19 @@ function test_node()
 
   node = yottadb.node('iaddnode')
   node = node + 1
-  assert(tonumber(node._) == 1)
+  assert(tonumber(node.__) == 1)
   node = node - 1
-  assert(tonumber(node._) == 0)
+  assert(tonumber(node.__) == 0)
   node = node + '2'
-  assert(tonumber(node._) == 2)
+  assert(tonumber(node.__) == 2)
   node = node - '3'
-  assert(tonumber(node._) == -1)
+  assert(tonumber(node.__) == -1)
   node = node + 0.5
-  assert(tonumber(node._) == -0.5)
+  assert(tonumber(node.__) == -0.5)
   node = node - -1.5
-  assert(tonumber(node._) == 1)
+  assert(tonumber(node.__) == 1)
   node = node + 'testeroni'
-  assert(tonumber(node._) == 1) -- unchanged
+  assert(tonumber(node.__) == 1) -- unchanged
   ok, e = pcall(function() node = node + {} end)
   assert(not ok)
   assert(e:find('string/number expected'))
@@ -1793,11 +1815,11 @@ function test_node()
   assert(tostring(yottadb.node('test')('sub1')('sub2')) == 'test("sub1","sub2")')
 
   -- Get values.
-  assert(yottadb.node('^test1')._ == 'test1value')
-  assert(yottadb.node('^test2', 'sub1')._ == 'test2value')
-  assert(yottadb.node('^test3')._ == 'test3value1')
-  assert(yottadb.node('^test3', 'sub1')._ == 'test3value2')
-  assert(yottadb.node('^test3', 'sub1', 'sub2')._ == 'test3value3')
+  assert(yottadb.node('^test1').__ == 'test1value')
+  assert(yottadb.node('^test2', 'sub1').__ == 'test2value')
+  assert(yottadb.node('^test3').__ == 'test3value1')
+  assert(yottadb.node('^test3', 'sub1').__ == 'test3value2')
+  assert(yottadb.node('^test3', 'sub1', 'sub2').__ == 'test3value3')
 
   -- Subsarray.
   assert(#yottadb.node('^test3').__subsarray == 0)
@@ -1853,35 +1875,46 @@ end
 
 function test_node_set()
   local testnode = yottadb.node('test4')
-  testnode._ = 'test4value'
+  testnode.__ = 'test4value'
   assert(testnode:get() == 'test4value')
 
   testnode = yottadb.node('test5','sub1')
   testnode:set('test5value')
-  assert(testnode._ == 'test5value')
-  assert(yottadb.node('test5','sub1')._ == 'test5value')
+  assert(testnode.__ == 'test5value')
+  assert(yottadb.node('test5','sub1').__ == 'test5value')
 end
 
 function test_node_delete()
   local testnode = yottadb.node('test6')
   local subnode = testnode('sub1')
-  testnode._ = 'test6value'
-  subnode._ = 'test6 subvalue'
+  testnode.__ = 'test6value'
+  subnode.__ = 'test6 subvalue'
   assert(testnode:get() == 'test6value')
   assert(subnode:get() == 'test6 subvalue')
   testnode:delete_node()
-  assert(not testnode._)
+  assert(not testnode.__)
+  assert(subnode:get() == 'test6 subvalue')
+
+  -- test that set to nil works
+  local testnode = yottadb.node('test6')
+  local subnode = testnode('sub1')
+  testnode.__ = 'test6value'
+  subnode.__ = 'test6 subvalue'
+  assert(testnode:get() == 'test6value')
+  assert(subnode:get() == 'test6 subvalue')
+  testnode.__ = nil
+  assert(not testnode.__)
   assert(subnode:get() == 'test6 subvalue')
 
   testnode = yottadb.node('test7')
   subnode = testnode('sub1')
-  testnode._ = 'test7value'
-  subnode._ = 'test7 subvalue'
+  testnode.__ = 'test7value'
+  subnode.__ = 'test7 subvalue'
   assert(testnode:get() == 'test7value')
   assert(subnode:get() == 'test7 subvalue')
   testnode:delete_tree()
-  assert(not testnode._)
-  assert(not subnode._)
+  assert(not testnode.__)
+  assert(not subnode.__)
   assert(testnode:data() == 0)
 end
 
@@ -1988,7 +2021,7 @@ function test_module_transactions()
   trackerkey:delete_tree()
 
   -- Nested.
-  local nested_set_transaction = yottadb.transaction(yottadb.set)
+  local nested_set_transaction = yottadb.transaction(function(...) yottadb.set(...) end)
   local simple_nested_transaction = yottadb.transaction(function(key1, value1, key2, value2)
     key1:set(value1)
     nested_set_transaction(key2.__varname, key2.__subsarray, value2)
@@ -2009,13 +2042,13 @@ function test_pairs()
   
   local test4 = yottadb.node('^test4')
   local subs = {}
-  local i = 0  for k,subnode in pairs(test4) do  subs[k] = subnode._  i = i+1  end
+  local i = 0  for k,subnode in pairs(test4) do  subs[k] = subnode.__  i = i+1  end
   assert(i == 3)
   assert(subs['sub1'] == 'test4sub1')
   assert(subs['sub2'] == 'test4sub2')
   assert(subs['sub3'] == 'test4sub3')
   subs = {}
-  i = 0  for k,subnode in pairs(test4.sub2) do  subs[k] = subnode._  i = i+1  end
+  i = 0  for k,subnode in pairs(test4.sub2) do  subs[k] = subnode.__  i = i+1  end
   assert(i == 3)
   assert(subs['subsub1'] == 'test4sub2subsub1')
   assert(subs['subsub2'] == 'test4sub2subsub2')
@@ -2037,14 +2070,14 @@ function test_pairs()
   assert(i == 0)
   -- test pairs on a local var 'testPairsTest' that has no value
   local local_node = yottadb.node('testPairsTest')
-  local_node.subfield._ = 'junk'
+  local_node.subfield.__ = 'junk'
   i = 0  for k,subnode in pairs(local_node) do  i = i+1 end
   assert(i == 1)
   i = 0  for k,subnode in pairs(local_node.subfield) do  i = i+1 end
   assert(i == 0)
 end
 
-local inserted_tree = {_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=yottadb.delete}
+local inserted_tree = {__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.delete}
 
 local expected_tree_dump = [=[
 test("sub1")="berwyn"
@@ -2055,17 +2088,17 @@ test("sub1","appearance","hair")="blond"
 test("sub1","weight")="78"]=]
 
 local expected_table_dump = [=[
-  _: handsome
+  __: handsome
   eyes: blue
   hair: blond
 !@#$: junk
-_: berwyn
+__: berwyn
 appearance (table: 0x...):
 weight: 78]=]
 
 local expected_level0_table_dump = [=[
 !@#$: junk
-_: berwyn
+__: berwyn
 appearance: handsome
 weight: 78]=]
 
@@ -2083,14 +2116,14 @@ function test_settree()
   local table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
   assert(table_formatted == expected_table_dump)
 
-  -- check that _get_tree() maxdepth param works
+  -- check that get_tree() maxdepth param works
   t = node:gettree(0)
   actual_table_dump = table_dump.dump(t, nil, nil, true)
   table.sort(actual_table_dump)
   table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
   assert(table_formatted == expected_level0_table_dump)
 
-  -- check that _get_tree() filter param works
+  -- check that get_tree() filter param works
   local function filter(node, key, value, recurse, depth)  if key=='appearance' then value,recurse='ugly',false end  return value, recurse  end
   t = node:gettree(nil, filter)
   actual_table_dump = table_dump.dump(t, nil, nil, true)
@@ -2098,7 +2131,7 @@ function test_settree()
   table_formatted = table.concat(actual_table_dump, '\n'):gsub('table: 0x%x*', 'table: 0x...')
   assert(table_formatted == expected_level0_table_dump:gsub('handsome','ugly'))
 
-  -- check that _set_tree() filter param works
+  -- check that set_tree() filter param works
   local function filter(node, key, value)  if key=='nogarble' then key,value='_nogarble','fixed' end  return key, value  end
   node = yottadb.node('test', 'sub1')
   inserted_tree['!@#$'] = yottadb.DELETE    -- test that delete function works

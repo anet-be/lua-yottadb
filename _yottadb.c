@@ -581,7 +581,7 @@ static int delete_excl(lua_State *L) {
 // _yottadb.incr(varname[, subs][, increment=n])
 // varname: string
 // subs: optional table of subscripts
-// increment: amount to increment by = number, or string-of-a-canonical-number
+// increment: amount to increment by = number, or string-of-a-canonical-number, default=1
 static int incr(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
