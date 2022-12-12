@@ -110,15 +110,13 @@ subtable (table: 0x56494c7dd5b0):
   x: 10
   y: 20
 > n=ydb.key('^oaks')
-> n:settree({_='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}, {shadow=15,angle=45}})
+> n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
 > n
 ^oaks="treedata"
 ^oaks("1","angle")="30"
 ^oaks("1","shadow")="10"
 ^oaks("2","angle")="30"
 ^oaks("2","shadow")="13"
-^oaks("3","angle")="45"
-^oaks("3","shadow")="15"
 ```
 
 ### Calling M from Lua

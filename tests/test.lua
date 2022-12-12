@@ -254,6 +254,28 @@ function test_delete()
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
 
+  -- test deleting a root node value by setting it to nil
+  _yottadb.set('test10', 'test10value')
+  assert(_yottadb.get('test10') == 'test10value')
+  yottadb.set('test10', nil)
+  ok, e = pcall(_yottadb.get, 'test10')
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+  -- test deleting subnode value by setting it to nil
+  _yottadb.set('test10', {'sub1'}, 'test10value')
+  assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
+  yottadb.set('test10', {'sub1'}, nil)
+  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+  -- test deleting subnode-list value by setting it to nil
+  _yottadb.set('test10', {'sub1'}, 'test10value')
+  assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
+  yottadb.set('test10', 'sub1', nil)
+  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
+  assert(not ok)
+  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
+
   -- Delete tree.
   _yottadb.set('test12', 'test12 node value')
   _yottadb.set('test12', {'sub1'}, 'test12 subnode value')

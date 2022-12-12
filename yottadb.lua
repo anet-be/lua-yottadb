@@ -2,7 +2,6 @@
 
 --- Lua-bindings for YottaDB, sponsored by the [University of Antwerp Library](https://www.uantwerpen.be/en/library/)
 -- @module yottadb
-<<<<<<< HEAD
 
 local M = {}
 
