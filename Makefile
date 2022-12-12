@@ -17,7 +17,7 @@ endif
 
 CC=gcc
 CFLAGS=-std=c99 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
-LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,/usr/local/lib/yottadb/r135
+LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist)
 
 _yottadb.so: _yottadb.c
 	$(CC) -g $(CFLAGS) -shared -fPIC -o $@ $< $(LDFLAGS)

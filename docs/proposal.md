@@ -39,9 +39,9 @@ The problems are that:
 In the proposed solution, the code above becomes:
 
 ```lua
-for index, oaktree in pairs(ydb.node('^oaks')) do
-    oaktree.height._ = oaktree.shadow() * math.tan( math.rad(oaktree.angle()) )
-    print(string.format('Oak %s is %.1fm high', index, oaktree.height()))
+for index, oaktree in pairs(trees) do
+     oaktree.height.__ = oaktree.shadow.__ * math.tan( math.rad(oaktree.angle.__) )
+     print( string.format('Oak %s is %.1fm high', index, oaktree.height.__ )
 end
 ```
 
@@ -57,18 +57,18 @@ The proposal has now been implemented and you run the code above and use several
     <th></th>
     <th>Old Syntax</th>
     <th>New Syntax</th>
-    <th>Old Syntax<br />still valid?</th>
+    <th>Old Syntax<br>still valid?</th>
   </tr>
 </thead>
 <tbody>
   <tr>
-    <td>Node object<br />renamed</td>
+    <td>Node object<br>renamed</td>
       <td><pre lang="lua">k = ydb.key('^oaks')</pre></td>
     <td><pre lang="lua">n = ydb.node('^oaks')</pre></td>
     <td>yes</td>
   </tr>
   <tr>
-    <td>Duplicate/cast<br />object</td>
+    <td>Duplicate/cast<br>object</td>
     <td><pre lang="lua">newk = ydb.key(k.varname, k.subsarray)</pre></td>
     <td><pre lang="lua">n = ydb.node(k)</pre></td>
     <td>yes</td>
@@ -84,10 +84,12 @@ k('2')('angle').value=30
 k('3')('shadow').value = 15
 k('3')('angle').value=45<pre></td>
     <td><pre lang="lua">
-n:_settree({ _='treedata',
+n:settree({ __='treedata',
   {shadow=10,angle=30},
   {shadow=13,angle=30},
   {shadow=15,angle=45}})
+<br>
+see also, n:gettree()
 </pre></td>
     <td>yes</td>
   </tr>
@@ -110,7 +112,7 @@ ydb.lock_incr(varname, 'sub1', 'sub2', 3)
     <td>yes</td>
   </tr>
   <tr>
-    <td>Dot notation<br />Index notation</td>
+    <td>Dot notation<br>Index notation</td>
     <td><pre lang="lua">k1('angle')('subangle','1')</pre></td>
     <td><pre lang="lua">n1.angle.subangle[1]</pre></td>
     <td>yes</td>
@@ -142,7 +144,7 @@ ydb.dump(n, sub1)
     <td><pre lang="lua">k1('angle').value = 3</pre></td>
     <td><pre lang="lua">
 n1.angle:set(3)  OR
-n1.angle._ = 3  (4x faster)
+n1.angle.__ = 3  (4x faster)
 </pre></td>
     <td>no</td>
   </tr>
@@ -152,7 +154,7 @@ n1.angle._ = 3  (4x faster)
     <td><pre lang="lua">
 angle = n1.angle:get() OR
 angle = n1.angle:get(default) OR
-angle = n1.angle._  (2.5x faster)
+angle = n1.angle.__  (2.5x faster)
 </pre></td>
     <td>no</td>
   </tr>
@@ -169,6 +171,8 @@ n1:__name()  (15x faster)
 </table>
 
 
+
+
 #### Additional visibility tools
 
 These are supplied in a sample `startup.lua` to enhance the Lua prompt:
@@ -176,7 +180,6 @@ These are supplied in a sample `startup.lua` to enhance the Lua prompt:
 ``` lua
 -- Node dump at Lua prompt
 > n
-^oaks
 ^oaks="treedata"
 ^oaks("1","angle")="30"
 ^oaks("1","shadow")="10"
@@ -212,7 +215,7 @@ The breakdown of changes needed to implement this solution includes the followin
 3. Done: make node accept dot notation `node.subscript1.subscript2` -- this set syntax limitations on subscript name content which means the more general `()` syntax must also be retained.
 4. Skip: tempting to allow `node.subnode = 3`, but that would not work consistently, e.g. node = 3 would set Lua local
 5. Done: create more terse ways of getting/setting dbase node.value:
-   - Done: node._: good for `node._ = 3` since `node = 3` would set lua local `node` rather than dbase value.
+   - Done: `node.__`: better than `node = 3` which would actually set lua local `node` rather than dbase value like we might think.
    - Omit: access node.subscript.value by referencing `node.subscript` or node[subscript] -- but it would only work when there is no node.subscript.sub_subscript in the dbase (in which case it returns new node(subscript). This makes pretty code but turns out to be dangerous because if sub_subscripts are later added to the dbase, code accessing the node.subscript value will stop working. Plus, it only works on node.subscript not on node.
    - Omit: Could make unary operators access the node.value: ~node (lua>=5.3), #node (lua>=5.2), -node (lua>=5.0). This would be pretty, but are not the usual usage of these operators.
 6. Done: Rename node properties to become methods: `.value, .get, .data` become `:get(), :data()`, etc., so they don't clobber common dbase subscript names. (The :method() is distinguished from .method() by the fact that in Lua it supplies self as the first parameter -- thanks, Alain)

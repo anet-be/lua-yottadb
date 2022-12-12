@@ -35,7 +35,7 @@
 <ul>
 <li><a href=""><b>Summary</b></a></li>
 <br/>
-<li><a href="#Functions"><b>Functions</b></a></li>
+<li><a href="#Low_level_functions"><b>Low level functions </b></a></li>
     <li><a href="#data">data (varname[, subsarray])</a></li>
     <li><a href="#delete_node">delete_node (varname[, subsarray])</a></li>
     <li><a href="#delete_tree">delete_tree (varname[, subsarray])</a></li>
@@ -56,12 +56,13 @@
     <li><a href="#zwr2str">zwr2str (s)</a></li>
 <br/>
 <li><a href="#High_level_functions"><b>High level functions </b></a></li>
-    <li><a href="#dump">dump (node, maxlines)</a></li>
+    <li><a href="#dump">dump (node[, subsarray[, maxlines=30]])</a></li>
+    <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
     <li><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></li>
     <li><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></li>
 <br/>
 <li><a href="#Transactions"><b>Transactions </b></a></li>
-    <li><a href="#tp">tp (id, varnames, f[, ...])</a></li>
+    <li><a href="#tp">tp ([id][, varnames], f[, ...])</a></li>
     <li><a href="#transaction">transaction ([id][, varnames], f)</a></li>
     <li><a href="#trestart">trestart ()</a></li>
     <li><a href="#trollback">trollback ()</a></li>
@@ -71,10 +72,9 @@
     <li><a href="#node">node (varname[, subsarray])</a></li>
 <br/>
 <li><a href="#Class_node"><b>Class node </b></a></li>
-    <li><a href="#node:delete_node">node:delete_node ()</a></li>
     <li><a href="#node:delete_tree">node:delete_tree ()</a></li>
     <li><a href="#node:get">node:get ([default])</a></li>
-    <li><a href="#node:incr">node:incr (value)</a></li>
+    <li><a href="#node:incr">node:incr ([increment=1])</a></li>
     <li><a href="#node:lock">node:lock (timeout)</a></li>
     <li><a href="#node:lock_decr">node:lock_decr ()</a></li>
     <li><a href="#node:lock_incr">node:lock_incr (timeout)</a></li>
@@ -89,6 +89,7 @@
 <br/>
 <li><a href="#Class_key"><b>Class key </b></a></li>
     <li><a href="#key.property">key.property</a></li>
+    <li><a href="#key:delete_node">key:delete_node ()</a></li>
     <li><a href="#key:subscript_next">key:subscript_next ([reset])</a></li>
     <li><a href="#key:subscript_previous">key:subscript_previous ([reset])</a></li>
     <li><a href="#key:subscripts">key:subscripts ([reverse])</a></li>
@@ -109,7 +110,7 @@
 </p>
 
 
-<h2><a href="#Functions">Functions</a></h2>
+<h2><a href="#Low_level_functions">Low level functions </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#data">data (varname[, subsarray])</a></td>
@@ -187,7 +188,11 @@
 <h2><a href="#High_level_functions">High level functions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#dump">dump (node, maxlines)</a></td>
+	<td class="name" nowrap><a href="#dump">dump (node[, subsarray[, maxlines=30]])</a></td>
+	<td class="summary">Dump the specified node and its children</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:dump">node:dump ([maxlines=30])</a></td>
 	<td class="summary">Dump the specified node and its children</td>
 	</tr>
 	<tr>
@@ -202,13 +207,12 @@
 <h2><a href="#Transactions">Transactions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#tp">tp (id, varnames, f[, ...])</a></td>
-	<td class="summary">Initiates a transaction.</td>
+	<td class="name" nowrap><a href="#tp">tp ([id][, varnames], f[, ...])</a></td>
+	<td class="summary">Initiates a transaction (low level function).</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#transaction">transaction ([id][, varnames], f)</a></td>
-	<td class="summary">Returns a transaction-safed version of the given function such that it will be called within
-   a yottadb transaction and the dbase globals restored on error or rollback()</td>
+	<td class="summary">Returns a high-level transaction-safed version of the given function.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#trestart">trestart ()</a></td>
@@ -233,10 +237,6 @@
 <h2><a href="#Class_node">Class node </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#node:delete_node">node:delete_node ()</a></td>
-	<td class="summary">Delete database node pointed to by node object</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#node:delete_tree">node:delete_tree ()</a></td>
 	<td class="summary">Delete database tree pointed to by node object</td>
 	</tr>
@@ -245,7 +245,7 @@
 	<td class="summary">Get node's value.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#node:incr">node:incr (value)</a></td>
+	<td class="name" nowrap><a href="#node:incr">node:incr ([increment=1])</a></td>
 	<td class="summary">Increment node's value</td>
 	</tr>
 	<tr>
@@ -295,6 +295,10 @@
 	<td class="summary">Properties of key object</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#key:delete_node">key:delete_node ()</a></td>
+	<td class="summary">Deprecated way to delete database node value pointed to by node object.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#key:subscript_next">key:subscript_next ([reset])</a></td>
 	<td class="summary">Deprecated way to get next subscript.</td>
 	</tr>
@@ -312,7 +316,7 @@
 <br/>
 
 
-    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+    <h2 class="section-header "><a name="Low_level_functions"></a>Low level functions </h2>
 
     <dl class="function">
     <dt>
@@ -474,7 +478,7 @@
         </li>
         <li><span class="parameter">increment</span>
          String or number amount to increment by.
-  Optional only if subsarray is a table.
+  Optional only if subsarray is a table (default=1).
         </li>
     </ul>
 
@@ -677,17 +681,22 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String variable name.
+         string variable name.
         </li>
         <li><span class="parameter">subsarray</span>
          list of subscripts or table {subscripts}.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">value</span>
-         String value to set. If this is a number, it is converted to a string.
+         string/number/nil value to set. If this is a number, it is converted to a string. If it is nil, the value is deleted.
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        value
+    </ol>
 
 
 
@@ -844,7 +853,7 @@
     <dl class="function">
     <dt>
     <a name = "dump"></a>
-    <strong>dump (node, maxlines)</strong>
+    <strong>dump (node[, subsarray[, maxlines=30]])</strong>
     </dt>
     <dd>
     Dump the specified node and its children
@@ -855,8 +864,13 @@
         <li><span class="parameter">node</span>
          Either a node object with <code>...</code> subscripts or glvn varname with <code>...</code> subsarray
         </li>
+        <li><span class="parameter">subsarray</span>
+         Table of subscripts to add to node -- valid only if the second parameter is a table
+         (<em>optional</em>)
+        </li>
         <li><span class="parameter">maxlines</span>
          Maximum number of lines to output before stopping dump
+         (<em>default</em> 30)
         </li>
     </ul>
 
@@ -875,15 +889,41 @@
 
 </dd>
     <dt>
+    <a name = "node:dump"></a>
+    <strong>node:dump ([maxlines=30])</strong>
+    </dt>
+    <dd>
+    Dump the specified node and its children
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">maxlines</span>
+         Maximum number of lines to output before stopping dump
+         (<em>default</em> 30)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        dump as a string
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "node:gettree"></a>
     <strong>node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</strong>
     </dt>
     <dd>
     Fetch database node and subtree and return a Lua table of it.  But be aware that order is not preserved by Lua tables.
  In its simplest form:</p>
-<pre><code>  t = node:gettree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=49})
+<pre><code>  t = node:gettree()
 </code></pre>
-<p>  Note: special field name _ indicates the value of the node itself
+<p>  Note: special field name <code>__</code> indicates the value of the node itself
 
 
     <h3>Parameters:</h3>
@@ -894,15 +934,15 @@
         </li>
         <li><span class="parameter">filter</span>
 
-<p> function(node, node_subscript, value, recurse, depth) or nil</p>
+<p> optional function(node, node_subscript, value, recurse, depth) or nil</p>
 
 <ul>
     <li>if filter is nil, all values are fetched unfiltered</li>
     <li>if filter is a function(node, node_subscript, value, recurse, depth) it is invoked on every subscript
-    to allow it to cast/alter every _value and recurse flag;
+    to allow it to cast/alter every value and recurse flag;
     note that at node root (depth=0), subscript passed to filter is ''</li>
-    <li>it must return the same or an altered _value (string/number/nil) and recurse flag</li>
-    <li>if filter returns a nil _value then _gettree will store nothing in the table for that database value</li>
+    <li>it must return the same or an altered value (string/number/nil) and recurse flag</li>
+    <li>if filter returns a nil value then gettree will store nothing in the table for that database value</li>
     <li>if filter return false recurse flag, it will prevent recursion deeper into that particular subscript</li>
 </ul>
 
@@ -918,8 +958,17 @@
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        Lua table containing data
+    </ol>
 
 
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#node:settree">settree</a>
+    </ul>
 
 
 </dd>
@@ -930,7 +979,7 @@
     <dd>
 
 <p>Populate database from a table.  In its simpest form:</p>
-<pre><code>node:settree({_='berwyn', weight=78, ['!@#$']='junk', appearance={_='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
+<pre><code>node:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
 </code></pre>
 
 
@@ -942,14 +991,14 @@
 <p> is the table to store into the database:</p>
 
 <ul>
-    <li>special field name <code>_</code> sets the value of the node itself, as opposed to a subnode</li>
+    <li>special field name <code>__</code> sets the value of the node itself, as opposed to a subnode</li>
     <li>assign special value <code>yottadb.DELETE</code> to a node to delete the value of the node. You cannot delete the whole subtree</li>
 </ul>
 
         </li>
         <li><span class="parameter">filter</span>
 
-<p> function(node, key, value) or nil</p>
+<p> optional function(node, key, value) or nil</p>
 
 <ul>
     <li>if filter is nil, all values are set unfiltered</li>
@@ -980,29 +1029,37 @@
     <dl class="function">
     <dt>
     <a name = "tp"></a>
-    <strong>tp (id, varnames, f[, ...])</strong>
+    <strong>tp ([id][, varnames], f[, ...])</strong>
     </dt>
     <dd>
-    Initiates a transaction.
+    Initiates a transaction (low level function).
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">id</span>
-        [opt] string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">ydb docs here</a>.
+         optional string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">ydb docs here</a>.
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">varnames</span>
-        [opt] table of local M variable names to restore on transaction restart
+         optional table of local M variable names to restore on transaction restart
    (or <code>{&apos;*&apos;}</code> for all locals) -- restoration does apply to rollback
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">f</span>
-         Function to call. The transaction's affected globals are committed if the function returns nothing or
-   <code>yottadb.YDB_OK</code>; restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called
-   again); or not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors.
-   Note: restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code>
+
+<p> Function to call. The transaction's affected globals are:</p>
+
+<ul>
+    <li>committed if the function returns nothing or <code>yottadb.YDB_OK</code></li>
+    <li>restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called again) <br>
+    Note: restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code></li>
+    <li>not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors out.</li>
+</ul>
+
         </li>
         <li><span class="parameter">...</span>
-         arguments to pass to <code>f</code>.
+         arguments to pass to <code>f</code>
          (<em>optional</em>)
         </li>
     </ul>
@@ -1017,26 +1074,32 @@
     <strong>transaction ([id][, varnames], f)</strong>
     </dt>
     <dd>
-    Returns a transaction-safed version of the given function such that it will be called within
-   a yottadb transaction and the dbase globals restored on error or rollback()
+    Returns a high-level transaction-safed version of the given function.  It will be called within
+   a yottadb transaction and the dbase globals restored on error or trollback()
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">id</span>
-         string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">ydb docs here</a>.
+         optional string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">ydb docs here</a>.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">varnames</span>
-         table of local M variable names to restore on transaction restart
+         optional table of local M variable names to restore on transaction trestart()
    (or <code>{&apos;*&apos;}</code> for all locals) -- restoration does apply to rollback
          (<em>optional</em>)
         </li>
         <li><span class="parameter">f</span>
-         Function to convert. The transaction's affected globals are committed if the function returns nothing
-   or <code>yottadb.YDB_OK</code>; restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be
-   called again); or not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors.
-   Note: restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code>
+
+<p> Function to call. The transaction's affected globals are:</p>
+
+<ul>
+    <li>committed if the function returns nothing or <code>yottadb.YDB_OK</code></li>
+    <li>restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called again) <br>
+    Note: restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code></li>
+    <li>not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors out.</li>
+</ul>
+
         </li>
     </ul>
 
@@ -1091,15 +1154,15 @@
     <strong>key (varname[, subsarray])</strong>
     </dt>
     <dd>
-    Deprecated object that represents a YDB node.  <br/>
+    Deprecated object that represents a YDB node.  <br>
  <a href="yottadb.html#key">key</a> is the same as <a href="yottadb.html#node">node</a> except that it retains
- deprecated property names as follows for backward compatibility: <br/>
-   * <a href="yottadb.html#node:name">name</a> (this node's subscript or variable name) <br/>
-   * <code>value</code> (this node's value in the YottaDB database) <br/>
-   * <a href="yottadb.html#data">data</a> (see data()) <br/>
-   * <a href="yottadb.html#node:has_value">has_value</a> (whether or not this node has a value) <br/>
-   * <a href="yottadb.html#node:has_tree">has_tree</a> (whether or not this node has a subtree) <br/>
- and deprecated defintions of <code>key:subscript()</code>, <code>key:subscript_next()</code>, <code>key:subscript_previous()</code>
+ deprecated property names as follows for backward compatibility: <br>
+   * <a href="yottadb.html#node:name">name</a> (this node's subscript or variable name) <br>
+   * <code>value</code> (this node's value in the YottaDB database) <br>
+   * <a href="yottadb.html#data">data</a> (see data()) <br>
+   * <a href="yottadb.html#node:has_value">has_value</a> (whether or not this node has a value) <br>
+   * <a href="yottadb.html#node:has_tree">has_tree</a> (whether or not this node has a subtree) <br>
+ and deprecated definitions of <code>key:subscript()</code>, <code>key:subscript_next()</code>, <code>key:subscript_previous()</code>. <br>
 
 
     <h3>Parameters:</h3>
@@ -1116,7 +1179,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        node
+        node object with metatable yottadb._key
     </ol>
 
 
@@ -1135,7 +1198,7 @@
     <dd>
     Creates and returns a new YottaDB node object.
  This node has all of the class methods defined below.
- Calling the returned node with a string value returns a new node further subscripted by string.
+ Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
 
 
     <h3>Parameters:</h3>
@@ -1144,7 +1207,7 @@
          String variable name.
         </li>
         <li><span class="parameter">subsarray</span>
-         list of subscripts or table {subscripts}
+         list of subscripts or a table of {subscripts}
          (<em>optional</em>)
         </li>
     </ul>
@@ -1152,7 +1215,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        node
+        node object with metatable yottadb._node
     </ol>
 
 
@@ -1160,7 +1223,11 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)</pre></li>
-        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)(<span class="string">'subscript'</span>)</pre></li>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)(<span class="string">'sub1'</span>, <span class="string">'sub2'</span>)</pre></li>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>, <span class="string">'sub1'</span>, <span class="string">'sub2'</span>)</pre></li>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>, {<span class="string">'sub1'</span>, <span class="string">'sub2'</span>})</pre></li>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>).sub1.sub2</pre></li>
+        <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'</span>][<span class="string">'sub2'</span>]</pre></li>
     </ul>
 
 </dd>
@@ -1168,32 +1235,16 @@
     <h2 class="section-header has-description"><a name="Class_node"></a>Class node </h2>
 
           <div class="section-description">
-          Object that represents a YDB node.  </br></br>
+          Object that represents a YDB node.  <br><br>
  <strong>Note:</strong> Although <code>node:method()</code> is pretty, it is slow. If you are concerned about speed,
  use <code>node:__method()</code> which is equivalent but 15x faster.
  This is because Lua expands <code>node:method()</code> to <code>node.method(node)</code>, so we have to create
  intermediate subnode called <code>node.method</code> and then when it gets called with <code>()</code> we discover
- that its first parameter is of type <a href="yottadb.html#node">node</a> so that we know to invoke <code>node.__method()</code> instead
+ that its first parameter is of type <a href="yottadb.html#node">node</a> so that we know to invoke <code>node.__method()</code> instead.
+ Because of <code>__</code> method access, node names starting with <code>__</code> are not accessable using dot
+ notation: use mynode('__nodename') notation instead.
           </div>
     <dl class="function">
-    <dt>
-    <a name = "node:delete_node"></a>
-    <strong>node:delete_node ()</strong>
-    </dt>
-    <dd>
-    Delete database node pointed to by node object
-
-
-
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="yottadb.html#delete_node">delete_node</a>
-    </ul>
-
-
-</dd>
     <dt>
     <a name = "node:delete_tree"></a>
     <strong>node:delete_tree ()</strong>
@@ -1218,7 +1269,7 @@
     </dt>
     <dd>
     Get node's value.
- Equivalent to (but 2.5x slower than) <code>node._</code>
+ Equivalent to (but 2.5x slower than) <code>node.__</code>
 
 
     <h3>Parameters:</h3>
@@ -1229,6 +1280,11 @@
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        value of the node
+    </ol>
 
 
     <h3>See also:</h3>
@@ -1240,7 +1296,7 @@
 </dd>
     <dt>
     <a name = "node:incr"></a>
-    <strong>node:incr (value)</strong>
+    <strong>node:incr ([increment=1])</strong>
     </dt>
     <dd>
     Increment node's value
@@ -1248,13 +1304,17 @@
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">value</span>
-
-
-
+        <li><span class="parameter">increment</span>
+         Amount to increment by (negative to decrement)
+         (<em>default</em> 1)
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        the new value
+    </ol>
 
 
     <h3>See also:</h3>
@@ -1340,15 +1400,13 @@
     </dt>
     <dd>
     Set node's value.
- Equivalent to (but 4x slower than) <code>node._ = x</code>
+ Equivalent to (but 4x slower than) <code>node.__ = x</code>
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">value</span>
-
-
-
+         New value or nil to delete node
         </li>
     </ul>
 
@@ -1478,12 +1536,31 @@
          equivalent to <code>node:has_tree()</code>
         </li>
         <li><span class="parameter">value</span>
-         equivalent to <code>node._</code>
+         equivalent to <code>node.__</code>
         </li>
     </ul>
 
 
 
+
+
+</dd>
+    <dt>
+    <a name = "key:delete_node"></a>
+    <strong>key:delete_node ()</strong>
+    </dt>
+    <dd>
+    Deprecated way to delete database node value pointed to by node object.  Prefer node:set(nil)
+
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#delete_node">delete_node</a></li>
+         <li><a href="yottadb.html#set">set</a></li>
+    </ul>
 
 
 </dd>
@@ -1591,7 +1668,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-12-09 21:29:48 </i>
+<i style="float:right;">Last updated 2022-12-13 11:36:09 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

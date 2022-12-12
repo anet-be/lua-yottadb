@@ -8,7 +8,7 @@ table.dump = require('table_dump').dump
 -- hook print()
 local original_print = print
 function print(...)
-  if select('#', ...)==0 or type(...) ~= 'table' then  return original_print(...)  end
+  if select('#', ...)~=1 or type(...) ~= 'table' then  return original_print(...)  end
   local first = ...
   original_print(...)
   original_print(table.dump(first, 30))
@@ -28,11 +28,7 @@ else
   -- hook print()
   local original_print = print
   function print(...)
-    if select('#', ...)==0 or type(...) ~= 'table' then  return original_print(...)  end
-    local first = ...
-    -- check if it's a dbase node object
-    if not first._varname then  return original_print(...)  end
-    original_print(tostring(first), select(2, ...))
-    original_print(ydb.dump(first, {}, 30))
+    if select('#', ...)~=1 or getmetatable(...) ~= ydb._node then  return original_print(...)  end
+    original_print(ydb.dump(..., {}, 30))
   end
 end
