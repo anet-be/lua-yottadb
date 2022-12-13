@@ -9,9 +9,8 @@ table.dump = require('table_dump').dump
 local original_print = print
 function print(...)
   if select('#', ...)~=1 or type(...) ~= 'table' then  return original_print(...)  end
-  local first = ...
   original_print(...)
-  original_print(table.dump(first, 30))
+  original_print(table.dump(..., 30))
 end
 
 -- ~~~ YDB access

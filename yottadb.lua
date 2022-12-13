@@ -15,8 +15,6 @@ _string_number = {string=true, number=true}
 _string_number_nil = {string=true, number=true, ['nil']=true}
 _table_string_number = {table=true, string=true, number=true}
 
-_string_number = {string=true, number=true}
-_string_number_nil = {string=true, number=true, ['nil']=true}
 
 -- The following 5 lines at the start of this file makes this the first-documented
 -- section after 'Functions', but the blank lines in between are necessary
@@ -608,13 +606,14 @@ end
 node.___new = M.node
 
 --- Object that represents a YDB node. <br><br>
--- **Note:** Although `node:method()` is pretty, it is slow. If you are concerned about speed,
+-- **Note1:** Although the syntax `node:method()` is pretty, it is slow. If you are concerned about speed,
 -- use `node:__method()` which is equivalent but 15x faster.
 -- This is because Lua expands `node:method()` to `node.method(node)`, so we have to create
 -- intermediate subnode called `node.method` and then when it gets called with `()` we discover
 -- that its first parameter is of type `node` so that we know to invoke `node.__method()` instead.
 -- Because of `__` method access, node names starting with `__` are not accessable using dot
--- notation: use mynode('__nodename') notation instead.
+-- notation: use mynode('__nodename') notation instead. <br><br>
+-- **Note2:** Several standard Lua operators work on nodes including + - = pairs() and tostring()
 -- @type node
 
 --- Get node's value.
@@ -776,13 +775,17 @@ function node:has_value()  return node.data(self)%2 == 1  end
 --- Return true if the node has a tree; otherwise false
 function node:has_tree()  return node.data(self)   >= 10  end
 
--- Makes pairs() work - iterate over the child subscripts, values of given node
--- If you need to iterate in reverse, use node:pairs(reverse) instead of pairs(node)
--- @usage: for subscript,subnode in pairs(node) do ...
+--- Makes pairs() work - iterate over the child subscripts, values of given node.
+-- You can use either `pairs(node)` or `node:pairs()`.
+-- If you need to iterate in reverse, use node:pairs(reverse) instead of pairs(node).
+-- Note that pairs() order is guaranteed to equal the M collation sequence order
+--   (even though pairs() order is not normally guaranteed for Lua tables).
+--   This means that pairs() is a reasonable substitute for ipairs which is not implemented.
+-- @function node:pairs
+-- @within Class node
+-- @param[opt] reverse Boolean flag iterates in reverse if true
+-- @usage for subscript,subnode in pairs(node) do ...
 --     where subnode is a node/key object. If you need its value use node._
--- @Note2 that pairs() order is guaranteed to equal the M collation sequence order
---   (even though pairs() order is not normally guaranteed for Lua tables)
---   This means that pairs() is a reasonable substitute for ipairs -- see ipairs() below
 function node:__pairs(reverse)
   local sub_iter, state, start = node.subscripts(self, reverse)
   local function iterator()
@@ -794,18 +797,23 @@ function node:__pairs(reverse)
 end
 node.pairs = node.__pairs
 
--- ipairs() -- not implemented
--- Instead use pairs() as follows:
---    for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
--- (this works since standard M sequence is: numbers first -- unless your db specified another collation)
--- Alternative, to ensure integer keys: use a numeric loop as follows:
---    for i=1,1/0 do   v=node[i].__  if not v break then   <do_your_stuff with k,v>   end
--- Reason:
---  Lua >=5.3 implements ipairs to invoke __index()
+--- Not implemented - use pairs() instead.
+-- See alternative usage below.
+-- The reason this is not implemented is that since
+--  Lua >=5.3 implements ipairs via __index().
 --  This would mean that __index() would have to treat integer subscript lookup specially, so:
---    node['abc']  => produces a new node so that node.abc.def.ghi works
---    but node[1]  => would have to produce value node(1).__ so ipairs() works
---  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation
+--
+-- * although `node['abc']`  => produces a new node so that `node.abc.def.ghi` works
+-- * `node[1]`  => would have to produce value `node(1).__ so ipairs()` works <br>
+--  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation.
+--
+-- Alternatives using pairs() are as follows:
+-- @function __ipairs
+-- @within Class node
+-- @usage for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
+-- (this works since standard M order is numbers first -- unless your db specified another collation)
+-- @usage `for i=1,1/0 do   v=node[i].__  if not v break then   <do_your_stuff with k,v>   end`
+-- (alternative that ensures integer keys)
 
 -- Creates and returns a new node with the given subscript(s) ... added.
 -- If no subscripts supplied, return the value of the node
