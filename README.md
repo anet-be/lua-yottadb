@@ -96,43 +96,6 @@ Oak 2 is 7.5m high
 Oak 3 is 15.0m high
 ```
 
-### Development aids
-
-You can enhance the Lua prompt to display database nodes when you type them. This project supplies a `startup.lua` file to make this happen. Simply set your environment variable `export LUA_INIT="require'startup'"` or `require 'startup'` from your own `start.lua` file. For this to work you will need two files from this project in your LUA_PATH: `startup.lua` and `table_dump.lua`.
-
-Now Lua tables and database nodes display their contents when you type them at the Lua REPL prompt:
-
-```lua
-> t={test=5, subtable={x=10, y=20}}
-> t
-test: 5
-subtable (table: 0x56494c7dd5b0):
-  x: 10
-  y: 20
-> n=ydb.key('^oaks')
-> n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
-> n
-^oaks="treedata"
-^oaks("1","angle")="30"
-^oaks("1","shadow")="10"
-^oaks("2","angle")="30"
-^oaks("2","shadow")="13"
-```
-
-### Calling M from Lua
-
-The Lua wrapper for M is designed for both speed and simple usage:
-
-```lua
--- Invoke M routines from Lua
--- (ensure arithmetic.m path is in ydb_routines environment variable so ydb can find it)
-> arithmetic = ydb.require('arithmetic.ci')
-> arithmetic.add_verbose("Sum is:", 2, 3)
-Sum is: 53
-> arithmetic.sub(5,7)
--2
-```
-
 ### Database transactions are also available:
 
 ```lua
@@ -163,6 +126,24 @@ value
 > Znode:get()  -- check that the data got set
 value
 ```
+
+### Calling M from Lua
+
+The Lua wrapper for M is designed for both speed and simple usage:
+
+```lua
+-- Invoke M routines from Lua
+-- (ensure arithmetic.m path is in ydb_routines environment variable so ydb can find it)
+> arithmetic = ydb.require('arithmetic.ci')
+> arithmetic.add_verbose("Sum is:", 2, 3)
+Sum is: 53
+> arithmetic.sub(5,7)
+-2
+```
+
+Lua parameter types are converted to ydb types automatically according to the call-in table arithmetic.ci. If you need speed, avoid returning or outputting strings from M as they require the speed hit of memory allocation.
+
+Note that the filename passed to ydb.require() may be either a call-in table filename or (if the string contains a `:`) a string specifying actual call-in routines. Review file `arithmetic.ci` and the [ydb manual](https://docs.yottadb.com/ProgrammersGuide/extrout.html#call-in-table). for details about call-in table specification.
 
 ### Development aids
 
