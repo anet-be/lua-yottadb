@@ -232,13 +232,6 @@ function test_delete()
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
 
-  _yottadb.set('test10', {'sub1'}, 'test10value')
-  assert(_yottadb.get('test10', {'sub1'}) == 'test10value')
-  yottadb.delete_node('test10', 'sub1')
-  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_LVUNDEF)
-
   -- test deleting a root node value by setting it to nil
   _yottadb.set('test10', 'test10value')
   assert(_yottadb.get('test10') == 'test10value')
@@ -1891,17 +1884,6 @@ function test_node_delete()
   subnode.__ = 'test6 subvalue'
   assert(testnode:get() == 'test6value')
   assert(subnode:get() == 'test6 subvalue')
-  testnode:delete_node()
-  assert(not testnode.__)
-  assert(subnode:get() == 'test6 subvalue')
-
-  -- test that set to nil works
-  local testnode = yottadb.node('test6')
-  local subnode = testnode('sub1')
-  testnode.__ = 'test6value'
-  subnode.__ = 'test6 subvalue'
-  assert(testnode:get() == 'test6value')
-  assert(subnode:get() == 'test6 subvalue')
   testnode.__ = nil
   assert(not testnode.__)
   assert(subnode:get() == 'test6 subvalue')
@@ -2142,7 +2124,7 @@ function test_settree()
   assert(tree_dump2 == expected_tree_dump2)
 end
 
-function test_readme()
+function test_deprecated_readme()
   -- Create key objects for conveniently accessing and manipulating database nodes.
   local key1 = yottadb.key('^hello')
   assert(key1.name == '^hello')

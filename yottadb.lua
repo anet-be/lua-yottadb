@@ -704,7 +704,7 @@ function node:settree(tbl, filter, _seen)
       local child = k=='__' and self or self(k)
       if v==M.DELETE then
         assert(not _seen[tostring(child)], string.format("Node already updated (when trying to delete node %s)", child, v), 2)
-        node.delete_node(child)
+        node.set(child, nil)
       elseif type(v) == 'table' then
         node.settree(child, v, filter, _seen)  -- recurse into sub-table
       else
