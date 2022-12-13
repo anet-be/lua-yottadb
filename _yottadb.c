@@ -7,6 +7,7 @@
 #include <libyottadb.h>
 #include <lua.h>
 #include <lauxlib.h>
+#include "_yottadb.h"
 
 #ifndef NDEBUG
 #define RECORD_STACK_TOP(l) int orig_stack_top = lua_gettop(l);
@@ -674,5 +675,6 @@ int luaopen__yottadb(lua_State *L) {
   for (const_Reg *c = &yottadb_constants[0]; c->name; c++) {
     lua_pushnumber(L, c->value), lua_setfield(L, -2, c->name);
   }
+  lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
   return 1;
 }

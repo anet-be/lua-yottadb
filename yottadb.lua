@@ -9,6 +9,7 @@ module('yottadb')]]
 
 local _yottadb = require('_yottadb')
 for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
+M._VERSION = _yottadb._VERSION
 
 -- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
