@@ -78,8 +78,6 @@ hello("cowboy")="Howdy partner!"
 nil
 ```
 
-
-
 ### Doing something useful
 
 Let's use Lua to calculate the height of 3 oak trees, based on their shadow length and the angle of the sun. Method `settree()` is a handy way to enter literal data into the database from a Lua table constructor:
@@ -129,8 +127,6 @@ value
 value
 ```
 
-
-
 ### Development aids
 
 You can enhance the Lua prompt to display database nodes when you type them. This project supplies a `startup.lua` file to make this happen. Simply set your environment variable `export LUA_INIT="require'startup'"` or `require 'startup'` from your own `start.lua` file. For this to work you will need two files from this project in your LUA_PATH: `startup.lua` and `table_dump.lua`.
@@ -153,6 +149,10 @@ subtable (table: 0x56494c7dd5b0):
 ^oaks("2","angle")="30"
 ^oaks("2","shadow")="13"
 ```
+
+## Version History
+
+Version history is documented in [changes.md](docs/changes.md).
 
 ## Installation
 
