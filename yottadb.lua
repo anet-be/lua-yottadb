@@ -578,7 +578,6 @@ function M.node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(subsarray, 'table/nil', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-<<<<<<< HEAD
   -- make it possible to inherit from node or key objects
   local mt = getmetatable(varname)
   if mt==node or mt==key then
@@ -589,8 +588,6 @@ function M.node(varname, ...)
     subsarray = new_subsarray
   end
   assert_type(varname, 'string', 1)
-=======
->>>>>>> b723b7d (Support integer subscripts auto-converted to strings in all db access functions)
 
   local subsarray_copy = {}
   if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = tostring(sub) end end
