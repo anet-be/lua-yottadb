@@ -2,10 +2,9 @@
 
 --- Lua-bindings for YottaDB, sponsored by the [University of Antwerp Library](https://www.uantwerpen.be/en/library/)
 -- @module yottadb
+<<<<<<< HEAD
 
 local M = {}
-
-local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
 
 local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
 
