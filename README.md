@@ -1,8 +1,8 @@
 # Overview
 
-This project provides a shared library that lets the Lua language access a YottaDB database. Soon, it will also provide the means to invoke M routines from Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
+This project provides a shared library that lets the Lua language access a YottaDB database and the means to invoke M routines from within Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
 
-This project was sponsored by the [Library of UAntwerpen][https://www.uantwerpen.be/en/library/]. These bindings were developed with reference to YottaDB's Python bindings.
+This project was sponsored by the [Library of UAntwerpen](https://www.uantwerpen.be/en/library/). These bindings were developed with reference to YottaDB's Python bindings.
 
 ## Intro by example
 

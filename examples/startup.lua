@@ -1,6 +1,6 @@
 -- ~~~ Make REPL display tables when you just type: table<Enter>
 
--- this file is copyright Berwyn Hoyt 2022, released under the MIT licence: https://opensource.org/licenses/MIT
+-- this file is public domain
 
 
 table.dump = require('table_dump').dump

@@ -1,6 +1,8 @@
 -- Copyright 2021-2022 Mitchell and Berwyn Hoyt. See LICENSE.
 
---- Lua-bindings for YottaDB, sponsored by the [University of Antwerp Library](https://www.uantwerpen.be/en/library/)
+--- Lua-bindings for YottaDB, sponsored by the [University of Antwerp Library](https://www.uantwerpen.be/en/library/).
+-- See [README](https://github.com/anet-be/lua-yottadb/blob/master/README.md) for a quick introduction with examples. <br>
+-- Home page: [https://github.com/anet-be/lua-yottadb/](https://github.com/anet-be/lua-yottadb/)
 -- @module yottadb
 
 local M = {}
@@ -495,6 +497,7 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 --    Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
 -- * not committed if the function returns `yottadb.YDB_TP_ROLLBACK` or errors out.
 -- @param[opt] ... arguments to pass to `f`
+-- @see transaction
 function M.tp(id, varnames, f, ...)
   -- fill in missing inputs if necessary
   local args={id, varnames, f, ...}
@@ -557,19 +560,17 @@ function M.trollback()
   error(_yottadb.message(_yottadb.YDB_TP_ROLLBACK))
 end
 
---- Node object creation
--- @section
-
-
 -- ~~~ Functions to handle calling M routines from Lua ~~~
+
+--- High level functions
+-- @section
 
 local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
 
----
--- Parse call-in ydb type of the typical form: IO:ydb_int_t*
--- return a string of type info packed into a string matching callins.h struct type_spec
--- spaces must be removed before calling this function
--- assert any errors
+--- Parse ydb call-in type of the typical form: IO:ydb_int_t*.
+-- Spaces must be removed before calling this function.
+-- Asserts any errors.
+-- @return a string of type info packed into a string matching callins.h struct type_spec
 local function pack_type(type_str, param_id)
   local pattern = '(I?)(O?):([%w_]+%*?)(.*)'
   local i, o, typ, alloc_str = type_str:match(pattern)
@@ -587,12 +588,11 @@ local function pack_type(type_str, param_id)
   return string.pack('!=TBBBXT', preallocation, type_enum, input, output)
 end
 
---- 
--- Parse one line of ydb call-in file format
--- Return routine name and a function to invoke it
--- Return routine_name, func
--- On return nil, nil if the line did not contain a function prototype
--- Assert any errors
+--- Parse one-line string of the ydb call-in file format.
+-- Assert any errors.
+-- @return C name for the M routine
+-- @return a function to invoke the M routine
+-- @return or return nil, nil if the line did not contain a function prototype
 local function parse_prototype(line, ci_handle)
   line = line:gsub('//.*', '')  -- remove comments
   -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
@@ -621,26 +621,29 @@ local function parse_prototype(line, ci_handle)
   return routine_name, func
 end
 
----
--- Import Mumps routines from ydb 'callin' file or string
--- prototypes is a list of lines in the format of ydb 'callin' files per ydb_ci()
--- if the string contains ':' it is considered to be the call-in specification itself
---    otherwise it is treated as a filename of a call-in file to be opened and read
-function M.require(prototypes)
+--- Import Mumps routines as Lua functions specified in ydb 'call-in' file. <br>
+-- See example call-in file [arithmetic.ci](https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci)
+-- and matching M file [arithmetic.m](https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m)
+-- @param Mprototypes is a list of lines in the format of ydb 'callin' files per ydb_ci().
+-- If the string contains `:` it is considered to be the call-in specification itself;
+-- otherwise it is treated as the filename of a call-in file to be opened and read.
+-- @return a table of functions analogous to a Lua module.
+-- Each function in the table will call an M routine specified in `Mprototypes`.
+function M.require(Mprototypes)
   local routines = {}
-  if not prototypes:find(':', 1, true) then
+  if not Mprototypes:find(':', 1, true) then
     -- read call-in file
-    routines.__ci_filename_original = prototypes
-    local f = assert(io.open(prototypes))
-    prototypes = f:read('a')
+    routines.__ci_filename_original = Mprototypes
+    local f = assert(io.open(Mprototypes))
+    Mprototypes = f:read('a')
     f:close()
   end
   -- preprocess call-in types that can't be used with wrapper caller ydb_call_variadic_plist_func()
-  prototypes = prototypes:gsub('ydb_double_t%s*%*?', 'ydb_double_t*')
-  prototypes = prototypes:gsub('ydb_float_t%s*%*?', 'ydb_float_t*')
-  prototypes = prototypes:gsub('ydb_int_t%s*%*?', 'ydb_int_t*')
+  Mprototypes = Mprototypes:gsub('ydb_double_t%s*%*?', 'ydb_double_t*')
+  Mprototypes = Mprototypes:gsub('ydb_float_t%s*%*?', 'ydb_float_t*')
+  Mprototypes = Mprototypes:gsub('ydb_int_t%s*%*?', 'ydb_int_t*')
   -- remove preallocation specs for ydb which (as of r1.34) can only process them in call-out tables
-  local ydb_prototypes = prototypes:gsub('%b[]', '')
+  local ydb_prototypes = Mprototypes:gsub('%b[]', '')
   -- write call-in file and load into ydb
   local filename = os.tmpname()
   local f = assert(io.open(filename, 'w'), string.format("cannot open temporary call-in file %q", filename))
@@ -651,7 +654,7 @@ function M.require(prototypes)
   routines.__ci_table_handle = ci_handle
   -- process ci-table ourselves to get routine names and types to cast
   local line_no = 0
-  for line in prototypes:gmatch('([^\n]*)\n?') do
+  for line in Mprototypes:gmatch('([^\n]*)\n?') do
     line_no = line_no+1
     local ok, routine, func = pcall(parse_prototype, line, ci_handle)
     assert(ok, string.format("%s: call-in table line %d", routine, line_no))
@@ -661,6 +664,9 @@ function M.require(prototypes)
   return routines
 end
 
+
+--- Node object creation
+-- @section
 
 --- Creates and returns a new YottaDB node object.
 -- This node has all of the class methods defined below.
@@ -1138,11 +1144,11 @@ end
 -- @section
 
 --- Dump the specified node and its children
--- @usage: ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
 -- @param node Either a node object with `...` subscripts or glvn varname with `...` subsarray
 -- @param[opt] subsarray Table of subscripts to add to node -- valid only if the second parameter is a table
 -- @param[opt=30] maxlines Maximum number of lines to output before stopping dump
 -- @return dump as a string
+-- @usage ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
 function M.dump(node, ...)
   -- check whether maxlines was supplied as last parameter
   local subs, maxlines

@@ -1,6 +1,6 @@
 -- Copyright 2021-2022 Mitchell. See LICENSE.
 
-table_dump = require('table_dump')
+table_dump = require('examples.table_dump')
 
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
@@ -2124,8 +2124,6 @@ function test_settree()
   assert(tree_dump2 == expected_tree_dump2)
 end
 
-<<<<<<< HEAD
-=======
 ci_table1 = [=[
   add: ydb_long_t* add^unittest(I:ydb_int_t, I:ydb_uint_t, I:ydb_long_t, I:ydb_ulong_t, I:ydb_int_t*, I:ydb_uint_t*, I:ydb_long_t*, I:ydb_ulong_t*)
   add_floats: ydb_long_t* add^unittest(I:ydb_int_t, I:ydb_uint_t, I:ydb_long_t, I:ydb_ulong_t, I:ydb_int_t*, I:ydb_uint_t*, I:ydb_float_t*, I:ydb_double_t*)
@@ -2136,7 +2134,7 @@ ci_table1 = [=[
 ]=]
 
 function test_callin()
-  ydb.set("$ZROUTINES", "tests")
+  yottadb.set("$ZROUTINES", "tests")
   local table1 = yottadb.require(ci_table1)
   assert(table1.add(1,2,3,4,5,6,7,8) == 36)
   assert(table1.add(1,2147483648,3,4,5,6,7,8) == 1+2147483648+3+4+5+6+7+8)
@@ -2156,7 +2154,6 @@ function test_callin()
 --  assert(out1=='a\0b\0c' and out2=='abcdefghijklmnopqrstuvwxyz' and out3=='a')
 end
 
->>>>>>> berwynhoyt-invoke_M
 function test_deprecated_readme()
   -- Create key objects for conveniently accessing and manipulating database nodes.
   local key1 = yottadb.key('^hello')

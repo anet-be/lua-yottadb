@@ -49,4 +49,4 @@ install: yottadb.lua _yottadb.so
 	install yottadb.lua $(DESTDIR)$(share_dir)
 
 test: _yottadb.so
-	source $(ydb_dist)/ydb_env_set && $(lua) -l_yottadb -lyottadb tests/test.lua $(TESTS)
+	source $(ydb_dist)/ydb_env_set && LUA_INIT= $(lua) -l_yottadb -lyottadb tests/test.lua $(TESTS)
