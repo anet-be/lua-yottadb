@@ -9,8 +9,7 @@
 #include <lauxlib.h>
 
 #include "callins.h"
-
-int ydb_assert(lua_State *L, int code);
+#include "yottadb.h"
 
 // Make table of constants for export to Lua
 const const_Reg yottadb_types[] = {

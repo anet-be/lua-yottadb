@@ -11,7 +11,7 @@
 #include "compat-5.3.h"
 
 #include <lauxlib.h>
-#include "_yottadb.h"
+#include "yottadb.h"
 
 #include "compat-5.3.h" // Enable build against Lua older than 5.3
 #include "callins.h"

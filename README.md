@@ -129,14 +129,15 @@ value
 
 ### Calling M from Lua
 
-The Lua wrapper for M is designed for both speed and simple usage:
+The Lua wrapper for M is designed for both speed and simple usage. The following call M routines from [arithmetic.m](examples/arithmetic.m):
 
 ```lua
--- Invoke M routines from Lua
--- (ensure arithmetic.m path is in ydb_routines environment variable so ydb can find it)
-> arithmetic = ydb.require('arithmetic.ci')
+$ export ydb_routines=examples   # put arithmetic.m into ydb path
+$ lua
+> arithmetic = ydb.require('examples/arithmetic.ci')
 > arithmetic.add_verbose("Sum is:", 2, 3)
-Sum is: 53
+Sum is: 5
+Sum is: 5
 > arithmetic.sub(5,7)
 -2
 ```
@@ -147,7 +148,7 @@ Note that the filename passed to ydb.require() may be either a call-in table fil
 
 ### Development aids
 
-You can enhance the Lua prompt to display database nodes when you type them. This project supplies a `startup.lua` file to make this happen. Simply set your environment variable `export LUA_INIT="require'startup'"` or `require 'startup'` from your own `start.lua` file. For this to work you will need two files from this project in your LUA_PATH: `startup.lua` and `table_dump.lua`.
+You can enhance the Lua prompt to display database nodes when you type them. This project supplies a [`startup.lua`](examples/startup.lua) file to make this happen. Simply set your environment variable `export LUA_INIT="require 'startup'"` or, alternatively, do your own `require 'startup'` from your own `start.lua` file. For this to work you will need two files from the examples directory of this project to be in your LUA_PATH: [`startup.lua`](examples/startup.lua) and [`table_dump.lua`](examples/table_dump.lua).
 
 Now Lua tables and database nodes display their contents when you type them at the Lua REPL prompt:
 

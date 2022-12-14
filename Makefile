@@ -24,7 +24,7 @@ CC=gcc
 CFLAGS=-g -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist)
 
-_yottadb.so: yottadb.c callins.c exports.map
+_yottadb.so: yottadb.c yottadb.h callins.c callins.h exports.map
 	$(CC) yottadb.c callins.c  -o $@  -shared -Wl,--version-script=exports.map $(CFLAGS) $(LDFLAGS)
 %: %.c
 	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)
@@ -41,7 +41,7 @@ clean:
 	rm -f docs/*.css docs/*.html
 
 PREFIX=/usr/local
-share_dir=$(PREFIX)/share/lua/
+share_dir=$(PREFIX)/share/lua/$(lua_version)
 lib_dir=$(PREFIX)/lib/lua/$(lua_version)
 install: yottadb.lua _yottadb.so
 	install -d $(DESTDIR)$(share_dir) $(DESTDIR)$(lib_dir)
