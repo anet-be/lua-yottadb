@@ -6,7 +6,7 @@ This project was sponsored by the [Library of UAntwerpen](https://www.uantwerpen
 
 ## Intro by example
 
-Full usage is documented [here](docs/yottadb.html), but here are some examples to get you started.
+There is [full documentation here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), but here are some examples to get you started.
 
 Let's tinker with setting some database values in different ways:
 
@@ -40,7 +40,7 @@ Hello World
 hello("chinese")	你好世界!
 ```
 
-We can also use other [methods of the node object](docs/yottadb.html#Class_node) like `incr() name() has_value() has_key() lock_incr()`:
+We can also use other [methods of the node object](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#Class_node) like `incr() name() has_value() has_key() lock_incr()`:
 
 ```lua
 > n2.ranches:incr(2)  -- increment
@@ -51,7 +51,7 @@ cowboy
 cowboy
 ```
 
-(Note: lua-yottadb is able to distinguish n:method(n) from subnode creation n.method. See [details here](docs/yottadb.html#Class_node).)
+(Note: lua-yottadb is able to distinguish n:method(n) from subnode creation n.method. See [details here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#Class_node).)
 
 Now, let's try `dump` to see what we've got so far:
 
