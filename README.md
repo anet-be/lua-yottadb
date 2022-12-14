@@ -129,7 +129,7 @@ value
 
 ### Calling M from Lua
 
-The Lua wrapper for M is designed for both speed and simple usage. The following call M routines from [arithmetic.m](examples/arithmetic.m):
+The Lua wrapper for M is designed for both speed and simple usage. The following calls M routines from [arithmetic.m](examples/arithmetic.m):
 
 ```lua
 $ export ydb_routines=examples   # put arithmetic.m into ydb path
