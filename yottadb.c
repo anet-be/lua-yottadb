@@ -13,6 +13,9 @@
 #include <lauxlib.h>
 #include "_yottadb.h"
 
+#include "compat-5.3.h" // Enable build against Lua older than 5.3
+#include "callins.h"
+
 #ifndef NDEBUG
 #define RECORD_STACK_TOP(l) int orig_stack_top = lua_gettop(l);
 #define ASSERT_STACK_TOP(l) assert(lua_gettop(l) == orig_stack_top)
@@ -49,7 +52,7 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
   ASSERT_STACK_TOP(L);
 }
 
-static const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
+const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
 // Returns an error message to match the supplied YDB error code
 // _yottadb.message(code)
@@ -81,11 +84,11 @@ static int message(lua_State *L) {
 }
 
 // Raises a Lua error with the YDB error code supplied
-static int error(lua_State *L, int code) {
+int ydb_assert(lua_State *L, int code) {
+  if (code == YDB_OK) return code;
   lua_pushinteger(L, code);
   message(L);
   lua_error(L);
-  return 0;
 }
 
 // Call ydb_init()
@@ -120,9 +123,7 @@ static int get(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -142,10 +143,7 @@ static int set(lua_State *L) {
   size_t length;
   value.buf_addr = luaL_optlstring(L, !lua_isstring(L, 2) ? 3 : 2, "", &length);
   value.len_used = value.len_alloc = (unsigned int)length;
-  int status = ydb_set_s(&varname, subs_used, subsarray, &value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_set_s(&varname, subs_used, subsarray, &value));
   return 0;
 }
 
@@ -161,10 +159,7 @@ static int delete(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   int deltype = luaL_optinteger(L, lua_type(L, 2) != LUA_TNUMBER ? 3 : 2, YDB_DEL_NODE);
-  int status = ydb_delete_s(&varname, subs_used, subsarray, deltype);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_delete_s(&varname, subs_used, subsarray, deltype));
   return 0;
 }
 
@@ -183,10 +178,7 @@ static int data(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   unsigned int ret_value;
-  int status = ydb_data_s(&varname, subs_used, subsarray, &ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_data_s(&varname, subs_used, subsarray, &ret_value));
   lua_pushinteger(L, ret_value);
   return 1;
 }
@@ -204,10 +196,7 @@ static int lock_incr(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   unsigned long long timeout = luaL_optnumber(L, lua_type(L, 2) != LUA_TNUMBER ? 3 : 2, 0) * 1000000000;
-  int status = ydb_lock_incr_s(timeout, &varname, subs_used, subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_lock_incr_s(timeout, &varname, subs_used, subsarray));
   return 0;
 }
 
@@ -221,10 +210,7 @@ static int lock_decr(lua_State *L) {
   get_key_info(L, &varname, &subs_used);
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
-  int status = ydb_lock_decr_s(&varname, subs_used, subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_lock_decr_s(&varname, subs_used, subsarray));
   return 0;
 }
 
@@ -315,8 +301,8 @@ static int tp(lua_State *L) {
   if (status == LUA_YDB_ERR) {
     lua_getfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error");
     lua_error(L);
-  } else if (status != YDB_OK && status != YDB_TP_RESTART) {
-    error(L, status);
+  } else if (status != YDB_TP_RESTART) {
+    ydb_assert(L, status);
   }
   return 0;
 }
@@ -344,9 +330,7 @@ static int subscript_next(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -373,9 +357,7 @@ static int subscript_previous(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -421,9 +403,7 @@ static int node_next(lua_State *L) {
     YDB_FREE_BUFFER(&ret_subsarray[i]);
   }
   free(ret_subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -469,9 +449,7 @@ static int node_previous(lua_State *L) {
     YDB_FREE_BUFFER(&ret_subsarray[i]);
   }
   free(ret_subsarray);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -546,9 +524,7 @@ static int lock(lua_State *L) {
       YDB_FREE_BUFFER(&keys[i].subsarray[j]);
     }
   }
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 0;
 }
 
@@ -569,10 +545,7 @@ static int delete_excl(lua_State *L) {
     YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &varnames[i], unused);
     lua_pop(L, 1); // varname
   }
-  int status = ydb_delete_excl_s(namecount, varnames);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, ydb_delete_excl_s(namecount, varnames));
   return 0;
 }
 
@@ -601,9 +574,7 @@ static int incr(lua_State *L) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -626,9 +597,7 @@ static int str2zwr(lua_State *L) {
     lua_pushlstring(L, zwr.buf_addr, zwr.len_used);
   }
   YDB_FREE_BUFFER(&zwr);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
 
@@ -650,11 +619,10 @@ static int zwr2str(lua_State *L) {
     lua_pushlstring(L, str.buf_addr, str.len_used);
   }
   YDB_FREE_BUFFER(&str);
-  if (status != YDB_OK) {
-    error(L, status);
-  }
+  ydb_assert(L, status);
   return 1;
 }
+
 
 static const luaL_Reg yottadb_functions[] = {
   {"get", get},
@@ -674,14 +642,12 @@ static const luaL_Reg yottadb_functions[] = {
   {"str2zwr", str2zwr},
   {"zwr2str", zwr2str},
   {"message", message},
+  {"ci_tab_open", ci_tab_open},
+  {"cip", cip},
+  {"register_routine", register_routine},
   {"init", _ydb_init},
   {NULL, NULL}
 };
-
-typedef struct const_Reg {
-  const char *name;
-  int value;
-} const_Reg;
 
 static const const_Reg yottadb_constants[] = {
   {"YDB_ERR_GVUNDEF", YDB_ERR_GVUNDEF},
@@ -719,5 +685,10 @@ int luaopen__yottadb(lua_State *L) {
     lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
   }
   lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
+  lua_createtable(L, 0, 20);
+  for (const_Reg *c = &yottadb_types[0]; c->name; c++) {
+    lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
+  }
+  lua_setfield(L, -2, "YDB_CI_PARAM_TYPES");
   return 1;
 }

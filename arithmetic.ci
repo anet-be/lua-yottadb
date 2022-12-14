@@ -1,0 +1,27 @@
+// lua-yottadb: example call-in table to call mumps
+
+// Format of lines in this file:
+//<c-call-name> : <ret-type> <label-ref> ([<direction>:<param-type>,...])
+// where <ret-type> may only be:
+//      void
+//      [unsigned]integer: (ydb_[u]long_t*)
+//      null-terminated string: ydb_char_t*
+//      string: ydb_string_t* [preallocation]
+//      string: ydb_buffer_t* [preallocation] (buffer only supported from YDB 1.36)
+//        (preallocation is the amount of bytes Lua should allocate for output strings from M)
+// where <param_type> may be:
+//      [unsigned]int32: ydb_[u]int_t (32-bit),
+//      [unsigned]int64: ydb_[u]int64_t (64-bit platforms only)
+//      [unsigned]long: ydb_[u]long_t (32 or 64-bit depending on platform)
+//      floating point: ydb_float_t, ydb_double_t
+//      plus the types allowed by <ret-type> above
+//      each type may optionally be followed by '*' for pointer type (required for O and IO direction)
+// where <direction> may be: I, O, or IO (in/out to M; outputs may only be pointer types)
+// Note1: ydb_string_t* as an IO cannot output more characters than where input
+//      but ydb_char_t* and ydb_buffer_t* can.
+// Note2: ydb_char_t* as an output/retval is discouraged as preallocation is always max (1MB) to prevent overruns
+// Note3: ydb_char_t* cannot return data containing '\0' characters since Lua cannot determine its end
+
+add_verbose: ydb_string_t*[1024] addVerbose^arithmetic(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
+add: ydb_long_t* add^arithmetic(I:ydb_long_t, I:ydb_long_t)
+sub: ydb_long_t* sub^arithmetic(I:ydb_long_t, I:ydb_long_t)

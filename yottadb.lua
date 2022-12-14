@@ -560,6 +560,108 @@ end
 --- Node object creation
 -- @section
 
+
+-- ~~~ Functions to handle calling M routines from Lua ~~~
+
+local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
+
+---
+-- Parse call-in ydb type of the typical form: IO:ydb_int_t*
+-- return a string of type info packed into a string matching callins.h struct type_spec
+-- spaces must be removed before calling this function
+-- assert any errors
+local function pack_type(type_str, param_id)
+  local pattern = '(I?)(O?):([%w_]+%*?)(.*)'
+  local i, o, typ, alloc_str = type_str:match(pattern)
+  assert(typ, string.format("ydb parameter %s not found in YDB call-in table specification %q", param_id, type_str))
+  local type_enum = param_type_enums[typ]
+  assert(type_enum, string.format("unknown parameter %s '%s' in YDB call-in table specification", param_id, typ))
+  local input = i:upper()=='I' and 1 or 0
+  local output = o:upper()=='O' and 1 or 0
+  assert(output==0 or typ:find('*', 1, true), string.format("call-in output parameter %s '%s' must be a pointer type", param_id, typ))
+  local alloc_str = alloc_str:match('%[(%d+)%]')
+  local preallocation = tonumber(alloc_str) or -1
+  assert(preallocation==-1 or type_enum>0x80, string.format("preallocation is meaningless for number type call-in parameter %s: '%s'", param_id, typ))
+  assert(preallocation==-1 or output==1, string.format("preallocation is pointless for input-only parameter %s: '%s'", param_id, typ))
+  assert(preallocation==-1 or typ~='ydb_char_t*', string.format("preallocation for ydb_char_t* output parameter %s is forced to [%d] to prevent overruns", param_id, _yottadb.YDB_MAX_STR))
+  return string.pack('!=TBBBXT', preallocation, type_enum, input, output)
+end
+
+--- 
+-- Parse one line of ydb call-in file format
+-- Return routine name and a function to invoke it
+-- Return routine_name, func
+-- On return nil, nil if the line did not contain a function prototype
+-- Assert any errors
+local function parse_prototype(line, ci_handle)
+  line = line:gsub('//.*', '')  -- remove comments
+  -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
+  local pattern = '%s*([^:%s]+)%s*:%s*([%w_]+%s*%*?[%s%[%]%d]*)%s*([^(%s]+)%s*%(([^)]*)%)'
+  local routine_name, ret_type, entrypoint, params = line:match(pattern)
+  if not routine_name then  return nil, nil  end
+  assert(params, string.format("Line does not match YDB call-in table specification: '%s'", line))
+  local ret_type = ret_type:gsub('%s*', '') -- remove spaces
+  local param_info = {pack_type(ret_type=='void' and ':void' or 'O:'..ret_type, "'return_value'")}
+  -- now iterate each parameter
+  params = params:gsub('%s*', '') -- remove spaces
+  local i = 0
+  for type_str in params:gmatch('([^,%)]+)') do
+    i = i+1
+    table.insert(param_info, pack_type(type_str, i))
+  end
+  local param_info_string = table.concat(param_info)
+  local routine_name_handle = _yottadb.register_routine(routine_name, entrypoint)
+  -- create a table used by func() below to reference the routine_name string to ensure it isn't garbage collected
+  -- because it's used by C userdata in 'routine_name_handle', but and not referenced by Lua func()
+  local routine_name_table = {routine_name_handle, routine_name}
+  -- create the actual wrapper function
+  local function func(...)
+    return _yottadb.cip(ci_handle, routine_name_table[1], param_info_string, ...)
+  end
+  return routine_name, func
+end
+
+---
+-- Import Mumps routines from ydb 'callin' file or string
+-- prototypes is a list of lines in the format of ydb 'callin' files per ydb_ci()
+-- if the string contains ':' it is considered to be the call-in specification itself
+--    otherwise it is treated as a filename of a call-in file to be opened and read
+function M.require(prototypes)
+  local routines = {}
+  if not prototypes:find(':', 1, true) then
+    -- read call-in file
+    routines.__ci_filename_original = prototypes
+    local f = assert(io.open(prototypes))
+    prototypes = f:read('a')
+    f:close()
+  end
+  -- preprocess call-in types that can't be used with wrapper caller ydb_call_variadic_plist_func()
+  prototypes = prototypes:gsub('ydb_double_t%s*%*?', 'ydb_double_t*')
+  prototypes = prototypes:gsub('ydb_float_t%s*%*?', 'ydb_float_t*')
+  prototypes = prototypes:gsub('ydb_int_t%s*%*?', 'ydb_int_t*')
+  -- remove preallocation specs for ydb which (as of r1.34) can only process them in call-out tables
+  local ydb_prototypes = prototypes:gsub('%b[]', '')
+  -- write call-in file and load into ydb
+  local filename = os.tmpname()
+  local f = assert(io.open(filename, 'w'), string.format("cannot open temporary call-in file %q", filename))
+  assert(f:write(ydb_prototypes), string.format("cannot write to temporary call-in file %q", filename))
+  f:close()
+  local ci_handle = _yottadb.ci_tab_open(filename)
+  routines.__ci_filename = filename
+  routines.__ci_table_handle = ci_handle
+  -- process ci-table ourselves to get routine names and types to cast
+  local line_no = 0
+  for line in prototypes:gmatch('([^\n]*)\n?') do
+    line_no = line_no+1
+    local ok, routine, func = pcall(parse_prototype, line, ci_handle)
+    assert(ok, string.format("%s: call-in table line %d", routine, line_no))
+    if routine then  routines[routine] = func end
+  end
+  os.remove(filename) -- cleanup
+  return routines
+end
+
+
 --- Creates and returns a new YottaDB node object.
 -- This node has all of the class methods defined below.
 -- Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.

@@ -20,7 +20,9 @@ local success
 success, ydb = pcall(require, 'yottadb')
 
 if not success then
-  print("startup.lua: cannot load yottadb module -- ydb functions will be unavailable; require 'yottadb' to debug")
+  -- write any warning to stderr instead of stdout lest it clobber Lua being used to generate output
+  io.stderr:write(ydb.."\n")
+  io.stderr:write("startup.lua: cannot load yottadb module -- ydb functions will be unavailable\n")
   ydb=nil
 else
   -- make REPL prompt also print dbase nodes

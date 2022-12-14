@@ -8,7 +8,7 @@
 
 M = {}
 
--- Return a recursive dump table `tbl` (or iterator), with indentation
+-- Return a recursive dump table (or iterator) `tbl`, with indentation
 --   Return as both a string (first) and a table of lines (second).
 --   The table version can be useful for sorting and comparison.
 -- `maxlines` (optional) defaults to 30 unless specified
@@ -43,7 +43,7 @@ function M.dump(tbl, maxlines, maxdepth, as_table, _indent, _seen, _output)
       local line = (funcinfo.linedefined == -1) and '' or (' line ' .. funcinfo.linedefined)
       table.insert(_output, formatting .. ': <function ' .. tostring(funcinfo.name) .. ' from ' .. funcinfo.source .. line .. '>')
     else
-      table.insert(_output, formatting .. ': ' .. tostring(v))
+      table.insert(_output, formatting .. ': ' .. string.format('%q', v))
     end
   end
   if _indent==0 then

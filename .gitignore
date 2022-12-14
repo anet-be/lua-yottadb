@@ -1,7 +1,7 @@
 *.so
+*.o
 t.lua
 t?.lua
-*.orig
 
 docs/styles
 docs/topics

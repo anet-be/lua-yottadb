@@ -4,7 +4,12 @@ SHELL:=/bin/bash
 
 lua:=lua
 lua_version:=$(shell $(lua) -e 'print(string.match(_VERSION, " ([0-9]+[.][0-9]+)"))')
-lua_include=/usr/include/lua$(lua_version)
+#Find an existing Lua include path
+ifneq (,$(wildcard /usr/include/lua/))
+	lua_include:=/usr/include/lua$(lua_version)
+else
+	lua_include:=/usr/local/share/lua/$(lua_version)
+endif
 
 #Ensure tests use our own build of yottadb, not the system one
 export LUA_PATH:=./?.lua;$(LUA_PATH);;
@@ -16,14 +21,15 @@ ydb_dist=$(shell pwd)/YDB/install
 endif
 
 CC=gcc
-CFLAGS=-std=c99 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
+CFLAGS=-g -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist)
 
-_yottadb.so: _yottadb.c
-	$(CC) -g $(CFLAGS) -shared -fPIC -o $@ $< $(LDFLAGS)
-
+_yottadb.so: yottadb.c callins.c exports.map
+	$(CC) yottadb.c callins.c  -o $@  -shared -Wl,--version-script=exports.map $(CFLAGS) $(LDFLAGS)
 %: %.c
-	$(CC) -g $(CFLAGS) -o $@ $< $(LDFLAGS)
+	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)
+%.o: %.c
+	$(CC) $<  -o $@  -c $(CFLAGS) $(LDFLAGS)
 
 # Requires: 'luarocks install ldoc'
 docs: docs/yottadb.html
@@ -31,7 +37,7 @@ docs/yottadb.html: *.lua *.c config.ld docs/config/*
 	ldoc .
 
 clean:
-	rm -f *.so
+	rm -f *.so *.o
 	rm -f docs/*.css docs/*.html
 
 PREFIX=/usr/local

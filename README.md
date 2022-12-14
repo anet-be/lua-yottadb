@@ -96,7 +96,7 @@ Oak 2 is 7.5m high
 Oak 3 is 15.0m high
 ```
 
-Database transactions are also available:
+### Database transactions are also available:
 
 ```lua
 > Znode = ydb.node('^Ztest')
@@ -126,6 +126,24 @@ value
 > Znode:get()  -- check that the data got set
 value
 ```
+
+### Calling M from Lua
+
+The Lua wrapper for M is designed for both speed and simple usage:
+
+```lua
+-- Invoke M routines from Lua
+-- (ensure arithmetic.m path is in ydb_routines environment variable so ydb can find it)
+> arithmetic = ydb.require('arithmetic.ci')
+> arithmetic.add_verbose("Sum is:", 2, 3)
+Sum is: 53
+> arithmetic.sub(5,7)
+-2
+```
+
+Lua parameter types are converted to ydb types automatically according to the call-in table arithmetic.ci. If you need speed, avoid returning or outputting strings from M as they require the speed hit of memory allocation.
+
+Note that the filename passed to ydb.require() may be either a call-in table filename or (if the string contains a `:`) a string specifying actual call-in routines. Review file `arithmetic.ci` and the [ydb manual](https://docs.yottadb.com/ProgrammersGuide/extrout.html#call-in-table). for details about call-in table specification.
 
 ### Development aids
 
