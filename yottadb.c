@@ -28,6 +28,8 @@ static const int LUA_YDB_BUFSIZ = 128;
 static const int LUA_YDB_SUBSIZ = 16;
 static const int LUA_YDB_ERR = -200000000; // arbitrary
 
+int unused; // used as junk dumping space
+
 #define YDB_REALLOC_BUFFER(BUFFERP) { \
   int len_used = (BUFFERP)->len_used; \
   YDB_FREE_BUFFER(BUFFERP); \
@@ -89,6 +91,7 @@ int ydb_assert(lua_State *L, int code) {
   lua_pushinteger(L, code);
   message(L);
   lua_error(L);
+  return 0;
 }
 
 // Call ydb_init()
@@ -278,7 +281,6 @@ static int tp(lua_State *L) {
     for (int i = 0; i < namecount; i++) {
       lua_geti(L, npos, i + 1);
       YDB_MALLOC_BUFFER(&varnames[i], luaL_len(L, -1));
-      int unused;
       YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &varnames[i], unused);
       lua_pop(L, 1); // varname
     }
@@ -494,7 +496,6 @@ static int lock(lua_State *L) {
     lua_geti(L, 1, i + 1);
     lua_geti(L, -1, 1);
     YDB_MALLOC_BUFFER(&keys[i].varname, luaL_len(L, -1));
-    int unused;
     YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &keys[i].varname, unused);
     lua_pop(L, 1); // varname
     if (luaL_len(L, -1) > 1) {
@@ -541,7 +542,6 @@ static int delete_excl(lua_State *L) {
   for (int i = 0; i < namecount; i++) {
     lua_geti(L, 1, i + 1);
     YDB_MALLOC_BUFFER(&varnames[i], luaL_len(L, -1));
-    int unused;
     YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &varnames[i], unused);
     lua_pop(L, 1); // varname
   }

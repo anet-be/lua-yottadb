@@ -98,7 +98,6 @@ static void typeerror_cleanup(lua_State* L, metadata *M, int argi, char *expecte
 // The wrapper in yottadb.lua will auto-convert the call-in table to these ideals.
 static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, metadata *M) {
   ydb_param param;
-  int isint;
   int success;
   ydb_type_id type = ydb_type->type;
   char isinput = ydb_type->input;

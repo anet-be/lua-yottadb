@@ -21,7 +21,7 @@ ydb_dist=$(shell pwd)/YDB/install
 endif
 
 CC=gcc
-CFLAGS=-g -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -Wno-discarded-qualifiers
+CFLAGS=-g -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -pedantic -Wall -Wno-unknown-pragmas -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist)
 
 _yottadb.so: yottadb.c yottadb.h callins.c callins.h exports.map
