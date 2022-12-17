@@ -8,8 +8,8 @@
 #include <lua.h>
 #include <lauxlib.h>
 
-#include "callins.h"
 #include "yottadb.h"
+#include "callins.h"
 
 // Make table of constants for export to Lua
 const const_Reg yottadb_types[] = {

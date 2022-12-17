@@ -1,6 +1,10 @@
 -- Copyright 2021-2022 Mitchell. See LICENSE.
 
-table_dump = require('examples.table_dump')
+local table_dump = require('examples.table_dump')
+local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
+
+local lua_exec = 'lua'
+local i=0  while arg[i] do lua_exec = arg[i]  i=i-1  end
 
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
@@ -28,11 +32,11 @@ local SIMPLE_DATA = {
   {{'^test4', {'sub3', 'subsub2'}}, 'test4sub3subsub2'},
   {{'^test4', {'sub3', 'subsub3'}}, 'test4sub3subsub3'},
   {{'^test6', {'sub6', 'subsub6'}}, 'test6value'},
-  {{'^test7', {'sub1\x80',}}, 'test7value'},
+  {{'^test7', {'sub1\128',}}, 'test7value'},
   -- Test subscripts with non-UTF-8 data
-  {{'^test7', {'sub2\x80', 'sub7'}}, 'test7sub2value'},
-  {{'^test7', {'sub3\x80', 'sub7'}}, 'test7sub3value'},
-  {{'^test7', {'sub4\x80', 'sub7'}}, 'test7sub4value'},
+  {{'^test7', {'sub2\128', 'sub7'}}, 'test7sub2value'},
+  {{'^test7', {'sub3\128', 'sub7'}}, 'test7sub3value'},
+  {{'^test7', {'sub4\128', 'sub7'}}, 'test7sub4value'},
 }
 
 -- Remove database temporary directories
@@ -44,6 +48,10 @@ end
 local Zgbldir   -- our current database file
 local function env_execute(command)
   local env = string.format('ydb_gbldir="%s"', Zgbldir)
+  if lua_version <= 5.1 then
+    -- simulate behaviour of os.execute in later Lua versions
+    return true, 'exit', os.execute('env '..env..' '..command)/256
+  end
   return os.execute('env '..env..' '..command)
 end
 
@@ -115,7 +123,7 @@ local function validate_varname_inputs(f)
   ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT))
   assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
 
-  ok, e = pcall(f, '\x80')
+  ok, e = pcall(f, '\128')
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_INVVARNAME)
 end
@@ -322,7 +330,7 @@ function test_lock_incr()
   _yottadb.lock_decr('test2', {'sub1'})
 
   -- Timeout, varname only.
-  background_execute('tests/lock.lua "^test1"')
+  background_execute(lua_exec .. ' tests/lock.lua "^test1"')
   os.execute('sleep 0.1')
   local t1 = os.time()
   local ok, e = pcall(_yottadb.lock_incr, '^test1', 1)
@@ -331,7 +339,7 @@ function test_lock_incr()
   local t2 = os.time()
   assert(t2 - t1 >= 1)
   -- Varname and subscript
-  background_execute('tests/lock.lua "^test2" "sub1"')
+  background_execute(lua_exec .. ' tests/lock.lua "^test2" "sub1"')
   os.execute('sleep 0.1')
   t1 = os.time()
   ok, e = pcall(_yottadb.lock_incr, '^test2', {'sub1'}, 1)
@@ -342,7 +350,7 @@ function test_lock_incr()
   os.execute('sleep 1')
 
   -- No timeout.
-  background_execute('tests/lock.lua "^test2" "sub1"')
+  background_execute(lua_exec .. ' tests/lock.lua "^test2" "sub1"')
   os.execute('sleep 2')
   local t1 = os.clock()
   _yottadb.lock_incr('^test2', {'sub1'})
@@ -357,19 +365,19 @@ function test_lock_incr()
   }
   _yottadb.lock(keys)
   for i = 1, #keys do
-    local cmd = string.format('tests/lock.lua "%s" %s', keys[i][1], table.concat(keys[i][2] or {}, ' '))
-    local _, _, status = env_execute(cmd)
+    local cmd = string.format('%s tests/lock.lua "%s" %s', lua_exec, keys[i][1], table.concat(keys[i][2] or {}, ' '))
+    local _1, _2, status = env_execute(cmd)
     assert(status == 1)
   end
   _yottadb.lock() -- release all locks
   for i = 1, #keys do
-    local cmd = string.format('tests/lock.lua "%s" %s', keys[i][1], table.concat(keys[i][2] or {}, ' '))
+    local cmd = string.format('%s tests/lock.lua "%s" %s', lua_exec, keys[i][1], table.concat(keys[i][2] or {}, ' '))
     local _, _, status = env_execute(cmd)
     assert(status == 0)
   end
 
   -- Test lock being blocked.
-  background_execute('tests/lock.lua "^test1"')
+  background_execute(lua_exec .. ' tests/lock.lua "^test1"')
   os.execute('sleep 0.1')
   local ok, e = pcall(_yottadb.lock, {{"^test1"}})
   assert(not ok)
@@ -387,7 +395,7 @@ end
 
 function test_lock()
   -- Validate inputs.
-  local ok, e = pcall(_yottadb.lock, {{'\x80'}})
+  local ok, e = pcall(_yottadb.lock, {{'\128'}})
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_INVVARNAME)
 
@@ -816,11 +824,11 @@ function test_subscript_next()
     assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
 
   -- Test subscripts that include a non-UTF8 character
-  assert(_yottadb.subscript_next('^test7', {''}) == 'sub1\x80')
-  assert(_yottadb.subscript_next('^test7', {'sub1\x80'}) == 'sub2\x80')
-  assert(_yottadb.subscript_next('^test7', {'sub2\x80'}) == 'sub3\x80')
-  assert(_yottadb.subscript_next('^test7', {'sub3\x80'}) == 'sub4\x80')
-  ok, e = pcall(_yottadb.subscript_next, '^test7', {'sub4\x80'})
+  assert(_yottadb.subscript_next('^test7', {''}) == 'sub1\128')
+  assert(_yottadb.subscript_next('^test7', {'sub1\128'}) == 'sub2\128')
+  assert(_yottadb.subscript_next('^test7', {'sub2\128'}) == 'sub3\128')
+  assert(_yottadb.subscript_next('^test7', {'sub3\128'}) == 'sub4\128')
+  ok, e = pcall(_yottadb.subscript_next, '^test7', {'sub4\128'})
   assert(not ok)
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
 
@@ -979,7 +987,7 @@ function test_delete_excl()
 end
 
 -- Initial, increment, result.
-local increment_tests = {
+local increment_tests_all = {  -- tests for all Lua versions
   -- string input tests
   {'0', '1', '1'},
   {'0', '1E1', '10'},
@@ -1025,10 +1033,6 @@ local increment_tests = {
   {'999999999998888888', 1111111, string.rep('9', 18)},
   {'999999999990000000', 9999999, string.rep('9', 18)},
   {'1', -1234567, '-1234566'},
-  {'1', 999999999999999998, string.rep('9', 18)}, -- 18 significant digits
-  {'0', 999999999999999999, string.rep('9', 18)}, -- 18 significant digits
-  {'-1', -999999999999999998, '-' .. string.rep('9', 18)}, -- 18 significant digits
-  {'0', -999999999999999999, '-' .. string.rep('9', 18)}, -- 18 significant digits
   {'0', 10000000000000000000000000000000000000000000000, '1' .. string.rep('0', 46)}, -- max int magnitude
   {'0', -10000000000000000000000000000000000000000000000, '-1' .. string.rep('0', 46)}, -- max int magnitude
   -- float input tests
@@ -1042,6 +1046,13 @@ local increment_tests = {
   {'0', -0.1e47, '-1' .. string.rep('0', 46)}, -- min float magnitude
 }
 
+local increment_tests_5_3 = { -- tests for Lua >=5.3
+  {'1', 999999999999999998, string.rep('9', 18)}, -- 18 significant digits
+  {'0', 999999999999999999, string.rep('9', 18)}, -- 18 significant digits
+  {'-1', -999999999999999998, '-' .. string.rep('9', 18)}, -- 18 significant digits
+  {'0', -999999999999999999, '-' .. string.rep('9', 18)}, -- 18 significant digits
+}
+
 local increment_keys = {
   {'testincrparametrized'},
   {'^testincrparametrized'},
@@ -1053,11 +1064,11 @@ local function number_to_string(number)
   return type(number) ~= 'string' and tostring(number):upper():gsub('%+', '') or number
 end
 
-function test_incr()
+function _test_incr(increment_tests, name)
   for i = 1, #increment_keys do
     local key = increment_keys[i]
     for j = 1, #increment_tests do
-      setup('test_incr_' .. tostring(i) .. '_' .. tostring(j))
+      setup('test_incr_' .. name .. tostring(i) .. '_' .. tostring(j))
       local t = increment_tests[j]
       local initial, increment, result = t[1], t[2], t[3]
       local args = {table.unpack(key)}
@@ -1086,6 +1097,13 @@ function test_incr()
   assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NUMOFLOW)
 end
 
+function test_incr()
+  _test_incr(increment_tests_all, 'all')
+  if lua_version >= 5.3 then
+    _test_incr(increment_tests_5_3, '5.3')
+  end
+end
+
 function test_incr_errors()
   _yottadb.set('testincrparametrized', '0')
   local ok, e = pcall(_yottadb.incr, 'testincrparametrized', '1E47')
@@ -1101,8 +1119,8 @@ local str2zwr_tests = {
   {"X\0ABC", '"X"_$C(0)_"ABC"', '"X"_$C(0)_"ABC"'},
   {
     "你好世界",
-    '"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xb8"_$C(150)_"\xe7"_$C(149,140)',
-    '"\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xb8\x96\xe7\x95\x8c"',
+    '"\228\189\160\229\165\189\228\184"_$C(150)_"\231"_$C(149,140)',
+    '"\228\189\160\229\165\189\228\184\150\231\149\140"',
   },
 }
 
@@ -1274,7 +1292,7 @@ function test_module_nodes()
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_VARNAME2LONG)
 
-  ok, e = pcall(yottadb.nodes('\x80'))
+  ok, e = pcall(yottadb.nodes('\128'))
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 end
@@ -1301,11 +1319,11 @@ function test_module_subscript_next()
   assert(yottadb.subscript_next('^test4', {'sub1', 'subsub2'}) == 'subsub3')
   assert(not yottadb.subscript_next('^test4', {'sub3', 'subsub3'}))
 
-  assert(yottadb.subscript_next('^test7', {''}) == 'sub1\x80')
-  assert(yottadb.subscript_next('^test7', {'sub1\x80'}) == 'sub2\x80')
-  assert(yottadb.subscript_next('^test7', {'sub2\x80'}) == 'sub3\x80')
-  assert(yottadb.subscript_next('^test7', {'sub3\x80'}) == 'sub4\x80')
-  assert(not yottadb.subscript_next('^test7', {'sub4\x80'}))
+  assert(yottadb.subscript_next('^test7', {''}) == 'sub1\128')
+  assert(yottadb.subscript_next('^test7', {'sub1\128'}) == 'sub2\128')
+  assert(yottadb.subscript_next('^test7', {'sub2\128'}) == 'sub3\128')
+  assert(yottadb.subscript_next('^test7', {'sub3\128'}) == 'sub4\128')
+  assert(not yottadb.subscript_next('^test7', {'sub4\128'}))
 end
 
 function test_module_subscript_previous()
@@ -1331,11 +1349,11 @@ function test_module_subscript_previous()
   assert(yottadb.subscript_previous('^test4', {'sub1', 'subsub3'}) == 'subsub2')
   assert(not yottadb.subscript_previous('^test4', {'sub3', 'subsub1'}))
 
-  assert(yottadb.subscript_previous('^test7', {''}) == 'sub4\x80')
-  assert(yottadb.subscript_previous('^test7', {'sub4\x80'}) == 'sub3\x80')
-  assert(yottadb.subscript_previous('^test7', {'sub3\x80'}) == 'sub2\x80')
-  assert(yottadb.subscript_previous('^test7', {'sub2\x80'}) == 'sub1\x80')
-  assert(not yottadb.subscript_previous('^test7', {'sub1\x80'}))
+  assert(yottadb.subscript_previous('^test7', {''}) == 'sub4\128')
+  assert(yottadb.subscript_previous('^test7', {'sub4\128'}) == 'sub3\128')
+  assert(yottadb.subscript_previous('^test7', {'sub3\128'}) == 'sub2\128')
+  assert(yottadb.subscript_previous('^test7', {'sub2\128'}) == 'sub1\128')
+  assert(not yottadb.subscript_previous('^test7', {'sub1\128'}))
 end
 
 function test_module_subscripts()
@@ -1391,7 +1409,7 @@ function test_module_subscripts()
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_VARNAME2LONG)
 
-  ok, e = pcall(yottadb.subscripts('\x80'))
+  ok, e = pcall(yottadb.subscripts('\128'))
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 end
@@ -1412,10 +1430,10 @@ function test_module_all_nodes()
 
   -- Reverse subscripts.
   local sdata = {
-    {{"^test7", {"sub1\x80",}}, "test7value"},
-    {{"^test7", {"sub2\x80", "sub7"}}, "test7sub2value"},
-    {{"^test7", {"sub3\x80", "sub7"}}, "test7sub3value"},
-    {{"^test7", {"sub4\x80", "sub7"}}, "test7sub4value"},
+    {{"^test7", {"sub1\128",}}, "test7value"},
+    {{"^test7", {"sub2\128", "sub7"}}, "test7sub2value"},
+    {{"^test7", {"sub3\128", "sub7"}}, "test7sub3value"},
+    {{"^test7", {"sub4\128", "sub7"}}, "test7sub4value"},
     {{"^test6", {"sub6", "subsub6"}}, "test6value"},
     {{"^test4", {}}, "test4"},
     {{"^test4", {"sub1",}}, "test4sub1"},
@@ -1588,7 +1606,7 @@ function test_key()
   assert(yottadb.key('^test3').data == yottadb.YDB_DATA_VALUE_DESC)
   assert(yottadb.key('^test3')('sub1').data == yottadb.YDB_DATA_VALUE_DESC)
   assert(yottadb.key('^test3')('sub1')('sub2').data == yottadb.YDB_DATA_VALUE_NODESC)
-  ok, e = pcall(function() return yottadb.key('\x80').data end)
+  ok, e = pcall(function() return yottadb.key('\128').data end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 
@@ -1600,7 +1618,7 @@ function test_key()
   assert(yottadb.key('^test3').has_value)
   assert(yottadb.key('^test3')('sub1').has_value)
   assert(yottadb.key('^test3')('sub1')('sub2').has_value)
-  ok, e = pcall(function() return yottadb.key('\x80').has_value end)
+  ok, e = pcall(function() return yottadb.key('\128').has_value end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 
@@ -1612,7 +1630,7 @@ function test_key()
   assert(yottadb.key('^test3').has_tree)
   assert(yottadb.key('^test3')('sub1').has_tree)
   assert(not yottadb.key('^test3')('sub1')('sub2').has_tree)
-  ok, e = pcall(function() return yottadb.key('\x80').has_tree end)
+  ok, e = pcall(function() return yottadb.key('\128').has_tree end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 
@@ -1631,7 +1649,7 @@ function test_key()
   assert(key:subscript_next() == 'sub2')
   assert(key:subscript_next() == 'sub3')
   assert(key:subscript_next() == 'sub4')
-  ok, e = pcall(function() yottadb.key('^\x80'):subscript_next() end)
+  ok, e = pcall(function() yottadb.key('^\128'):subscript_next() end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 
@@ -1652,7 +1670,7 @@ function test_key()
   assert(key:subscript_previous() == 'sub3')
   assert(key:subscript_previous() == 'sub2')
   assert(key:subscript_previous() == 'sub1')
-  ok, e = pcall(function() yottadb.key('^\x80'):subscript_previous() end)
+  ok, e = pcall(function() yottadb.key('^\128'):subscript_previous() end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 end
@@ -1837,7 +1855,7 @@ function test_node()
   assert(yottadb.node('^test3'):data() == yottadb.YDB_DATA_VALUE_DESC)
   assert(yottadb.node('^test3','sub1'):data() == yottadb.YDB_DATA_VALUE_DESC)
   assert(yottadb.node('^test3','sub1','sub2'):data() == yottadb.YDB_DATA_VALUE_NODESC)
-  ok, e = pcall(function() return yottadb.node('\x80'):data() end)
+  ok, e = pcall(function() return yottadb.node('\128'):data() end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 
@@ -1849,7 +1867,7 @@ function test_node()
   assert(yottadb.node('^test3'):has_value())
   assert(yottadb.node('^test3','sub1'):has_value())
   assert(yottadb.node('^test3','sub1','sub2'):has_value())
-  ok, e = pcall(function() return yottadb.node('\x80'):has_value() end)
+  ok, e = pcall(function() return yottadb.node('\128'):has_value() end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 
@@ -1861,7 +1879,7 @@ function test_node()
   assert(yottadb.node('^test3'):has_tree())
   assert(yottadb.node('^test3','sub1'):has_tree())
   assert(not yottadb.node('^test3','sub1','sub2'):has_tree())
-  ok, e = pcall(function() return yottadb.node('\x80'):has_tree() end)
+  ok, e = pcall(function() return yottadb.node('\128'):has_tree() end)
   assert(not ok)
   assert(yottadb.get_error_code(e) == yottadb.YDB_ERR_INVVARNAME)
 end
@@ -1902,7 +1920,7 @@ end
 
 function test_node_lock()
   local node = yottadb.node('testlock').sub1
-  local command = [=[lua -l yottadb -e "pcall(yottadb.lock_incr, 'testlock', 'sub1', 1)"]=]
+  local command = lua_exec .. [[ -e "yottadb=require'yottadb' pcall(yottadb.lock_incr, 'testlock', 'sub1', 1)"]]
   local start, diff
   -- lock and make sure a subprocess can't access it
   node:lock_incr()
@@ -1924,9 +1942,9 @@ function test_module_transactions()
     key1:set(value1)
     key2:set(value2)
     if n == 1 then
-      yottadb.get('\x80') -- trigger an error
+      yottadb.get('\128') -- trigger an error
     elseif n == 2 then
-      local ok, e = pcall(yottadb.get, '\x80')
+      local ok, e = pcall(yottadb.get, '\128')
       return assert(yottadb.get_error_code(e)) -- return a recognized error code
     else
       -- Returning nothing will return YDB_OK.
@@ -2020,6 +2038,9 @@ function test_module_transactions()
 end
 
 function test_pairs()
+  local pairs = pairs
+  -- Lua 5.1 does not support __pairs() metamethod so reference it explicitly
+  if lua_version <= 5.1 then  pairs = yottadb._node.__pairs return  end
   simple_data()
   
   local test4 = yottadb.node('^test4')

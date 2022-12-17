@@ -1,8 +1,8 @@
 # Overview
 
-This project provides a shared library that lets the Lua language access a YottaDB database and the means to invoke M routines from within Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
+This project provides a shared library that lets the [Lua](https://lua.org/) language access a [YottaDB database](https://yottadb.com/) and the means to invoke M routines from within Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
 
-This project was sponsored by the [Library of UAntwerpen](https://www.uantwerpen.be/en/library/). These bindings were developed with reference to YottaDB's Python bindings.
+**License:** This project was sponsored by the [Library of UAntwerpen](https://www.uantwerpen.be/en/library/). These bindings were developed with reference to YottaDB's Python bindings. Unless otherwise stated, the software is licensed with the [GNU Affero GPL](https://opensource.org/licenses/AGPL-3.0), and the compat-5.3 files are licensed with the [MIT license](https://opensource.org/licenses/MIT).
 
 ## Intro by example
 
@@ -177,9 +177,10 @@ Version history is documented in [changes.md](docs/changes.md).
 
 ### Requirements
 
-* Lua 5.2 or greater. These bindings were built and tested with Lua 5.3. The Makefile will use
-  your system's lua version by default. To override this, run `make lua=/path/to/lua`.
 * YottaDB 1.34 or later.
+* Lua 5.1 or greater. The Makefile will use your system's Lua version by default. To override this, run `make lua=/path/to/lua`.
+  * Lua-yottadb has been built and tested with every major Lua version from 5.1 onward ([MLua](https://github.com/anet-be/mlua) does this with `make testall`)
+
 
 **Note:** these bindings do not currently support multi-threaded applications ([more information here](https://github.com/anet-be/mlua#thread-safety)).
 

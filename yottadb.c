@@ -6,14 +6,9 @@
 
 #include <libyottadb.h>
 #include <lua.h>
-
-// Enable build against Lua older than 5.3
-#include "compat-5.3.h"
-
 #include <lauxlib.h>
-#include "yottadb.h"
 
-#include "compat-5.3.h" // Enable build against Lua older than 5.3
+#include "yottadb.h"
 #include "callins.h"
 
 #ifndef NDEBUG
@@ -624,6 +619,12 @@ static int zwr2str(lua_State *L) {
 }
 
 
+#if LUA_VERSION_NUM < 503
+  #define ltablib_c  /* required to make lprefix.h include stuff needed for ltablib_c */
+  #include "compat-5.3/lstrlib.c"
+  #include "compat-5.3/ltablib.c"
+#endif
+
 static const luaL_Reg yottadb_functions[] = {
   {"get", get},
   {"set", set},
@@ -646,6 +647,13 @@ static const luaL_Reg yottadb_functions[] = {
   {"cip", cip},
   {"register_routine", register_routine},
   {"init", _ydb_init},
+  #if LUA_VERSION_NUM < 502
+    {"string_format", str_format},
+    {"table_unpack", unpack},
+  #endif
+  #if LUA_VERSION_NUM < 503
+    {"string_pack", str_pack},
+  #endif
   {NULL, NULL}
 };
 

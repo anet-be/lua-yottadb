@@ -76,6 +76,8 @@ local function assert_strings(t, name, narg)
   return t
 end
 
+-- ~~~ Support for Lua versions prior to 5.4 ~~~
+
 --- Create isinteger(n) that also works in Lua < 5.3 but is fast in Lua >=5.3
 -- @function isinteger
 -- @param n number to test
@@ -87,9 +89,34 @@ if lua_version >= 5.3 then
   end
 else
   function isinteger(n)
-    return type(n) == 'number' and not (tostring(n):find(".", 1, true))
+    return type(n) == 'number' and n % 1 == 0
   end
 end
+
+if lua_version < 5.4 then
+  local function argcheck(cond, i, f, extra)
+    if not cond then
+      error("bad argument #"..i.." to '"..f.."' ("..extra..")", 2)
+    end
+  end
+  -- implement table.move
+  function table.move(a1, f, e, t, a2)
+    a2 = a2 or a1
+    argcheck(isinteger(f), 2, "table.move", "integer expected, got "..type(f))
+    argcheck(f>0, 2, "table.move", "initial position must be positive")
+    argcheck(isinteger(e), 3, "table.move", "integer expected, got "..type(e))
+    argcheck(isinteger(t), 4, "table.move", "integer expected, got "..type(e))
+    if e >= f then
+      local m, n, d = 0, e-f, 1
+      if t > f then m, n, d = n, m, -1 end
+      for i = m, n, d do
+        a2[t+i] = a1[f+i]
+      end
+    end
+    return a2
+  end
+end
+
 
 --- Asserts that all items in table *t* are strings or integers, as befits subscripts.
 -- Otherwise calls `error()` with an error message
@@ -566,6 +593,11 @@ end
 -- @section
 
 local param_type_enums = _yottadb.YDB_CI_PARAM_TYPES
+string_pack = string.pack or _yottadb.string_pack  -- string.pack only available from Lua 5.3
+if lua_version < 5.2 then
+  string.format = _yottadb.string_format  -- make it also print tables in Lua 5.1
+  table.unpack = _yottadb.table_unpack
+end
 
 --- Parse ydb call-in type of the typical form: IO:ydb_int_t*.
 -- Spaces must be removed before calling this function.
@@ -585,7 +617,7 @@ local function pack_type(type_str, param_id)
   assert(preallocation==-1 or type_enum>0x80, string.format("preallocation is meaningless for number type call-in parameter %s: '%s'", param_id, typ))
   assert(preallocation==-1 or output==1, string.format("preallocation is pointless for input-only parameter %s: '%s'", param_id, typ))
   assert(preallocation==-1 or typ~='ydb_char_t*', string.format("preallocation for ydb_char_t* output parameter %s is forced to [%d] to prevent overruns", param_id, _yottadb.YDB_MAX_STR))
-  return string.pack('!=TBBBXT', preallocation, type_enum, input, output)
+  return string_pack('!=TBBBXT', preallocation, type_enum, input, output)
 end
 
 --- Parse one-line string of the ydb call-in file format.
@@ -657,7 +689,6 @@ function M.require(Mprototypes)
   for line in Mprototypes:gmatch('([^\n]*)\n?') do
     line_no = line_no+1
     local ok, routine, func = pcall(parse_prototype, line, ci_handle)
-    assert(ok, string.format("%s: call-in table line %d", routine, line_no))
     if routine then  routines[routine] = func end
   end
   os.remove(filename) -- cleanup
@@ -852,7 +883,7 @@ function node:gettree(maxdepth, filter, _value, _depth)
   local tbl = {}
   if _value then  tbl.__ = _value  end
   _depth = _depth + 1
-  for subscript, subnode in pairs(self) do
+  for subscript, subnode in self:__pairs() do   -- use self:__pairs() instead of pairs(self) so that it works in Lua 5.1
     local recurse = _depth <= maxdepth and node.data(subnode) >= 10
     _value = node.get(subnode)
     if filter then  _value, recurse = filter(subnode, subscript, _value, recurse, _depth)  end
@@ -885,7 +916,7 @@ function node:has_tree()  return node.data(self)   >= 10  end
 
 --- Makes pairs() work - iterate over the child subscripts, values of given node.
 -- You can use either `pairs(node)` or `node:pairs()`.
--- If you need to iterate in reverse, use node:pairs(reverse) instead of pairs(node).
+-- If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).
 -- Note that pairs() order is guaranteed to equal the M collation sequence order
 --   (even though pairs() order is not normally guaranteed for Lua tables).
 --   This means that pairs() is a reasonable substitute for ipairs which is not implemented.
@@ -1163,7 +1194,7 @@ function M.dump(node, ...)
       local subscripts = #node.__subsarray==0 and '' or string.format('("%s")', table.concat(node.__subsarray, '","'))
       table.insert(output, string.format('%s%s=%q', node.__varname, subscripts, value))
     end
-    for subscript, subnode in pairs(node) do
+    for subscript, subnode in node:__pairs() do  -- use node:__pairs() instead of pairs(node) so it works in Lua 5.1
       _dump(subnode, output)
     end
   end
