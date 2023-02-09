@@ -5,7 +5,7 @@ SHELL:=/bin/bash
 lua:=lua
 lua_version:=$(shell LUA_INIT= $(lua) -e 'print(string.match(_VERSION, " ([0-9]+[.][0-9]+)"))')
 #Find an existing Lua include path
-ifneq (,$(wildcard /usr/include/lua/))
+ifneq (,$(wildcard /usr/include/lua*))
 	lua_include:=/usr/include/lua$(lua_version)
 else
 	lua_include:=/usr/local/share/lua/$(lua_version)
