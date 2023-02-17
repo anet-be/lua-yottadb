@@ -1,6 +1,6 @@
 -- Copyright 2021-2022 Mitchell. See LICENSE.
 
-local table_dump = require('examples.table_dump')
+local table_dump = require('examples.startup')
 local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
 
 local lua_exec = 'lua'

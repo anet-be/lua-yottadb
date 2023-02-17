@@ -148,7 +148,8 @@ Note that the filename passed to ydb.require() may be either a call-in table fil
 
 ### Development aids
 
-You can enhance the Lua prompt to display database nodes when you type them. This project supplies a [`startup.lua`](examples/startup.lua) file to make this happen. Simply set your environment variable `export LUA_INIT="require 'startup'"` or, alternatively, do your own `require 'startup'` from your own `start.lua` file. For this to work you will need two files from the examples directory of this project to be in your LUA_PATH: [`startup.lua`](examples/startup.lua) and [`table_dump.lua`](examples/table_dump.lua).
+You can enhance Lua to display database nodes or table contents when you type them at the Lua prompt. This project supplies a [`startup.lua`](examples/startup.lua) file to make this happen. To use it, simply set the environment variable:
+ `export LUA_INIT=@path-to-lua-yottadb/examples/startup.lua`
 
 Now Lua tables and database nodes display their contents when you type them at the Lua REPL prompt:
 
