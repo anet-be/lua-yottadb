@@ -56,7 +56,7 @@ const const_Reg yottadb_types[] = {
   DEBUG_META("M->malloc=%p\n", M->malloc); \
   DEBUG_META("M->slot=%p\n", M->slot);
 static inline void *add_malloc(metadata *M, size_t size) {
-  void *space = malloc(size);
+  void *space = MALLOC_SAFE(size);
   DEBUG_META("Assigning malloc space %p\n", space);
   DEBUG_META("  to malloc slot number %d\n", M->n);
   DEBUG_META("  at address M->malloc[M->n]=%p\n", &M->malloc[M->n]);

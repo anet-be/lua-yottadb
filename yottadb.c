@@ -25,11 +25,17 @@ static const int LUA_YDB_ERR = -200000000; // arbitrary
 
 int unused; // used as junk dumping space
 
-#define YDB_REALLOC_BUFFER(BUFFERP) { \
-  int len_used = (BUFFERP)->len_used; \
-  YDB_FREE_BUFFER(BUFFERP); \
-  YDB_MALLOC_BUFFER(BUFFERP, len_used); \
+
+// Define safe malloc routines that exit with error on failure, rather than unpredictably continuing
+// see related definitions in yottadb.h
+int _memory_error(size_t size, int line, char *file) {
+  fprintf(stderr, "Out of memory allocating %zi bytes (line %d in %s)\n", size, line, file);
+  fflush(stderr);													\
+  fflush(stdout);													\
+  exit(1);
+  return 0;
 }
+
 
 // Determines the key's varname and number of subs (if any).
 // Assumes the Lua stack starts with the key.
@@ -59,7 +65,7 @@ static int message(lua_State *L) {
 
   int code = luaL_checkinteger(L, -1);
   lua_pop(L, 1);
-  YDB_MALLOC_BUFFER(&buf, 2049); // docs say 2048 is a safe size
+  YDB_MALLOC_BUFFER_SAFE(&buf, 2049); // docs say 2048 is a safe size
   // Decode the special return values that come with libyottadb's C interface
   if (code == YDB_LOCK_TIMEOUT)
     msg = "YDB_LOCK_TIMEOUT";
@@ -111,10 +117,10 @@ static int get(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   ydb_buffer_t ret_value;
-  YDB_MALLOC_BUFFER(&ret_value, LUA_YDB_BUFSIZ);
+  YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
   int status = ydb_get_s(&varname, subs_used, subsarray, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&ret_value);
+    YDB_REALLOC_BUFFER_SAFE(&ret_value);
     status = ydb_get_s(&varname, subs_used, subsarray, &ret_value);
   }
   if (status == YDB_OK) {
@@ -275,7 +281,7 @@ static int tp(lua_State *L) {
     }
     for (int i = 0; i < namecount; i++) {
       lua_geti(L, npos, i + 1);
-      YDB_MALLOC_BUFFER(&varnames[i], luaL_len(L, -1));
+      YDB_MALLOC_BUFFER_SAFE(&varnames[i], luaL_len(L, -1));
       YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &varnames[i], unused);
       lua_pop(L, 1); // varname
     }
@@ -287,7 +293,7 @@ static int tp(lua_State *L) {
     lua_pushvalue(L, i), lua_seti(L, -2, luaL_len(L, -2) + 1);
   }
   int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-  tpfnparm_t *tpfnparm = malloc(sizeof(tpfnparm_t));
+  tpfnparm_t *tpfnparm = MALLOC_SAFE(sizeof(tpfnparm_t));
   tpfnparm->L = L, tpfnparm->ref = ref;
   int status = ydb_tp_s(tpfn, (void *)tpfnparm, transid, namecount, varnames);
   luaL_unref(L, LUA_REGISTRYINDEX, ref);
@@ -317,10 +323,10 @@ static int subscript_next(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   ydb_buffer_t ret_value;
-  YDB_MALLOC_BUFFER(&ret_value, LUA_YDB_BUFSIZ);
+  YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
   int status = ydb_subscript_next_s(&varname, subs_used, subsarray, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&ret_value);
+    YDB_REALLOC_BUFFER_SAFE(&ret_value);
     status = ydb_subscript_next_s(&varname, subs_used, subsarray, &ret_value);
   }
   if (status == YDB_OK) {
@@ -344,10 +350,10 @@ static int subscript_previous(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   ydb_buffer_t ret_value;
-  YDB_MALLOC_BUFFER(&ret_value, LUA_YDB_BUFSIZ);
+  YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
   int status = ydb_subscript_previous_s(&varname, subs_used, subsarray, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&ret_value);
+    YDB_REALLOC_BUFFER_SAFE(&ret_value);
     status = ydb_subscript_previous_s(&varname, subs_used, subsarray, &ret_value);
   }
   if (status == YDB_OK) {
@@ -371,21 +377,21 @@ static int node_next(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
-  ydb_buffer_t *ret_subsarray = malloc(ret_subs_alloc * sizeof(ydb_buffer_t));
+  ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
   for (int i = 0; i < ret_subs_alloc; i++) {
-    YDB_MALLOC_BUFFER(&ret_subsarray[i], LUA_YDB_BUFSIZ);
+    YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
   }
   int status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   if (status == YDB_ERR_INSUFFSUBS) {
-    ret_subsarray = realloc(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
+    ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
     for (int i = ret_subs_alloc; i < ret_subs_used; i++) {
-      YDB_MALLOC_BUFFER(&ret_subsarray[i], LUA_YDB_BUFSIZ);
+      YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
     }
     ret_subs_alloc = ret_subs_used;
     status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
   while (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&ret_subsarray[ret_subs_used]);
+    YDB_REALLOC_BUFFER_SAFE(&ret_subsarray[ret_subs_used]);
     ret_subs_used = ret_subs_alloc;
     status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
@@ -417,21 +423,21 @@ static int node_previous(lua_State *L) {
   ydb_buffer_t subsarray[subs_used];
   get_subs(L, subs_used, subsarray);
   int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
-  ydb_buffer_t *ret_subsarray = malloc(ret_subs_alloc * sizeof(ydb_buffer_t));
+  ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
   for (int i = 0; i < ret_subs_alloc; i++) {
-    YDB_MALLOC_BUFFER(&ret_subsarray[i], LUA_YDB_BUFSIZ);
+    YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
   }
   int status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   if (status == YDB_ERR_INSUFFSUBS) {
-    ret_subsarray = realloc(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
+    ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
     for (int i = ret_subs_alloc; i < ret_subs_used; i++) {
-      YDB_MALLOC_BUFFER(&ret_subsarray[i], LUA_YDB_BUFSIZ);
+      YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
     }
     ret_subs_alloc = ret_subs_used;
     status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
   while (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&ret_subsarray[ret_subs_used]);
+    YDB_REALLOC_BUFFER_SAFE(&ret_subsarray[ret_subs_used]);
     ret_subs_used = ret_subs_alloc;
     status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
@@ -490,16 +496,16 @@ static int lock(lua_State *L) {
   for (int i = 0; i < num_keys && i < MAX_ACTUALS; i++) {
     lua_geti(L, 1, i + 1);
     lua_geti(L, -1, 1);
-    YDB_MALLOC_BUFFER(&keys[i].varname, luaL_len(L, -1));
+    YDB_MALLOC_BUFFER_SAFE(&keys[i].varname, luaL_len(L, -1));
     YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &keys[i].varname, unused);
     lua_pop(L, 1); // varname
     if (luaL_len(L, -1) > 1) {
       lua_geti(L, -1, 2);
       keys[i].subs_used = luaL_len(L, -1);
-      keys[i].subsarray = malloc(keys[i].subs_used * sizeof(ydb_buffer_t));
+      keys[i].subsarray = MALLOC_SAFE(keys[i].subs_used * sizeof(ydb_buffer_t));
       for (int j = 0; j < keys[i].subs_used; j++) {
         lua_geti(L, -1, j + 1);
-        YDB_MALLOC_BUFFER(&keys[i].subsarray[j], luaL_len(L, -1));
+        YDB_MALLOC_BUFFER_SAFE(&keys[i].subsarray[j], luaL_len(L, -1));
         YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &keys[i].subsarray[j], unused);
         lua_pop(L, 1); // sub
       }
@@ -536,7 +542,7 @@ static int delete_excl(lua_State *L) {
   ydb_buffer_t varnames[namecount];
   for (int i = 0; i < namecount; i++) {
     lua_geti(L, 1, i + 1);
-    YDB_MALLOC_BUFFER(&varnames[i], luaL_len(L, -1));
+    YDB_MALLOC_BUFFER_SAFE(&varnames[i], luaL_len(L, -1));
     YDB_COPY_STRING_TO_BUFFER(lua_tostring(L, -1), &varnames[i], unused);
     lua_pop(L, 1); // varname
   }
@@ -559,10 +565,10 @@ static int incr(lua_State *L) {
   ydb_buffer_t increment;
   YDB_STRING_TO_BUFFER(luaL_optstring(L, !lua_isstring(L, 2) ? 3 : 2, ""), &increment);
   ydb_buffer_t ret_value;
-  YDB_MALLOC_BUFFER(&ret_value, LUA_YDB_BUFSIZ);
+  YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
   int status = ydb_incr_s(&varname, subs_used, subsarray, &increment, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&ret_value);
+    YDB_REALLOC_BUFFER_SAFE(&ret_value);
     status = ydb_incr_s(&varname, subs_used, subsarray, &increment, &ret_value);
   }
   if (status == YDB_OK) {
@@ -582,10 +588,10 @@ static int str2zwr(lua_State *L) {
   YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), &str);
   str.len_alloc = str.len_used = luaL_len(L, 1); // in case of NUL bytes
   ydb_buffer_t zwr;
-  YDB_MALLOC_BUFFER(&zwr, LUA_YDB_BUFSIZ);
+  YDB_MALLOC_BUFFER_SAFE(&zwr, LUA_YDB_BUFSIZ);
   int status = ydb_str2zwr_s(&str, &zwr);
   if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&zwr);
+    YDB_REALLOC_BUFFER_SAFE(&zwr);
     status = ydb_str2zwr_s(&str, &zwr);
   }
   if (status == YDB_OK) {
@@ -604,10 +610,10 @@ static int zwr2str(lua_State *L) {
   ydb_buffer_t zwr;
   YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), &zwr);
   ydb_buffer_t str;
-  YDB_MALLOC_BUFFER(&str, LUA_YDB_BUFSIZ);
+  YDB_MALLOC_BUFFER_SAFE(&str, LUA_YDB_BUFSIZ);
   int status = ydb_zwr2str_s(&zwr, &str);
   if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER(&str);
+    YDB_REALLOC_BUFFER_SAFE(&str);
     status = ydb_zwr2str_s(&zwr, &str);
   }
   if (status == YDB_OK) {

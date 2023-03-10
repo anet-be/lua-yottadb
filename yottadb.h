@@ -18,6 +18,37 @@
 #define CREATE_VERSION_STRING(major, minor) #major "." #minor
 #define CREATE_VERSION_NUMBER(major, minor) ((major)*100 + (minor)
 
+
 extern int ydb_assert(lua_State *L, int code);
+extern int _memory_error(size_t size, int line, char *file);
+
+
+// Define safe malloc routines that exit with error on failure, rather than unpredictably continuing
+
+static __inline__ void *_malloc_safe(size_t size, int line, char *file) {
+  void *buf = malloc(size);
+  if (!buf) _memory_error(size, line, file);
+  return buf;
+}
+
+static __inline__ void *_realloc_safe(void *buf, size_t size, int line, char *file) {
+  buf = realloc(buf, size);
+  if (!buf) _memory_error(size, line, file);
+  return buf;
+}
+
+#define MALLOC_SAFE(LEN) _malloc_safe((LEN), __LINE__, __FILE__)
+#define REALLOC_SAFE(BUF, LEN) _realloc_safe((BUF), (LEN), __LINE__, __FILE__)
+
+#define YDB_MALLOC_BUFFER_SAFE(BUFFERP, LEN) { \
+  YDB_MALLOC_BUFFER((BUFFERP), (LEN)); \
+  if (!(BUFFERP)->buf_addr) _memory_error((LEN), __LINE__, __FILE__); \
+}
+
+#define YDB_REALLOC_BUFFER_SAFE(BUFFERP) { \
+  int len_used = (BUFFERP)->len_used; \
+  YDB_FREE_BUFFER(BUFFERP); \
+  YDB_MALLOC_BUFFER_SAFE((BUFFERP), len_used); \
+}
 
 #endif // LUA_YOTTADB_H
