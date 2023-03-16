@@ -2,7 +2,7 @@
 
 This project provides a shared library that lets the [Lua](https://lua.org/) language access a [YottaDB database](https://yottadb.com/) and the means to invoke M routines from within Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
 
-**License:** This project was sponsored by the [Library of UAntwerpen](https://www.uantwerpen.be/en/library/). These bindings were developed with reference to YottaDB's Python bindings. Unless otherwise stated, the software is licensed with the [GNU Affero GPL](https://opensource.org/licenses/AGPL-3.0), and the compat-5.3 files are licensed with the [MIT license](https://opensource.org/licenses/MIT).
+**License:** Unless otherwise stated, the software is licensed with the [GNU Affero GPL](https://opensource.org/licenses/AGPL-3.0), and the compat-5.3 files are licensed with the [MIT license](https://opensource.org/licenses/MIT).
 
 ## Intro by example
 
@@ -170,9 +170,11 @@ subtable (table: 0x56494c7dd5b0):
 ^oaks("2","shadow")="13"
 ```
 
-## Version History
+## Version History & Acknowledgements
 
 Version history is documented in [changes.md](docs/changes.md).
+
+[Mitchell](https://github.com/orbitalquark) is lua-yottadb's original author, basing it heavily on [YDBPython](https://gitlab.com/YottaDB/Lang/YDBPython). [Berwyn Hoyt](https://github.com/berwynhoyt) took over development to create version 1.0. It is sponsored by, and is copyright © 2022, [University of Antwerp Library](https://www.uantwerpen.be/en/library/).
 
 ## Installation
 
