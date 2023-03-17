@@ -646,6 +646,7 @@ static const luaL_Reg yottadb_functions[] = {
   {"ci_tab_open", ci_tab_open},
   {"cip", cip},
   {"register_routine", register_routine},
+  {"ydb_signals", ydb_signals},
   {"init", _ydb_init},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},

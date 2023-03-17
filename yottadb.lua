@@ -32,6 +32,15 @@ _table_string_number = {table=true, string=true, number=true}
 -- @section
 
 
+
+--- Unblock or block YDB signals for while M code is running.
+-- This function may be passed to yottadb.require() as the `enter_M` parameter
+-- so that ydb_signals is called with true before M is invoked, and called with false after M returns
+-- @function ydb_signals
+-- @param bool true to unblock; false to block all YDB signals listed in BLOCKED_SIGNALS (in callins.c)
+-- @return true if previous state was unblocked; false if previous state was blocked
+M.ydb_signals = _yottadb.ydb_signals
+
 --- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
 -- This is intended to be used with API function arguments so users receive more helpful error
@@ -622,10 +631,13 @@ end
 
 --- Parse one-line string of the ydb call-in file format.
 -- Assert any errors.
+-- @param line is the text in the current line of the call-in file
+-- @param ci_handle handle of call-in table
+-- @param[opt] enter_M specifies a function that is called on entry/exit of M per yottadb.require()
 -- @return C name for the M routine
 -- @return a function to invoke the M routine
 -- @return or return nil, nil if the line did not contain a function prototype
-local function parse_prototype(line, ci_handle)
+local function parse_prototype(line, ci_handle, enter_M)
   line = line:gsub('//.*', '')  -- remove comments
   -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
   local pattern = '%s*([^:%s]+)%s*:%s*([%w_]+%s*%*?[%s%[%]%d]*)%s*([^(%s]+)%s*%(([^)]*)%)'
@@ -642,7 +654,7 @@ local function parse_prototype(line, ci_handle)
     table.insert(param_info, pack_type(type_str, i))
   end
   local param_info_string = table.concat(param_info)
-  local routine_name_handle = _yottadb.register_routine(routine_name, entrypoint)
+  local routine_name_handle = _yottadb.register_routine(routine_name, entrypoint, enter_M)
   -- create a table used by func() below to reference the routine_name string to ensure it isn't garbage collected
   -- because it's used by C userdata in 'routine_name_handle', but and not referenced by Lua func()
   local routine_name_table = {routine_name_handle, routine_name}
@@ -659,9 +671,15 @@ end
 -- @param Mprototypes is a list of lines in the format of ydb 'callin' files per ydb_ci().
 -- If the string contains `:` it is considered to be the call-in specification itself;
 -- otherwise it is treated as the filename of a call-in file to be opened and read.
--- @return a table of functions analogous to a Lua module.
+-- @param[opt] enter_M specifies a function that is called with parameter true before entering M,
+-- and with parameter false on return from M. Applies to all M routines in the call-in file.
+-- For example, pass in the yottadb.ydb_signals() function to automate unblocking/reblocking
+-- of ydb signals for before/after calling every M routine in the call-in file.
+-- (But read the notes on signals in the README.)
+-- @return A table of functions analogous to a Lua module.
 -- Each function in the table will call an M routine specified in `Mprototypes`.
-function M.require(Mprototypes)
+function M.require(Mprototypes, enter_M)
+  assert(enter_M==nil or type(enter_M)=='function', string.format("enter_M parameter (%s) to yottadb.require must be nil or a Lua function", type(enter_M)))
   local routines = {}
   if not Mprototypes:find(':', 1, true) then
     -- read call-in file
@@ -688,7 +706,7 @@ function M.require(Mprototypes)
   local line_no = 0
   for line in Mprototypes:gmatch('([^\n]*)\n?') do
     line_no = line_no+1
-    local ok, routine, func = pcall(parse_prototype, line, ci_handle)
+    local ok, routine, func = pcall(parse_prototype, line, ci_handle, enter_M)
     if routine then  routines[routine] = func end
   end
   os.remove(filename) -- cleanup
