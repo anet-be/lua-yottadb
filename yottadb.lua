@@ -33,7 +33,7 @@ _table_string_number = {table=true, string=true, number=true}
 
 
 
---- Unblock or block YDB signals for while M code is running.
+--- Unblock or block YDB signals for while M or Lua code is running (respectively).
 -- This function may be passed to yottadb.require() as the `enter_M` parameter
 -- so that ydb_signals is called with true before M is invoked, and called with false after M returns
 -- @function ydb_signals
@@ -678,6 +678,7 @@ end
 -- (But read the notes on signals in the README.)
 -- @return A table of functions analogous to a Lua module.
 -- Each function in the table will call an M routine specified in `Mprototypes`.
+-- @see ydb_signals
 function M.require(Mprototypes, enter_M)
   assert(enter_M==nil or type(enter_M)=='function', string.format("enter_M parameter (%s) to yottadb.require must be nil or a Lua function", type(enter_M)))
   local routines = {}
