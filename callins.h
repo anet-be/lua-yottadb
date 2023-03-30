@@ -141,6 +141,7 @@ typedef struct {
 int cip(lua_State *L);
 int register_routine(lua_State *L);
 int ci_tab_open(lua_State *L);
-int ydb_signals(lua_State *L);
+int block_M_signals(lua_State *L);
+int init(lua_State *L);
 
 #endif // CALLINS_H

@@ -40,15 +40,17 @@
     <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
     <li><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></li>
     <li><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></li>
-    <li><a href="#require">require (Mprototypes[, enter_M])</a></li>
+    <li><a href="#require">require (Mprototypes)</a></li>
 <br/>
 <li><a href="#Low_level_functions"><b>Low level functions </b></a></li>
+    <li><a href="#block_M_signals">block_M_signals (bool)</a></li>
     <li><a href="#data">data (varname[, subsarray])</a></li>
     <li><a href="#delete_node">delete_node (varname[, subsarray])</a></li>
     <li><a href="#delete_tree">delete_tree (varname[, subsarray])</a></li>
     <li><a href="#get">get (varname[, ...])</a></li>
     <li><a href="#get_error_code">get_error_code (message)</a></li>
     <li><a href="#incr">incr (varname[, subsarray], increment)</a></li>
+    <li><a href="#init">init ([signal_blocker])</a></li>
     <li><a href="#lock">lock ([nodes[, timeout]])</a></li>
     <li><a href="#lock_decr">lock_decr (varname[, subsarray])</a></li>
     <li><a href="#lock_incr">lock_incr (varname[, subsarray], timeout)</a></li>
@@ -60,7 +62,7 @@
     <li><a href="#subscript_next">subscript_next (varname[, subsarray])</a></li>
     <li><a href="#subscript_previous">subscript_previous (varname[, subsarray])</a></li>
     <li><a href="#subscripts">subscripts (varname[, subsarray], reverse)</a></li>
-    <li><a href="#ydb_signals">ydb_signals (bool)</a></li>
+    <li><a href="#ydb_eintr_handler">ydb_eintr_handler ()</a></li>
     <li><a href="#zwr2str">zwr2str (s)</a></li>
 <br/>
 <li><a href="#Transactions"><b>Transactions </b></a></li>
@@ -144,12 +146,16 @@
 	<td class="summary">Populate database from a table.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#require">require (Mprototypes[, enter_M])</a></td>
+	<td class="name" nowrap><a href="#require">require (Mprototypes)</a></td>
 	<td class="summary">Import Mumps routines as Lua functions specified in ydb 'call-in' file.</td>
 	</tr>
 </table>
 <h2><a href="#Low_level_functions">Low level functions </a></h2>
 <table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#block_M_signals">block_M_signals (bool)</a></td>
+	<td class="summary">Block or unblock YDB signals for while M code is running.</td>
+	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#data">data (varname[, subsarray])</a></td>
 	<td class="summary">Get information about a variable/node (except intrinsic variables).</td>
@@ -173,6 +179,10 @@
 	<tr>
 	<td class="name" nowrap><a href="#incr">incr (varname[, subsarray], increment)</a></td>
 	<td class="summary">Increments the numeric value of a database variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#init">init ([signal_blocker])</a></td>
+	<td class="summary">Initialize ydb and set blocking of M signals.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lock">lock ([nodes[, timeout]])</a></td>
@@ -219,8 +229,8 @@
 	<td class="summary">Returns an iterator for iterating over all subscripts in a database variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#ydb_signals">ydb_signals (bool)</a></td>
-	<td class="summary">Unblock or block YDB signals for while M or Lua code is running (respectively).</td>
+	<td class="name" nowrap><a href="#ydb_eintr_handler">ydb_eintr_handler ()</a></td>
+	<td class="summary">Lua function to call <code>ydb_eintr_handler()</code>.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#zwr2str">zwr2str (s)</a></td>
@@ -567,7 +577,7 @@
 </dd>
     <dt>
     <a name = "require"></a>
-    <strong>require (Mprototypes[, enter_M])</strong>
+    <strong>require (Mprototypes)</strong>
     </dt>
     <dd>
     Import Mumps routines as Lua functions specified in ydb 'call-in' file.  <br>
@@ -582,14 +592,6 @@
  If the string contains <code>:</code> it is considered to be the call-in specification itself;
  otherwise it is treated as the filename of a call-in file to be opened and read.
         </li>
-        <li><span class="parameter">enter_M</span>
-         specifies a function that is called with parameter true before entering M,
- and with parameter false on return from M. Applies to all M routines in the call-in file.
- For example, pass in the yottadb.ydb_signals() function to automate unblocking/reblocking
- of ydb signals for before/after calling every M routine in the call-in file.
- (But read the notes on signals in the README.)
-         (<em>optional</em>)
-        </li>
     </ul>
 
     <h3>Returns:</h3>
@@ -600,10 +602,6 @@
     </ol>
 
 
-    <h3>See also:</h3>
-    <ul>
-         <a href="yottadb.html#ydb_signals">ydb_signals</a>
-    </ul>
 
 
 </dd>
@@ -611,6 +609,46 @@
     <h2 class="section-header "><a name="Low_level_functions"></a>Low level functions </h2>
 
     <dl class="function">
+    <dt>
+    <a name = "block_M_signals"></a>
+    <strong>block_M_signals (bool)</strong>
+    </dt>
+    <dd>
+    Block or unblock YDB signals for while M code is running.
+ This function is designed to be passed to yottadb.init() as the <code>signal_blocker</code> parameter.
+ Most signals (listed in <code>BLOCKED_SIGNALS</code> in callins.c) are blocked using sigprocmask()
+ but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
+ in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are
+ interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
+ handler does actually run, allowing YDB to flush the database or IO as necessary without
+ your M code having to call the M command <code>VIEW &quot;FLUSH&quot;</code>.
+ Note: this function does take time, as OS calls are slow. Using it will increase the M calling
+ overhead by about 1.4 microseconds: 2-5x the bare calling overhead (see <code>make benchmarks</code>)
+ The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
+ OS calls and make it as fast as possible.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">bool</span>
+         true to block; false to unblock all YDB signals
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        nothing
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#init">init</a>
+    </ul>
+
+
+</dd>
     <dt>
     <a name = "data"></a>
     <strong>data (varname[, subsarray])</strong>
@@ -781,6 +819,44 @@
     </ol>
 
 
+
+
+</dd>
+    <dt>
+    <a name = "init"></a>
+    <strong>init ([signal_blocker])</strong>
+    </dt>
+    <dd>
+    Initialize ydb and set blocking of M signals.
+ If <code>signal_blocker</code> is specified, block M signals which could otherwise interrupt slow IO operations like reading from user/pipe.
+ Also read the notes on signals in the README.
+ Note: any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
+ Assert any errors.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">signal_blocker</span>
+         specifies a Lua callback CFunction (e.g. <code>yottadb.block_M_signals()</code>) which will be
+ called with parameter false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
+ Setting <code>signal_blocker</code> to nil switches off signal blocking.
+ Note: Changing this to support a generic Lua function as callback would be possible but slow, as it would require
+ fetching the function pointer from a C closure, and using <code>lua_call()</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        nothing
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#block_M_signals">block_M_signals</a>
+    </ul>
 
 
 </dd>
@@ -1115,29 +1191,27 @@
 
 </dd>
     <dt>
-    <a name = "ydb_signals"></a>
-    <strong>ydb_signals (bool)</strong>
+    <a name = "ydb_eintr_handler"></a>
+    <strong>ydb_eintr_handler ()</strong>
     </dt>
     <dd>
-    Unblock or block YDB signals for while M or Lua code is running (respectively).
- This function may be passed to yottadb.require() as the <code>enter_M</code> parameter
- so that ydb_signals is called with true before M is invoked, and called with false after M returns
+    Lua function to call <code>ydb_eintr_handler()</code>.
+ If users wish to handle EINTR errors themselves, instead of blocking signals, they should call
+ <code>ydb_eintr_handler()</code> when they get an EINTR error, before restarting the erroring OS system call.
 
 
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">bool</span>
-         true to unblock; false to block all YDB signals listed in BLOCKED_SIGNALS (in callins.c)
-        </li>
-    </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-        true if previous state was unblocked; false if previous state was blocked
+        YDB_OK on success, and >0 on error (with message in ZSTATUS)
     </ol>
 
 
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#block_M_signals">block_M_signals</a>
+    </ul>
 
 
 </dd>
@@ -2149,7 +2223,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-03-22 00:11:38 </i>
+<i style="float:right;">Last updated 2023-03-30 20:44:24 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

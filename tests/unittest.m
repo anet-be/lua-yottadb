@@ -7,3 +7,7 @@ concat(cstring,lstring,byref,cout)
  s cout=concat
  s byref="abcdefghijklmnopqrstuvwxyz"
  quit concat
+
+;empty routine for use by tests/mroutine_benchmarks.lua
+ret()
+ quit

@@ -89,14 +89,16 @@ int ydb_assert(lua_State *L, int code) {
   return 0;
 }
 
-// Call ydb_init()
-// Return YDB_OK on success, and >0 on error (with message in ZSTATUS)
-// If users wish to set their own signal handlers for signals not used by YDB
-// they may do so after caling ydb_init() -- which sets ydb's signal handlers
-static int _ydb_init(lua_State *L) {
-  lua_pushinteger(L, ydb_init());
+// Lua function to call ydb_eintr_handler().
+// If users wish to handle EINTR errors themselves, instead of blocking signals, they should call
+// `ydb_eintr_handler()` when they get an EINTR error, before restarting the erroring OS system call.
+// @return YDB_OK on success, and >0 on error (with message in ZSTATUS)
+// @see block_M_signals
+static int _ydb_eintr_handler(lua_State *L) {
+  lua_pushinteger(L, ydb_eintr_handler());
   return 1;
 }
+
 
 // Gets the value of a variable/node.
 // Raises an error if variable/node does not exist.
@@ -646,8 +648,9 @@ static const luaL_Reg yottadb_functions[] = {
   {"ci_tab_open", ci_tab_open},
   {"cip", cip},
   {"register_routine", register_routine},
-  {"ydb_signals", ydb_signals},
-  {"init", _ydb_init},
+  {"block_M_signals", block_M_signals},
+  {"init", init},
+  {"ydb_eintr_handler", _ydb_eintr_handler},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},
     {"table_unpack", unpack},

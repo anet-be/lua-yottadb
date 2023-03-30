@@ -2,11 +2,24 @@
 
 This project provides a shared library that lets the [Lua](https://lua.org/) language access a [YottaDB database](https://yottadb.com/) and the means to invoke M routines from within Lua. While this project is stand-alone, there is a closely related project called [MLua](https://github.com/anet-be/mlua) that goes in the other direction, allowing M software to invoke the Lua language. If you wish for both abilities, start with [MLua](https://github.com/anet-be/mlua) which is designed to incorporate lua-yottadb.
 
+**Author:** [Mitchell](https://github.com/orbitalquark) is lua-yottadb's original author, basing it heavily on [YDBPython](https://gitlab.com/YottaDB/Lang/YDBPython). [Berwyn Hoyt](https://github.com/berwynhoyt) took over development to create version 1.0. It is sponsored by, and is copyright © 2022, [University of Antwerp Library](https://www.uantwerpen.be/en/library/).
+
 **License:** Unless otherwise stated, the software is licensed with the [GNU Affero GPL](https://opensource.org/licenses/AGPL-3.0), and the compat-5.3 files are licensed with the [MIT license](https://opensource.org/licenses/MIT).
+
+## Quickstart
+
+If you do not already have it, install [YottaDB here](https://yottadb.com/product/get-started/). Then install lua-yottadb as follows:
+
+```bash
+git clone https://github.com/anet-be/lua-yottadb.git
+cd lua-yottadb
+make
+sudo make install
+```
 
 ## Intro by example
 
-There is [full documentation here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), but here are some examples to get you started.
+There is API [reference documentation here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), but here are some examples to get you started.
 
 Let's tinker with setting some database values in different ways:
 
@@ -170,35 +183,53 @@ subtable (table: 0x56494c7dd5b0):
 ^oaks("2","shadow")="13"
 ```
 
-## Version History & Acknowledgements
+## Technical details
 
 Version history is documented in [changes.md](docs/changes.md).
 
-[Mitchell](https://github.com/orbitalquark) is lua-yottadb's original author, basing it heavily on [YDBPython](https://gitlab.com/YottaDB/Lang/YDBPython). [Berwyn Hoyt](https://github.com/berwynhoyt) took over development to create version 1.0. It is sponsored by, and is copyright © 2022, [University of Antwerp Library](https://www.uantwerpen.be/en/library/).
+### Thread Safety
 
-## Installation
+Lua co-routines, are perfectly safe to use with YDB, since they are cooperative rather than preemptive.
+
+However, lua-yottadb does not currently support multi-threaded applications – which would require accessing YDB using [threaded C API functions](https://docs.yottadb.com/MultiLangProgGuide/programmingnotes.html#threads) (unless the application designer ensures that only one of the threads accesses the database). If there is keen demand, it shouldn't be too difficult to upgrade lua-yottadb to use the thread-safe function calls, making lua-yottadb thread-safe. (Lua would still requires, though, that each thread running Lua do so in a separate lua_State).
+
+### Signals & EINTR errors
+
+Your Lua code must treat signals with respect. The the first use of YDB will set up several YDB signals which may interrupt your subsequent Lua code. If your Lua code doesn't use slow or blocking IO like user input or pipes then you should have nothing to worry about. But if you're getting `Interrupted system call` (EINTR) errors from Lua, then you need to read this section.
+
+YDB uses signals heavily (especially SIGALRM: see below). This means that YDB signal/timer handlers may be called while running Lua code. This doesn't matter until your Lua code waits on IO operations (using read/write/open/close), in which case these operations will return the EINTR error if a YDB signal occurs while they are waiting on IO. Lua C code itself is not written to retry this error condition, so your software will fail unnecessarily unless you handle them. If you really *do* wish to handle EINTR errors yourself, you should also call YDB API function [ydb_eintr_handler()](https://docs.yottadb.com/MultiLangProgGuide/cprogram.html#ydb-eintr-handler-ydb-eintr-handler-t) whenever you get an EINTR error.
+
+Lua-yottadb offers a mechanism to resolve this automatically by blocking YDB signals until next time it calls YDB. To use it, simply call `yottadb.init(yottadb.block_M_signals)` before running your code. Be aware that if you use signal blocking with long-running Lua code, the database will not run timers until your Lua code returns (though it can flush database buffers: see the note on SIGALRM below). Also note that setting up signal blocking is slow, so using `block_M_signals` will increase the M calling overhead by about 1.4 microseconds on my machine: 2-5x the bare calling overhead without blocking (see `make benchmarks`).
+
+#### Specific signals
+
+Your Lua code must not use any of the following [YDB Signals](https://docs.yottadb.com/MultiLangProgGuide/programmingnotes.html#signals), which are the same ones that `block_M_signals` blocks:
+
+- SIGALRM: used for [M Timeouts](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#timeouts), [$ZTIMEOUT](https://docs.yottadb.com/ProgrammersGuide/isv.html#ztimeout), [$ZMAXTPTIME](https://docs.yottadb.com/ProgrammersGuide/isv.html#zmaxtptime), device timeouts, [ydb_start_timer()](https://docs.yottadb.com/MultiLangProgGuide/cprogram.html#ydb-timer-start-ydb-timer-start-t) API, and a buffer flush timer roughly once every second.
+  - Note that although most signals are completely blocked (using [sigprocmask](https://man7.org/linux/man-pages/man2/sigprocmask.2.html)), lua-yottadb doesn't actually block SIGALRM; instead it temporarily sets its SA_RESTART flag (using [sigaction](https://man7.org/linux/man-pages/man2/sigaction.2.html)) so that the OS automatically restarts IO calls that were interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM handler does actually run, allowing it still to flush the database or IO as necessary without your M code having to call the M command `VIEW "FLUSH"`.
+- SIGCHLD: wakes up YDB when a child process terminates.
+- SIGTSTP, SIGTTIN, SIGTTOU, SIGCONT: YDB handles these to defer suspension until an opportune time.
+- SIGUSR1: used for [$ZINTERRUPT](https://docs.yottadb.com/ProgrammersGuide/isv.html#zinterrupt)
+- SIGUSR2: used only by GT.CM servers, the Go-ydb wrapper, or env variable `ydb_treat_sigusr2_like_sigusr1`.
+
+If you really do need to use these signals, you would have to understand how YDB initialises and uses them and make your handler call its handler, as appropriate. This is not recommended.
+
+Note that lua-yottadb does **not** block SIGINT or fatal signals: SIGQUIT, SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGIOT, SIGSEGV, SIGTERM, and SIGTRAP. Instead lua-yottadb lets the YDB handlers of these terminate the program as appropriate.
+
+You may use any other signals, but first read [Limitations on External Programs](https://docs.yottadb.com/ProgrammersGuide/extrout.html#limitations-on-the-external-program) and [YDB Signals](https://docs.yottadb.com/MultiLangProgGuide/programmingnotes.html#signals). Be aware that:
+
+- You will probably want to initialise your signal handler using the SA_RESTART flag so that the OS automatically retries long-running IO calls (cf. [system calls that can return EINTR](https://man7.org/linux/man-pages/man7/signal.7.html#:~:text=interruption of system calls and library functions by signal handlers)). You may also wish to know that the only system calls that Lua 5.4 uses which can return EINTR are (f)open/close/read/write. These are only used by Lua's `io` library. However, third-party libraries may use other system calls (e.g. posix and LuaSocket libraries).
+- If you need an OS timer, you cannot use `setitimer()` since it can only trigger SIGALRM, which YDB uses. Instead use `timer_create()` to trigger your own signal.
+
+If you need more detail on signals, here is a discussion in the MLua repository of the [decision to block YDB signals](https://github.com/anet-be/mlua/discussions/8). It also describes why SA_RESTART is not a suitable solution for YDB itself when running M code.
+
+## Installation Detail
 
 ### Requirements
 
 * YottaDB 1.34 or later.
 * Lua 5.1 or greater. The Makefile will use your system's Lua version by default. To override this, run `make lua=/path/to/lua`.
   * Lua-yottadb has been built and tested with every major Lua version from 5.1 onward ([MLua](https://github.com/anet-be/mlua) does this with `make testall`)
-
-
-**Note:** these bindings do not currently support multi-threaded applications ([more information here](https://github.com/anet-be/mlua#thread-safety)).
-
-### Quickstart
-
-If you do not already have it, install [YottaDB here](https://yottadb.com/product/get-started/). Then install lua-yottadb as follows:
-
-```bash
-git clone https://github.com/anet-be/lua-yottadb.git
-cd lua-yottadb
-make
-sudo make install
-```
-
-### Detail
 
 If more specifics are needed, build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install* is the path to your installation of YottaDB that contains its header and shared library files.
 

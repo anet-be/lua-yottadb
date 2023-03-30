@@ -2,7 +2,7 @@
 // Manage call-in to YDB from Lua
 
 // Make sure signal.h imports the stuff we need
-#define _POSIX_C_SOURCE 1
+#define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -21,13 +21,25 @@
 // If lua-yottadb ever changes to call ydb with threading calls, change the following to pthread_sigmask() and compile+link with -pthread option
 #define SIGPROCMASK(how,set,oldset) sigprocmask((how),(set),(oldset))
 // List of signals that YDB can trigger which we don't interrupting MLua slow IO reads/writes
-#define BLOCKED_SIGNALS SIGALRM, SIGCHLD, SIGTSTP, SIGTTIN, SIGTTOU, SIGCONT, SIGUSR1, SIGUSR2
+#define BLOCKED_SIGNALS SIGCHLD, SIGTSTP, SIGTTIN, SIGTTOU, SIGCONT, SIGUSR1, SIGUSR2
 
 static sigset_t Sigmask;
+static struct sigaction Sigaction;
+static lua_CFunction Signal_blocker=NULL;  // enter/exit function for entry/exit of M
 
-// Initialize Sigmask global to mask signals that YDB uses
+// Call the function to enter/exit M with flag to indicate whether it is entering or exiting.
+// Inline for speed.
+static inline void invoke_signal_blocker(lua_State *L, bool flag) {
+  if (Signal_blocker) {
+    lua_pushboolean(L, flag);
+    lua_pop(L, Signal_blocker(L));  // remove all return values
+  }
+}
+
+// Initialize Sigmask and Sigaction global to mask signals that YDB uses
+// so that we can save time later
 // return 0 on failure due to an invalid signal in the list of blocked signals
-static int init_sigmask(sigset_t *sigmask) {
+static int init_sigmask() {
   static bool done=false;
   if (done) return !0;  // initialize only the first time
   int signals[] = {BLOCKED_SIGNALS};
@@ -37,30 +49,78 @@ static int init_sigmask(sigset_t *sigmask) {
   while (signal < signals + sizeof(signals)/sizeof(int))
     if (sigaddset(&sigmask_temp, *signal++))
       return 0;
-  *sigmask = sigmask_temp;  // copy to input's sigmask atomically, only after we know we have a valid one
+  Sigmask = sigmask_temp;  // copy to input's sigmask atomically, only after we know we have a valid one
+  if (sigaction(SIGALRM, NULL, &Sigaction))
+    return 0;
   done = true;
   return !0;
 }
 
-// Unblock or block YDB signals for while M code is running.
-// This function may be passed to yottadb.require() as the `enter_M` parameter
-// so that it is called with true before M is invoked, and called with false after M returns
-// yottadb.ydb_signals(bool)
-// @param bool true to unblock; false to block all YDB signals listed in BLOCKED_SIGNALS #define
-// return: true if previous state was unblocked; false if previous state was blocked
-static bool Unblocked = true;
-int ydb_signals(lua_State *L) {
-  bool previous = Unblocked;
-  bool Unblocked = lua_toboolean(L, 1);
-  if (Unblocked)
-    SIGPROCMASK(SIG_UNBLOCK, &Sigmask, NULL);
-  else
-    SIGPROCMASK(SIG_BLOCK, &Sigmask, NULL);
+// yottadb.init(signal_blocker)
+//- Initialize ydb and set blocking of M signals.
+// If `signal_blocker` is specified, block M signals which could otherwise interrupt slow IO operations like reading from user/pipe.
+// Also read the notes on signals in the README.
+// Note: any calls to the YDB API also initialize YDB; any subsequent call here will set `signal_blocker` but not re-init YDB.
+// Assert any errors.
+// @function init
+// @param[opt] signal_blocker specifies a Lua callback CFunction (e.g. `yottadb.block_M_signals()`) which will be
+// called with parameter false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
+// Setting `signal_blocker` to nil switches off signal blocking.
+// Note: Changing this to support a generic Lua function as callback would be possible but slow, as it would require
+// fetching the function pointer from a C closure, and using `lua_call()`.
+// @return nothing
+// @see block_M_signals
+int init(lua_State *L) {
+  if (lua_gettop(L)>0 && !lua_isnil(L, 1) && !lua_iscfunction(L, 1))
+    luaL_error(L, "Parameter #1 to init must be nil or a CFunction");
+  // setup Sigmask here to save time on every call to an M routine
+  ydb_assert(L, ydb_init());  // init YDB signals before we can init sigmask
+  if (!init_sigmask())
+    luaL_error(L, "Signal list in callins.c, init_sigmask() contains invalid signal names");
+  // turn off blocking using previous signal_blocker func
+  invoke_signal_blocker(L, false);
+  Signal_blocker = lua_tocfunction(L, 1);
   lua_pop(L, 1);
-  lua_pushboolean(L, previous);
-  return 1;
+  // turn on blocking using new signal_blocker func
+  invoke_signal_blocker(L, true);
+  return 0;
 }
 
+// yottadb.block_M_signals(bool)
+//- Block or unblock YDB signals for while M code is running.
+// This function is designed to be passed to yottadb.init() as the `signal_blocker` parameter.
+// Most signals (listed in `BLOCKED_SIGNALS` in callins.c) are blocked using sigprocmask()
+// but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
+// in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are 
+// interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
+// handler does actually run, allowing YDB to flush the database or IO as necessary without
+// your M code having to call the M command `VIEW "FLUSH"`.
+// Note: this function does take time, as OS calls are slow. Using it will increase the M calling
+// overhead by about 1.4 microseconds: 2-5x the bare calling overhead (see `make benchmarks`)
+// The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
+// OS calls and make it as fast as possible.
+// @function block_M_signals
+// @param bool true to block; false to unblock all YDB signals
+// @return nothing
+// @see init
+int block_M_signals(lua_State *L) {
+  bool block = lua_toboolean(L, 1);
+  // two sigprocmask calls (set+unset) take 873 instructions (3018 cycles, 609ns on my i7) - tested with perf
+  // two sigaction calls (set+unset) take 925 instructions (3000 cycles, 685ns on my i7) - tested with perf
+  // But once installed in the whole M_routine callback system, they slow down an empty M call and return
+  // by 1400 ns -- discrepancy presumably due to something with CPU caching?
+  if (block) {
+    Sigaction.sa_flags |= SA_RESTART;
+    sigaction(SIGALRM, &Sigaction, NULL);
+    SIGPROCMASK(SIG_BLOCK, &Sigmask, NULL);
+  } else {
+    SIGPROCMASK(SIG_UNBLOCK, &Sigmask, NULL);
+    Sigaction.sa_flags &= ~SA_RESTART;
+    sigaction(SIGALRM, &Sigaction, NULL);
+  }
+  lua_pop(L, 1);
+  return 0;
+}
 
 // ~~~ M Routine parameter model and parameter metadata allocation ~~~
 
@@ -135,24 +195,15 @@ static inline byref_slot *get_slot(metadata *M) {
 
 typedef struct {
   metadata *M;  // malloc metadata
-  lua_CFunction enter_M;  // enter/exit function for entry/exit of M
+  // add any more function-specific data here
 } cip_metadata;
-
-// Call the function to enter/exit M with flag to indicate whether it is entering or exiting
-// inline for speed
-static inline void invoke_entry_func(lua_State *L, lua_CFunction enter_M, bool flag) {
-  if (enter_M) {
-    lua_pushboolean(L, flag);
-    lua_pop(L, enter_M(L));  // remove all return values
-  }
-}
 
 // Cleanup function for cip() to help with early error exits
 // inline for speed
 static inline void cip_cleanup(lua_State *L, cip_metadata *meta) {
   free_mallocs(meta->M);
   // do the following function last in case it produces an error (since it's a user-supplied function)
-  invoke_entry_func(L, meta->enter_M, false);
+  invoke_signal_blocker(L, true);
 }
 
 // Free mallocs and assert type error
@@ -338,7 +389,6 @@ static char *_name_struct_id = "Mroutine";  // any random 8-byte ID so we can do
 typedef struct {
   int typeid;
   char *entrypoint;
-  lua_CFunction enter_M; // user-supplied handler function to enter/exit M
   ci_name_descriptor ci_info; // a ydb type
 } ci_name_userdata;
 
@@ -362,7 +412,7 @@ typedef struct {
 // Note1: Must pass float, double, and int as pointers instead of actuals: see note in cast2ydb()
 // Note2: This is designed for speed, which means all temporary data is allotted on the stack
 //    and it does no mallocs unless it has to return strings (which can be large so need malloc)
-//    (because mallocs take ~50 CPU cycles each, according to google)
+//    (because mallocs+free takes 200 CPU instructions (50 cycles, 13ns  on my i7) - tested with perf stat)
 //    So if you want it to be super fast, don't return strings or make them outputs!
 // TODO: could improve speed by having caller metadata remember total string-malloc space required and doing just one malloc for all.
 //    But first check benchmarks first to see if YDB end is slow enough to make optimization meaningless
@@ -389,12 +439,12 @@ int cip(lua_State *L) {
     luaL_error(L, "not enough parameters to M routine %s() to match call-in specification", u->ci_info.rtn_name.address);
 
   // NOTE: after this, we must not error out without first calling cip_cleanup()
-  // The following function could produce an error, so do it before create_metadata() which requires cleanup
-  invoke_entry_func(L, u->enter_M, true);
+  // The following is a user function, so could produce an error. So do it before create_metadata() which requires cleanup.
+  invoke_signal_blocker(L, false);
   // Allocate space to store metadata for each param to ydb_cip() except routine_name_handle
   // (actually we only use one metadata entry per output_type parameter, but we don't have that count handy)
   metadata *M = create_metadata(ci_arg.n-1);
-  cip_metadata _meta = {M, u->enter_M};
+  cip_metadata _meta = {M};
   cip_metadata *meta = &_meta;
 
   int argi=0;  // output argument index
@@ -451,9 +501,6 @@ int cip(lua_State *L) {
 // _yottadb.register_routine(routine_name, entrypoint)
 // @routine_name is the C name of the M routine (first field in the call-in table)
 // @entrypoint is the M entrypoint specified in the call-in table
-// @param enter_M specifies nil or a Lua function to call on entry and exit of M. The cip() function calls
-//   enter_M(true) before calling M and enter_M(false) after M returns. Any values returned by enter_M() are discarded.
-//   This may be set to yottadb.ydb_signals() to enable YDB signals on entry to M and disable YDB signals on return from M
 // return the handle (a ydb ci_name_descriptor struct in a new Lua userdata object)
 int register_routine(lua_State *L) {
   ci_name_userdata *u;
@@ -462,19 +509,15 @@ int register_routine(lua_State *L) {
   u->ci_info.rtn_name.address = luaL_checklstring(L, 1, &u->ci_info.rtn_name.length);
   u->ci_info.handle = NULL;  // have to sete ci_info.handle to NULL before first call to that M routine
   u->entrypoint = luaL_checkstring(L, 2);
-  u->enter_M = lua_tocfunction(L, 3);
   return 1;
 }
 
 // Open a call-in table using ydb_ci_tab_open()
 // _yottadb.ci_tab_open(ci_table_filename)
 // @param ci_table_filename refers to the ydb call-in table file to open
-// return: integer handle to call-in table
+// @return integer handle to call-in table
+// @see ydb_signals
 int ci_tab_open(lua_State *L) {
-  // setup Sigmask here to save time on every call to an M routine
-  if (!init_sigmask(&Sigmask))
-    luaL_error(L, "Signal list in callins.c, init_sigmask() contains invalid signal names");
-
   uintptr_t ci_handle;
   ydb_assert(L, ydb_ci_tab_open(luaL_checkstring(L, 1), &ci_handle));
   lua_pop(L, 1);
