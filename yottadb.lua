@@ -31,15 +31,46 @@ _table_string_number = {table=true, string=true, number=true}
 --- Low level functions
 -- @section
 
+--- Block or unblock YDB signals for while M code is running.
+-- This function is designed to be passed to yottadb.init() as the `signal_blocker` parameter.
+-- Most signals (listed in `BLOCKED_SIGNALS` in callins.c) are blocked using sigprocmask()
+-- but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
+-- in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are 
+-- interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
+-- handler does actually run, allowing YDB to flush the database or IO as necessary without
+-- your M code having to call the M command `VIEW "FLUSH"`.
+-- Note: this function does take time, as OS calls are slow. Using it will increase the M calling
+-- overhead by about 1.4 microseconds: 2-5x the bare calling overhead (see `make benchmarks`)
+-- The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
+-- OS calls and make it as fast as possible.
+-- @function block_M_signals
+-- @param bool true to block; false to unblock all YDB signals
+-- @return nothing
+-- @see init
+M.block_M_signals = _yottadb.block_M_signals
 
+--- Initialize ydb and set blocking of M signals.
+-- If `signal_blocker` is specified, block M signals which could otherwise interrupt slow IO operations like reading from user/pipe.
+-- Also read the notes on signals in the README.
+-- Note: any calls to the YDB API also initialize YDB; any subsequent call here will set `signal_blocker` but not re-init YDB.
+-- Assert any errors.
+-- @function init
+-- @param[opt] signal_blocker specifies a Lua callback CFunction (e.g. `yottadb.block_M_signals()`) which will be
+-- called with parameter false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
+-- Setting `signal_blocker` to nil switches off signal blocking.
+-- Note: Changing this to support a generic Lua function as callback would be possible but slow, as it would require
+-- fetching the function pointer from a C closure, and using `lua_call()`.
+-- @return nothing
+-- @see block_M_signals
+M.init = _yottadb.init
 
---- Unblock or block YDB signals for while M or Lua code is running (respectively).
--- This function may be passed to yottadb.require() as the `enter_M` parameter
--- so that ydb_signals is called with true before M is invoked, and called with false after M returns
--- @function ydb_signals
--- @param bool true to unblock; false to block all YDB signals listed in BLOCKED_SIGNALS (in callins.c)
--- @return true if previous state was unblocked; false if previous state was blocked
-M.ydb_signals = _yottadb.ydb_signals
+--- Lua function to call `ydb_eintr_handler()`.
+-- If users wish to handle EINTR errors themselves, instead of blocking signals, they should call
+-- `ydb_eintr_handler()` when they get an EINTR error, before restarting the erroring OS system call.
+-- @function ydb_eintr_handler
+-- @return YDB_OK on success, and >0 on error (with message in ZSTATUS)
+-- @see block_M_signals
+M.ydb_eintr_handler = _yottadb.ydb_eintr_handler
 
 --- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
 -- with an error message that implicates function argument number *narg*.
@@ -633,11 +664,10 @@ end
 -- Assert any errors.
 -- @param line is the text in the current line of the call-in file
 -- @param ci_handle handle of call-in table
--- @param[opt] enter_M specifies a function that is called on entry/exit of M per yottadb.require()
 -- @return C name for the M routine
 -- @return a function to invoke the M routine
 -- @return or return nil, nil if the line did not contain a function prototype
-local function parse_prototype(line, ci_handle, enter_M)
+local function parse_prototype(line, ci_handle)
   line = line:gsub('//.*', '')  -- remove comments
   -- example prototype line: test_Run: ydb_string_t* %Run^test(I:ydb_string_t*, I:ydb_int_t, I:ydb_int_t)
   local pattern = '%s*([^:%s]+)%s*:%s*([%w_]+%s*%*?[%s%[%]%d]*)%s*([^(%s]+)%s*%(([^)]*)%)'
@@ -654,7 +684,7 @@ local function parse_prototype(line, ci_handle, enter_M)
     table.insert(param_info, pack_type(type_str, i))
   end
   local param_info_string = table.concat(param_info)
-  local routine_name_handle = _yottadb.register_routine(routine_name, entrypoint, enter_M)
+  local routine_name_handle = _yottadb.register_routine(routine_name, entrypoint)
   -- create a table used by func() below to reference the routine_name string to ensure it isn't garbage collected
   -- because it's used by C userdata in 'routine_name_handle', but and not referenced by Lua func()
   local routine_name_table = {routine_name_handle, routine_name}
@@ -671,16 +701,9 @@ end
 -- @param Mprototypes is a list of lines in the format of ydb 'callin' files per ydb_ci().
 -- If the string contains `:` it is considered to be the call-in specification itself;
 -- otherwise it is treated as the filename of a call-in file to be opened and read.
--- @param[opt] enter_M specifies a function that is called with parameter true before entering M,
--- and with parameter false on return from M. Applies to all M routines in the call-in file.
--- For example, pass in the yottadb.ydb_signals() function to automate unblocking/reblocking
--- of ydb signals for before/after calling every M routine in the call-in file.
--- (But read the notes on signals in the README.)
 -- @return A table of functions analogous to a Lua module.
 -- Each function in the table will call an M routine specified in `Mprototypes`.
--- @see ydb_signals
-function M.require(Mprototypes, enter_M)
-  assert(enter_M==nil or type(enter_M)=='function', string.format("enter_M parameter (%s) to yottadb.require must be nil or a Lua function", type(enter_M)))
+function M.require(Mprototypes)
   local routines = {}
   if not Mprototypes:find(':', 1, true) then
     -- read call-in file
@@ -707,7 +730,7 @@ function M.require(Mprototypes, enter_M)
   local line_no = 0
   for line in Mprototypes:gmatch('([^\n]*)\n?') do
     line_no = line_no+1
-    local ok, routine, func = pcall(parse_prototype, line, ci_handle, enter_M)
+    local ok, routine, func = pcall(parse_prototype, line, ci_handle)
     if routine then  routines[routine] = func end
   end
   os.remove(filename) -- cleanup

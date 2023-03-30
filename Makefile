@@ -52,5 +52,9 @@ install: yottadb.lua _yottadb.so
 	install _yottadb.so $(DESTDIR)$(lib_dir)
 	install yottadb.lua $(DESTDIR)$(share_dir)
 
+benchmark: benchmarks
+benchmarks:
+	source $(ydb_dist)/ydb_env_set && $(lua) tests/mroutine_benchmarks.lua
+
 test: _yottadb.so
 	source $(ydb_dist)/ydb_env_set && $(lua) tests/test.lua $(TESTS)

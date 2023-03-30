@@ -2172,7 +2172,6 @@ function test_callin()
   assert(out1=='a\0b\0c' and out2=='abcdefghijklmnopqrstuvwxyz' and out3=='a\0b\0c')
   out1, out2, out3 = pcall(table1.concat3, 'a','b','c', '')
   assert(not out1 and out2==_yottadb.message(_yottadb.YDB_ERR_INVSTRLEN))
---  assert(out1=='a\0b\0c' and out2=='abcdefghijklmnopqrstuvwxyz' and out3=='a')
 end
 
 function test_deprecated_readme()
@@ -2220,6 +2219,47 @@ function test_deprecated_readme()
   assert(not key1.value)
   assert(not key1:subscripts()())
 end
+
+function test_signals()
+  -- get PID
+  local f=assert(io.open('/proc/self/stat'), 'Cannot open /proc/self/stat')
+  local pid=assert(f:read('*n'), 'Cannot read PID from /proc/self/stat')
+  f:close()
+
+  -- Define function to open a pipe and read it all into a string
+  function capture(cmd)
+    local f=assert(io.popen(cmd))
+    local s=assert(f:read('*a'))
+    f:close()
+    return s
+  end
+
+  -- Define shell (sh) commands to send ourselves different signals
+  local cmd1 = "kill -s CONT "..pid.." && sleep 0.1 && echo -n Complete 2>/dev/null"
+  local cmd2 = "kill -s ALRM "..pid.." && sleep 0.1 && echo -n Complete 2>/dev/null"
+
+  --first send ourselves a signal while Lua is doing slow IO
+  --make sure Lua returns early without block_M_signals enabled
+  local ok, e = pcall(capture, cmd1)
+  assert(not ok and e:find('Interrupted system call'))
+  local ok, e = pcall(capture, cmd2)
+  assert(not ok and e:find('Interrupted system call'))
+
+  -- Now do the same with M signals blocked -- it should complete the who task properly
+  yottadb.init(_yottadb.block_M_signals)
+  local ok, e = pcall(capture, cmd1)
+  assert(ok and e=='Complete')
+  local ok, e = pcall(capture, cmd2)
+  assert(ok and e=='Complete')
+
+  -- check that init(nil) switches blocking back off
+  yottadb.init(nil)
+  local ok, e = pcall(capture, cmd1)
+  assert(not ok and e:find('Interrupted system call'))
+  local ok, e = pcall(capture, cmd2)
+  assert(not ok and e:find('Interrupted system call'))
+end
+
 
 -- Run tests.
 print('Starting test suite.')
