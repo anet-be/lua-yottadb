@@ -39,6 +39,7 @@ _table_string_number = {table=true, string=true, number=true}
 -- interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
 -- handler does actually run, allowing YDB to flush the database or IO as necessary without
 -- your M code having to call the M command `VIEW "FLUSH"`.
+--
 -- Note: this function does take time, as OS calls are slow. Using it will increase the M calling
 -- overhead by about 1.4 microseconds: 2-5x the bare calling overhead (see `make benchmarks`)
 -- The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
@@ -243,6 +244,7 @@ function M.get(varname, ...)
   if ok then return value end
   local code = M.get_error_code(value)
   if code == _yottadb.YDB_ERR_GVUNDEF or code == _yottadb.YDB_ERR_LVUNDEF then return nil end
+  if code == _yottadb.YDB_ERR_INVVARNAME then  value = string.format("%s ydb_get('%.32s')", value, varname)  end
   error(value) -- propagate
 end
 
@@ -898,22 +900,24 @@ function node:settree(tbl, filter, _seen)
 end
 
 --- Fetch database node and subtree and return a Lua table of it. But be aware that order is not preserved by Lua tables.
--- In its simplest form:
---      t = node:gettree()
---  Note: special field name `__` indicates the value of the node itself
+--
+--  Note: special field name `__` in the returned table indicates the value of the node itself.
 -- @param[opt] maxdepth subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
--- @param[opt] filter optional function(node, node_subscript, value, recurse, depth) or nil
+-- @param[opt] filter optional `function(node, node_top_subscript, value, recurse, depth)` or nil
 --
 -- * if filter is nil, all values are fetched unfiltered
--- * if filter is a function(node, node_subscript, value, recurse, depth) it is invoked on every subscript
+-- * if filter is a function it is invoked on every subscript
 -- to allow it to cast/alter every value and recurse flag;
--- note that at node root (depth=0), subscript passed to filter is ''
--- * it must return the same or an altered value (string/number/nil) and recurse flag
--- * if filter returns a nil value then gettree will store nothing in the table for that database value
--- * if filter return false recurse flag, it will prevent recursion deeper into that particular subscript
+-- note that at node root (depth=0), subscript passed to filter is the empty string ""
+-- * filter may optionally return two items: `value`, `recurse` -- copies of the input parameters, optionally altered:
+--    * if filter returns `value` then gettree will store it in the table for that database subscript/value; or store nothing if `value=nil`
+--    * if filter returns `recurse=false`, it will prevent recursion deeper into that particular subscript; if `nil`, it will use the original value of recurse
 -- @param[opt] _value is for internal use only (to avoid duplicate value fetches, for speed)
 -- @param[opt] _depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
 -- @return Lua table containing data
+-- @usage t = node:gettree()
+-- @usage node:gettree(nil, print) end)
+-- -- prints details of every node in the tree
 -- @see settree
 function node:gettree(maxdepth, filter, _value, _depth)
   if not _depth then  -- i.e. if this is the first time the function is called
@@ -928,7 +932,11 @@ function node:gettree(maxdepth, filter, _value, _depth)
   for subscript, subnode in self:__pairs() do   -- use self:__pairs() instead of pairs(self) so that it works in Lua 5.1
     local recurse = _depth <= maxdepth and node.data(subnode) >= 10
     _value = node.get(subnode)
-    if filter then  _value, recurse = filter(subnode, subscript, _value, recurse, _depth)  end
+    if filter then
+      local _recurse
+      _value, _recurse = filter(subnode, subscript, _value, recurse, _depth)
+      if _recurse~=nil then  recurse = _recurse  end  -- necessary in case user doesn't return recurse
+    end
     if recurse then
       _value = node.gettree(subnode, maxdepth, filter, _value, _depth)
     end
@@ -1229,26 +1237,23 @@ function M.dump(node, ...)
   else  subs, maxlines = {...}, nil  end
   maxlines = maxlines or 30
   node = M.node(node, subs)  -- ensure it's a node object, not a varname
-  local function _dump(node, output)
-    if #output >= maxlines then  return  end
-    local value = node.__
-    if value then
-      local subscripts = #node.__subsarray==0 and '' or string.format('("%s")', table.concat(node.__subsarray, '","'))
-      table.insert(output, string.format('%s%s=%q', node.__varname, subscripts, value))
-    end
-    for subscript, subnode in node:__pairs() do  -- use node:__pairs() instead of pairs(node) so it works in Lua 5.1
-      _dump(subnode, output)
-    end
-  end
+
+  local too_many_lines_error = "Too many lines"
   local output = {}
-  _dump(node, output)
-  if #output >= maxlines then
-    table.insert(output, string.format("...etc.   -- stopped at %s lines; to show more use yottadb.dump(node, {subscripts}, maxlines)", maxlines))
+  local function print_func(node, sub, val)
+    if not val then  return  end
+    table.insert(output, string.format('%s=%q', node, val))
+    assert(#output < maxlines, too_many_lines_error)
   end
-  if #output == 0 then  return nil  end
+  ok, err = pcall(node.gettree, node, nil, print_func)
+  if not ok then
+    if err==too_many_lines_error then
+      table.insert(output, string.format("...etc.   -- stopped at %s lines; to show more use yottadb.dump(node, {subscripts}, maxlines)", maxlines))
+    else  error(err)  end
+  end
+  if #output == 0 then  return tostring(node)  end
   return table.concat(output, '\n')
 end
-
 
 
 -- Useful for user to check whether an object's metatable matches node type
