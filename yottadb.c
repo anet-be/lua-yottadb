@@ -108,7 +108,7 @@ static int _ydb_eintr_handler(lua_State *L) {
 
 // Gets the value of a variable/node.
 // Raises an error if variable/node does not exist.
-// _yottadb.get(varname[, subs])
+// _yottadb.get(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 // return: string
@@ -135,7 +135,7 @@ static int get(lua_State *L) {
 
 // Sets the value of a variable/node.
 // Raises an error of no such intrinsic variable exists.
-// _yottadb.set(varname[, subs], value)
+// _yottadb.set(varname[, {subs}], value)
 // varname: string
 // subs: optional table of subscripts
 // value: string or number convertible to string
@@ -154,7 +154,7 @@ static int set(lua_State *L) {
 }
 
 // Deletes a node or tree of nodes.
-// _yottadb.delete(varname[, subs][, type=_yottadb.YDB_DEL_NODE])
+// _yottadb.delete(varname[, {subs}][, type=_yottadb.YDB_DEL_NODE])
 // varname: string
 // subs: optional table of subscripts
 // type: _yottadb.YDB_DEL_NODE or _yottadb.YDB_DEL_TREE
@@ -170,7 +170,7 @@ static int delete(lua_State *L) {
 }
 
 // Returns information about a variable/node (except intrinsic variables).
-// _yottadb.data(varname[, subs])
+// _yottadb.data(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 // return: _yottadb.YDB_DATA_UNDEF (no value or subtree) or
@@ -191,7 +191,7 @@ static int data(lua_State *L) {
 
 // Attempts to acquire or increment a lock on a variable/node, waiting if requested.
 // Raises an error if a lock could not be acquired.
-// _yottadb.lock_incr(varname[, subs][, timeout=0])
+// _yottadb.lock_incr(varname[, {subs}][, timeout=0])
 // varname: string
 // subs: optional table of subscripts
 // timeout: optional timeout in seconds to wait for lock
@@ -207,7 +207,7 @@ static int lock_incr(lua_State *L) {
 }
 
 // Decrements a lock on a variable/node, releasing it if possible.
-// _yottadb.lock_decr(varname[, subs])
+// _yottadb.lock_decr(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 static int lock_decr(lua_State *L) {
@@ -314,7 +314,7 @@ static int tp(lua_State *L) {
 
 // Returns the next subscript for a variable/node.
 // Raises an error of there are no more subscripts.
-// _yottadb.subscript_next(varname[, subs])
+// _yottadb.subscript_next(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 // return: string
@@ -341,7 +341,7 @@ static int subscript_next(lua_State *L) {
 
 // Returns the previous subscript for a variable/node.
 // Raises an error of there are not previous subscripts.
-// _yottadb.subscript_previous(varname[, subs])
+// _yottadb.subscript_previous(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 // return: string
@@ -368,7 +368,7 @@ static int subscript_previous(lua_State *L) {
 
 // Returns the next node for a variable/node.
 // Raises an error if there are no more nodes.
-// _yottadb.node_next(varname[, subs])
+// _yottadb.node_next(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 // return: table of subscripts for the node
@@ -414,7 +414,7 @@ static int node_next(lua_State *L) {
 
 // Returns the previous node for a variable/node.
 // Raises an error if there are no previous nodes.
-// _yottadb.node_previous(varname[, subs])
+// _yottadb.node_previous(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
 // return: table of subscripts for the node
@@ -467,7 +467,7 @@ typedef struct ydb_key_t {
 // Releases all locks held and attempts to acquire all requested locks, waiting if requested.
 // Raises an error if a lock could not be acquired.
 // _yottadb.lock([keys[, timeout=0]])
-// keys: optional table of {varname[, subs]} variable/nodes to lock
+// keys: optional table of {varname[, {subs}]} variable/nodes to lock
 // timeout: optional timeout in seconds to wait for lock
 static int lock(lua_State *L) {
   int num_keys = 0;
@@ -554,7 +554,7 @@ static int delete_excl(lua_State *L) {
 
 // Increments the numeric value of a variable/node.
 // Raises an error on overflow.
-// _yottadb.incr(varname[, subs][, increment=n])
+// _yottadb.incr(varname[, {subs}][, increment=n])
 // varname: string
 // subs: optional table of subscripts
 // increment: amount to increment by = number, or string-of-a-canonical-number, default=1

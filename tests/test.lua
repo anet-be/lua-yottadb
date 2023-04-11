@@ -2080,30 +2080,36 @@ function test_pairs()
   assert(i == 0)
 end
 
-local inserted_tree = {__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.delete}
+local inserted_tree = {__='berwyn', [0]='null', [-1]='negative', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.delete}
 
 local expected_tree_dump = [=[
 test("sub1")="berwyn"
+test("sub1",-1)="negative"
+test("sub1",0)="null"
 test("sub1","!@#$")="junk"
 test("sub1","appearance")="handsome"
 test("sub1","appearance","eyes")="blue"
 test("sub1","appearance","hair")="blond"
-test("sub1","weight")="78"]=]
+test("sub1","weight")=78]=]
 
 local expected_table_dump = [=[
   __: "handsome"
   eyes: "blue"
   hair: "blond"
 !@#$: "junk"
+-1: "negative"
+0: "null"
 __: "berwyn"
 appearance (table: 0x...):
-weight: "78"]=]
+weight: 78]=]
 
 local expected_level0_table_dump = [=[
 !@#$: "junk"
+-1: "negative"
+0: "null"
 __: "berwyn"
 appearance: "handsome"
-weight: "78"]=]
+weight: 78]=]
 
 function test_settree()
   -- check that an inserted_tree creates the correct node dump

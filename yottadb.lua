@@ -494,7 +494,9 @@ function M.subscript_previous(varname, ...)
   return ok and sub_prev or nil
 end
 
---- Returns an iterator for iterating over all subscripts in a database variable/node.
+--- Returns an iterator for iterating over database *sibling* subscripts starting from given varname(subs).
+-- Note: this starts from the given location and gives the next *sibling* subscript in the M collation sequence.
+-- It operates differently than `node:subscipts()` which yields all subscripts that are *children* of the given node.
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}
 -- @param reverse Flag that indicates whether to iterate backwards. 
@@ -546,9 +548,6 @@ function M.zwr2str(s) return _yottadb.zwr2str(assert_type(s, 'string', 1)) end
 
 -- The following 6 lines defines the 'High level functions' section to appear
 -- before 'Transactions' in the docs. The blank lines in between are necessary:
-
---- High level functions
--- @section
 
 --- @section end
 
@@ -628,6 +627,9 @@ end
 function M.trollback()
   error(_yottadb.message(_yottadb.YDB_TP_ROLLBACK))
 end
+
+--- @section end
+
 
 -- ~~~ Functions to handle calling M routines from Lua ~~~
 
@@ -739,6 +741,8 @@ function M.require(Mprototypes)
   return routines
 end
 
+--- @section end
+
 
 --- Node object creation
 -- @section
@@ -785,18 +789,28 @@ function M.node(varname, ...)
   }, node)
 end
 
+--- @section end
+
 -- Define this to tell __call() whether to create new node using M.node or M.key
 node.___new = M.node
 
---- Object that represents a YDB node. <br><br>
--- **Note1:** Although the syntax `node:method()` is pretty, it is slow. If you are concerned about speed,
--- use `node:__method()` which is equivalent but 15x faster.
--- This is because Lua expands `node:method()` to `node.method(node)`, so we have to create
--- intermediate subnode called `node.method` and then when it gets called with `()` we discover
--- that its first parameter is of type `node` so that we know to invoke `node.__method()` instead.
--- Because of `__` method access, node names starting with `__` are not accessable using dot
--- notation: use mynode('__nodename') notation instead. <br><br>
--- **Note2:** Several standard Lua operators work on nodes including + - = pairs() and tostring()
+-- Note: the following doc must be here instead of up at the definition of node to retain its position in the html doc
+
+--- Object that represents a YDB node.
+--
+-- **Note1:** Although the syntax `node:method()` is pretty, be aware that it is slow. If you are concerned
+-- about speed, use `node:__method()` instead, which is equivalent but 15x faster.
+-- This is because Lua expands `node:method()` to `node.method(node)`, so lua-yottadb creates
+-- an intermediate object of database subnode `node.method`, thinking it is is a database subnode access.
+-- Then, when this object gets called with `()`, lua-yottadb discovers that its first parameter is of type `node` --
+-- at which point it finally knows invoke `node.__method()` instead of treating it as a database subnode access.
+--
+-- **Note2:** Because lua-yottadb's underlying method access is with the `__` prefix, database node names
+-- starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to 
+-- access a database node named `__nodename`. In addition, Lua object methods starting with two underscores,
+-- like `__tostring`, are only accessible with an *additional* `__` prefix, for example, `node:____tostring()`.
+--
+-- **Note3:** Several standard Lua operators work on nodes. These are: `+ - = pairs() tostring()`
 -- @type node
 
 --- Get node's value.
@@ -836,9 +850,9 @@ function node:lock_incr(timeout) return M.lock_incr(self.__varname, self.__subsa
 -- @see lock_decr
 function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) end
 
---- Return iterator over the child subscripts of a node (in M terms, collate from "" to "").
--- Unlike the deprecated `key:subscripts()`, `node:subscripts()` returns all *child* subscripts, not all subsequent subscripts in the same level.
--- Note that subscripts() order is guaranteed to equal the M collation sequence order.
+--- Return iterator over the *child* subscripts of a node (in M terms, collate from "" to "").
+-- Unlike `yottadb.subscripts()`, `node:subscripts()` returns all *child* subscripts, not subsequent *sibling* subscripts in the same level.
+-- Note that subscripts() order is guaranteed to equal the M collation sequence
 -- @param[opt] reverse set to true to iterate in reverse order
 -- @usage for subscript in node:subscripts() do ...
 function node:subscripts(reverse)
@@ -899,7 +913,9 @@ function node:settree(tbl, filter, _seen)
   end
 end
 
---- Fetch database node and subtree and return a Lua table of it. But be aware that order is not preserved by Lua tables.
+--- Fetch database node and subtree and return a Lua table of it.
+-- But be aware that order is not preserved by Lua tables.
+-- Where possible, it converts strings to numbers using `tonumber()` (occurs before calling optional filter function).
 --
 --  Note: special field name `__` in the returned table indicates the value of the node itself.
 -- @param[opt] maxdepth subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
@@ -924,6 +940,7 @@ function node:gettree(maxdepth, filter, _value, _depth)
     _depth = _depth or 0
     maxdepth = maxdepth or 1/0  -- or infinity
     _value = node.get(self)
+    _value = tonumber(_value) or _value
     if filter then  _value = filter(self, '', _value, true, _depth)  end
   end
   local tbl = {}
@@ -932,6 +949,7 @@ function node:gettree(maxdepth, filter, _value, _depth)
   for subscript, subnode in self:__pairs() do   -- use self:__pairs() instead of pairs(self) so that it works in Lua 5.1
     local recurse = _depth <= maxdepth and node.data(subnode) >= 10
     _value = node.get(subnode)
+    _value = tonumber(_value) or _value
     if filter then
       local _recurse
       _value, _recurse = filter(subnode, subscript, _value, recurse, _depth)
@@ -952,17 +970,10 @@ function node:dump(maxlines)
   return M.dump(self, {}, maxlines)
 end
 
---- Get node properties
--- @section
+--- @section end
 
---- Fetch the name of the node, i.e. the rightmost subscript
-function node:name()  return self.__subsarray[#self.__subsarray] or self.__varname  end
---- Fetch the 'data' flags of the node @see data
-function node:data()  return M.data(self.__varname, self.__subsarray)  end
---- Return true if the node has a value; otherwise false
-function node:has_value()  return node.data(self)%2 == 1  end
---- Return true if the node has a tree; otherwise false
-function node:has_tree()  return node.data(self)   >= 10  end
+--- Class node
+-- @section
 
 --- Makes pairs() work - iterate over the child subscripts, values of given node.
 -- You can use either `pairs(node)` or `node:pairs()`.
@@ -970,8 +981,7 @@ function node:has_tree()  return node.data(self)   >= 10  end
 -- Note that pairs() order is guaranteed to equal the M collation sequence order
 --   (even though pairs() order is not normally guaranteed for Lua tables).
 --   This means that pairs() is a reasonable substitute for ipairs which is not implemented.
--- @function node:pairs
--- @within Class node
+-- @function node:__pairs
 -- @param[opt] reverse Boolean flag iterates in reverse if true
 -- @usage for subscript,subnode in pairs(node) do ...
 --     where subnode is a node/key object. If you need its value use node._
@@ -986,19 +996,18 @@ function node:__pairs(reverse)
 end
 node.pairs = node.__pairs
 
---- Not implemented - use pairs() instead.
+--- Not implemented - use `pairs(node)` or `node:__pairs()` instead.
 -- See alternative usage below.
 -- The reason this is not implemented is that since
---  Lua >=5.3 implements ipairs via __index().
---  This would mean that __index() would have to treat integer subscript lookup specially, so:
+--  Lua >=5.3 implements ipairs via `__index()`.
+--  This would mean that `__index()` would have to treat integer subscript lookup specially, so:
 --
 -- * although `node['abc']`  => produces a new node so that `node.abc.def.ghi` works
--- * `node[1]`  => would have to produce value `node(1).__ so ipairs()` works <br>
+-- * `node[1]`  => would have to produce value `node(1).__` so ipairs() works <br>
 --  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation.
 --
 -- Alternatives using pairs() are as follows:
--- @function __ipairs
--- @within Class node
+-- @function node:__ipairs
 -- @usage for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
 -- (this works since standard M order is numbers first -- unless your db specified another collation)
 -- @usage `for i=1,1/0 do   v=node[i].__  if not v break then   <do_your_stuff with k,v>   end`
@@ -1059,7 +1068,9 @@ end
 -- Returns the string representation of this node.
 function node:__tostring()
   local subs = {}
-  for i, name in ipairs(self.__subsarray) do subs[i] = M.str2zwr(name) end
+  -- ensure numeric subscripts are not quoted so node name strings look more like in M but still Lua-compatible
+  -- prior to lua-yottadb version 1.2 used M.str2zwr() which was slower and produced strings that Lua does not understand
+  for i, name in ipairs(self.__subsarray) do  subs[i] = tonumber(name) or string.format('%q', name)  end
   local subscripts = table.concat(subs, ',')
   return subscripts == '' and self.__varname or string.format('%s(%s)', self.__varname, subscripts)
 end
@@ -1098,6 +1109,18 @@ end
 
 --- @section end
 
+--- Get node properties
+-- @section
+
+--- Fetch the name of the node, i.e. the rightmost subscript
+function node:name()  return self.__subsarray[#self.__subsarray] or self.__varname  end
+--- Fetch the 'data' flags of the node @see data
+function node:data()  return M.data(self.__varname, self.__subsarray)  end
+--- Return true if the node has a value; otherwise false
+function node:has_value()  return node.data(self)%2 == 1  end
+--- Return true if the node has a tree; otherwise false
+function node:has_tree()  return node.data(self)   >= 10  end
+
 
 -- ~~~ Deprecated object that represents a YDB node ~~~
 
@@ -1105,7 +1128,7 @@ end
 -- @section
 
 --- Deprecated object that represents a YDB node. <br>
---- `key` is the same as `node` except that it retains
+-- `key` is the same as `node` except that it retains
 -- deprecated property names as follows for backward compatibility: <br>
 --   * `name` (this node's subscript or variable name) <br>
 --   * `value` (this node's value in the YottaDB database) <br>
@@ -1177,12 +1200,14 @@ end
 -- @see delete_node, set
 function key:delete_node() M.delete_node(self.__varname, self.__subsarray) end
 
---- Deprecated way to get next subscript.
+--- Deprecated way to get next *sibling* subscript.
+-- Note: this starts from the given location and gives the next *sibling* subscript in the M collation sequence.
+-- It operates differently than `node:subscipts()` which yields all subscripts that are *children* of the given node.
 -- Deprecated because:
 --
 -- * it keeps dangerous state in the object: causes bugs where old references to it think it's still original
 -- * it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
--- * if this is a common use-case, it should be reimplemented for node:subscript_next() by
+-- * if sibling access is a common use-case, it should be reimplemented as node:subscript_next() by
 --      returning a fresh node object (after node efficiency improvement to avoid subsarray duplication)
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
@@ -1195,7 +1220,7 @@ function key:subscript_next(reset)
 end
 
 
---- Deprecated way to get previous subscript.
+--- Deprecated way to get previous *sibling* subscript.
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
 -- @see key:subscript_previous, pairs
@@ -1242,7 +1267,7 @@ function M.dump(node, ...)
   local output = {}
   local function print_func(node, sub, val)
     if not val then  return  end
-    table.insert(output, string.format('%s=%q', node, val))
+    table.insert(output, string.format('%s=%s', node, tonumber(val) or string.format('%q',val)))
     assert(#output < maxlines, too_many_lines_error)
   end
   ok, err = pcall(node.gettree, node, nil, print_func)
