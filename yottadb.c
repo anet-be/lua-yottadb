@@ -275,9 +275,11 @@ static int tpfn(void *tpfnparm) {
 static int tp(lua_State *L) {
   const char *transid = lua_isstring(L, 1) ? lua_tostring(L, 1) : "";
   int npos = lua_isstring(L, 1) ? 2 : 1;
-  int namecount = lua_istable(L, npos) ? luaL_len(L, npos) : 0;
+  char table_given = lua_istable(L, npos);
+  int namecount = table_given ? luaL_len(L, npos) : 0;
   ydb_buffer_t varnames[namecount];
-  if (lua_istable(L, npos)) {
+  luaL_argcheck(L, lua_isfunction(L, npos+table_given), npos+table_given, "function expected");
+  if (table_given) {
     for (int i = 0; i < namecount; i++) {
       luaL_argcheck(L, lua_geti(L, npos, i + 1) == LUA_TSTRING, npos, "varnames must be strings"), lua_pop(L, 1);
     }
@@ -289,7 +291,6 @@ static int tp(lua_State *L) {
     }
     npos++;
   }
-  luaL_argcheck(L, lua_isfunction(L, npos), npos, "function expected"); // TODO: memory leak for varnames
   lua_createtable(L, lua_gettop(L), 0);
   for (int i = npos; i < lua_gettop(L); i++) {
     lua_pushvalue(L, i), lua_seti(L, -2, luaL_len(L, -2) + 1);
