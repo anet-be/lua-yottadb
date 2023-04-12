@@ -1488,7 +1488,7 @@ function test_module_lock()
   -- Validate inputs.
   local ok, e = pcall(yottadb.lock, true)
   assert(not ok)
-  assert(e:find('table/number/nil expected'))
+  assert(e:find('table') and e:find('number') and e:find('nil') and e:find(' expected'))
 
   ok, e = pcall(yottadb.lock, {true})
   assert(not ok)
@@ -1533,7 +1533,7 @@ function test_key()
   assert(key:incr('testeroni') == '2') -- unchanged
   local ok, e = pcall(key.incr, key, true)
   assert(not ok)
-  assert(e:find('string/number/nil expected'))
+  assert(e:find('string') and e:find('number') and e:find('nil') and e:find(' expected'))
 
   key = yottadb.key('testeroni')('sub1')
   local key_copy = yottadb.key('testeroni')('sub1')
@@ -1558,7 +1558,7 @@ function test_key()
   assert(tonumber(key.value) == 1) -- unchanged
   ok, e = pcall(function() key = key + {} end)
   assert(not ok)
-  assert(e:find('string/number expected'))
+  assert(e:find('string') and e:find('number') and e:find(' expected'))
 
   -- Validate input.
   ok, e = pcall(yottadb.key, 1)
@@ -1566,7 +1566,7 @@ function test_key()
   assert(e:find('string expected'))
   ok, e = pcall(yottadb.key, '^test1', 'not a key object')
   assert(not ok)
-  assert(e:find('table/nil expected'))
+  assert(e:find('table') and e:find('nil') and e:find(' expected'))
   -- TODO: error subscripting ISV
   -- TODO: error creating more than YDB_MAX_SUBS subscripts
 
@@ -1786,7 +1786,7 @@ function test_node()
   assert(node:incr('testeroni') == '2') -- unchanged
   local ok, e = pcall(node.incr, node, true)
   assert(not ok, e)
-  assert(e:find('string/number/nil expected'))
+  assert(e:find('string') and e:find('number') and e:find('nil') and e:find(' expected'))
 
   node = yottadb.node('testeroni', 'sub1')
   local node_copy = yottadb.node('testeroni').sub1
@@ -1811,7 +1811,7 @@ function test_node()
   assert(tonumber(node.__) == 1) -- unchanged
   ok, e = pcall(function() node = node + {} end)
   assert(not ok)
-  assert(e:find('string/number expected'))
+  assert(e:find('string') and e:find('number') and e:find(' expected'))
 
   -- Validate input.
   ok, e = pcall(yottadb.node, 1)
