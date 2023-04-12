@@ -13,10 +13,6 @@ local _yottadb = require('_yottadb')
 for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
 M._VERSION = _yottadb._VERSION
 
-_string_number = {string=true, number=true}
-_string_number_nil = {string=true, number=true, ['nil']=true}
-_table_string_number = {table=true, string=true, number=true}
-
 
 -- The following 5 lines at the start of this file makes this the first-documented
 -- section after 'Functions', but the blank lines in between are necessary
@@ -73,30 +69,49 @@ M.init = _yottadb.init
 -- @see block_M_signals
 M.ydb_eintr_handler = _yottadb.ydb_eintr_handler
 
---- Asserts that value *v* has type string *expected_type* and returns *v*, or calls `error()`
--- with an error message that implicates function argument number *narg*.
--- This is intended to be used with API function arguments so users receive more helpful error
--- messages.
+
+-- Valid type tables which may be passed to assert_type() below
+local _number_boolean = {number=true, boolean=true}
+local _number_nil = {number=true, ['nil']=true}
+local _string_number = {string=true, number=true}
+local _string_number_nil = {string=true, number=true, ['nil']=true}
+local _table_nil = {table=true, ['nil']=true}
+local _table_number_nil = {table=true, number=true, ['nil']=true}
+local _table_boolean_nil = {table=true, boolean=true, ['nil']=true}
+local _table_string = {table=true, string=true}
+local _table_string_number = {table=true, string=true, number=true}
+local _table_string_number_nil = {table=true, string=true, number=true, ['nil']=true}
+
+--- Verify type of v.
+--- Asserts that type(`v`) is equal to expected_types (string) or is in `expected_types` (table) 
+-- and returns `v`, or calls `error()` with an error message that implicates function argument 
+-- number `narg`.
+-- Used with API function arguments so users receive more helpful error messages.
 -- @param v Value to assert the type of.
--- @param expected_type String type to assert. It may be a non-letter-delimited list of type
---   options.
--- @param narg The positional argument number *v* is associated with. This is not required to
+-- @param expected_types String of valid type or Table of valid type names to check against.
+-- @param narg The positional argument number `v` is associated with. This is not required to
 --   be a number.
--- @usage assert_type(value, 'string/nil', 1)
+-- @usage assert_type(value, _string_nil, 1)
 -- @usage assert_type(option.setting, 'number', 'setting') -- implicates key
-local function assert_type(v, expected_type, narg)
-  if type(v) == expected_type then return v end
+local function assert_type(v, expected_types, narg)
+  local t = type(v)
+  if t == expected_types or expected_types[t] then  return v  end
   -- Note: do not use assert for performance reasons.
-  if type(expected_type) ~= 'string' then
-    error(string.format("bad argument #2 to '%s' (string expected, got %s)",
-      debug.getinfo(1, 'n').name, type(expected_type)), 2)
+  if not _table_string[type(expected_types)] then
+    error(string.format("bad argument #2 to '%s' (table/string expected, got %s)",
+      debug.getinfo(1, 'n').name, type(expected_types)), 2)
   elseif narg == nil then
     error(string.format("bad argument #3 to '%s' (value expected, got %s)",
       debug.getinfo(1, 'n').name, type(narg)), 2)
   end
-  for type_option in expected_type:gmatch('%a+') do if type(v) == type_option then return v end end
+  local expected_list = {}
+  if type(expected_types) == 'string' then
+    table.insert(expected_list, expected_types)
+  else
+    for t in pairs(expected_types) do  table.insert(expected_list, t)  end
+  end
   error(string.format("bad argument #%s to '%s' (%s expected, got %s)", narg,
-    debug.getinfo(2, 'n').name or '?', expected_type, type(v)), 3)
+    debug.getinfo(2, 'n').name or '?', table.concat(expected_list, '/'), type(v)), 3)
 end
 
 --- Asserts that all items in table *t* are strings, or calls `error()` with an error message
@@ -204,7 +219,7 @@ local key = {}
 function M.data(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.data(varname, subsarray)
 end
@@ -215,7 +230,7 @@ end
 function M.delete_node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_NODE)
 end
@@ -226,7 +241,7 @@ end
 function M.delete_tree(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_TREE)
 end
@@ -238,7 +253,7 @@ end
 function M.get(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   local ok, value = pcall(_yottadb.get, varname, subsarray)
   if ok then return value end
@@ -261,17 +276,17 @@ function M.incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, increment  OR
     subsarray, increment = ...
   else
     -- Additional check last param is not nil before turning into a table, which loses the last element
-    if ... then  assert_type(select(-1, ...), 'string/number', '<last>')  end
+    if ... then  assert_type(select(-1, ...), _string_number, '<last>')  end
     subsarray = {...}
     increment = table.remove(subsarray) -- pop
   end
 
   assert_type(varname, 'string', 1)
   if not increment then
-    assert_type(subsarray, 'table/string/number/nil', 2)
+    assert_type(subsarray, _table_string_number_nil, 2)
   else
     assert_type(subsarray, 'table', 2)
-    assert_type(increment, 'string/number/nil', '<last>')
+    assert_type(increment, _string_number_nil, '<last>')
   end
   assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.incr(varname, subsarray, increment)
@@ -284,7 +299,7 @@ end
 -- @param[opt] timeout timeout in seconds to wait for the lock.
 function M.lock(nodes, timeout)
   if not timeout then
-    assert_type(nodes, 'table/number/nil', 1)
+    assert_type(nodes, _table_number_nil, 1)
   else
     assert_type(nodes, 'table', 1)
     assert_type(timeout, 'number', 2)
@@ -320,10 +335,10 @@ function M.lock_incr(varname, ...) -- Note: '...' is {sub1, sub2, ...}, timeout 
 
   assert_type(varname, 'string', 1)
   if not timeout then
-    assert_type(subsarray, 'table/number/nil', 2)
+    assert_type(subsarray, _table_number_nil, 2)
   else
     assert_type(subsarray, 'table', 2)
-    assert_type(timeout, 'number/nil', '<last>')
+    assert_type(timeout, _number_nil, '<last>')
   end
   assert_subscripts(subsarray, 'subsarray', 2)
   _yottadb.lock_incr(varname, subsarray, timeout)
@@ -337,7 +352,7 @@ end
 function M.lock_decr(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   return _yottadb.lock_decr(varname, subsarray)
 end
@@ -349,7 +364,7 @@ end
 function M.node_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   local ok, node_next = pcall(_yottadb.node_next, varname, subsarray)
   assert(ok or M.get_error_code(node_next) == _yottadb.YDB_ERR_NODEEND, node_next)
@@ -363,7 +378,7 @@ end
 function M.node_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   local ok, node_prev = pcall(_yottadb.node_previous, varname, subsarray)
   assert(ok or M.get_error_code(node_prev) == _yottadb.YDB_ERR_NODEEND, node_prev)
@@ -383,14 +398,14 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
     subsarray, reverse = ...
   else
     -- Additional check last param is not nil before turning into a table, which loses the last element
-    if ... then  assert_type(select(-1, ...), 'number/boolean', '<last>')  end
+    if ... then  assert_type(select(-1, ...), _number_boolean, '<last>')  end
     subsarray = {...}
     reverse = table.remove(subsarray) -- pop
   end
 
   assert_type(varname, 'string', 1)
   if reverse == nil then
-    assert_type(subsarray, 'table/boolean/nil', 2)
+    assert_type(subsarray, _table_boolean_nil, 2)
     if type(subsarray) ~= 'table' then subsarray, reverse = {}, subsarray end
   else
     assert_type(subsarray, 'table', 2)
@@ -461,7 +476,7 @@ function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  su
   assert_type(subsarray, 'table', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   if value == nil then  _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_NODE)  return nil  end
-  assert_type(value, 'string/number', '<last>')
+  assert_type(value, _string_number, '<last>')
   _yottadb.set(varname, subsarray, value)
   return value
 end
@@ -473,7 +488,7 @@ end
 function M.subscript_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   local ok, sub_next = pcall(_yottadb.subscript_next, varname, subsarray)
   assert(ok or M.get_error_code(sub_next) == _yottadb.YDB_ERR_NODEEND, sub_next)
@@ -487,7 +502,7 @@ end
 function M.subscript_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   local ok, sub_prev = pcall(_yottadb.subscript_previous, varname, subsarray)
   assert(ok or M.get_error_code(sub_prev) == _yottadb.YDB_ERR_NODEEND, sub_prev)
@@ -509,14 +524,14 @@ function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, revers
     subsarray, reverse = ...
   else
     -- Additional check last param is not nil before turning into a table, which loses the last element
-    if ... then  assert_type(select(-1, ...), 'number/boolean', '<last>')  end
+    if ... then  assert_type(select(-1, ...), _number_boolean, '<last>')  end
     subsarray = {...}
     reverse = table.remove(subsarray) -- pop
   end
 
   assert_type(varname, 'string', 1)
   if reverse == nil then
-    assert_type(subsarray, 'table/boolean/nil', 2)
+    assert_type(subsarray, _table_boolean_nil, 2)
     if type(subsarray) ~= 'table' then subsarray, reverse = {}, subsarray end
   else
     assert_type(subsarray, 'table', 2)
@@ -761,7 +776,7 @@ end
 -- @usage yottadb.node('varname')['sub1']['sub2']
 function M.node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   -- make it possible to inherit from node or key objects
   local mt = getmetatable(varname)
@@ -824,7 +839,7 @@ function node:get(default) return M.get(self.__varname, self.__subsarray) or def
 -- Equivalent to (but 4x slower than) `node.__ = x`
 -- @param value New value or nil to delete node
 -- @see set
-function node:set(value) M.set(self.__varname, self.__subsarray, assert_type(value, 'string/number/nil', 1)) end
+function node:set(value) M.set(self.__varname, self.__subsarray, assert_type(value, _string_number_nil, 1)) end
 
 --- Delete database tree pointed to by node object
 -- @see delete_tree
@@ -835,16 +850,16 @@ function node:delete_tree() M.delete_tree(self.__varname, self.__subsarray) end
 -- @return the new value
 -- @see incr
 function node:incr(increment)
-  return M.incr(self.__varname, self.__subsarray, assert_type(increment, 'string/number/nil', 1))
+  return M.incr(self.__varname, self.__subsarray, assert_type(increment, _string_number_nil, 1))
 end
 
 --- Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.
 -- @see lock
-function node:lock(timeout) return M.lock({self}, assert_type('number/nil', 1)) end
+function node:lock(timeout) return M.lock({self}, assert_type(_number_nil, 1)) end
 
 --- Attempts to acquire or increment a lock matching this node, waiting if requested.
 -- @see lock_incr
-function node:lock_incr(timeout) return M.lock_incr(self.__varname, self.__subsarray, assert_type(timeout, 'number/nil', 1)) end
+function node:lock_incr(timeout) return M.lock_incr(self.__varname, self.__subsarray, assert_type(timeout, _number_nil, 1)) end
 
 --- Decrements a lock matching this node, releasing it if possible.
 -- @see lock_decr
@@ -1055,13 +1070,13 @@ end
 
 -- @see incr
 function node:__add(value)
-  node.incr(self, assert_type(value, 'string/number', 1))
+  node.incr(self, assert_type(value, _string_number, 1))
   return self
 end
 
 -- @see incr
 function node:__sub(value)
-  node.incr(self, -assert_type(value, 'string/number', 1))
+  node.incr(self, -assert_type(value, _string_number, 1))
   return self
 end
 
@@ -1101,7 +1116,7 @@ end
 -- but that would not work consistently, e.g. node = 3 would set lua local
 function node:__newindex(k, v)
   if k == '__' then
-    M.set(self.__varname, self.__subsarray, assert_type(v, 'string/number/nil', 1))
+    M.set(self.__varname, self.__subsarray, assert_type(v, _string_number_nil, 1))
   else
     error(string.format("Tried to set node object %s. Did you mean to set %s.__ instead?", self(k), self(k)), 2)
   end
@@ -1141,7 +1156,7 @@ function node:has_tree()  return node.data(self)   >= 10  end
 -- @return node object with metatable yottadb._key
 -- @see node, data
 function M.key(varname, subsarray)
-  assert_type(subsarray, 'table/nil', 2)
+  assert_type(subsarray, _table_nil, 2)
   local new_key = M.node(varname, subsarray)
   setmetatable(new_key, key)
   new_key.varname = new_key.__varname
