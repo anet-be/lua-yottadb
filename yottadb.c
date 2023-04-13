@@ -314,11 +314,10 @@ static int tp(lua_State *L) {
 }
 
 // Returns the next subscript for a variable/node.
-// Raises an error of there are no more subscripts.
 // _yottadb.subscript_next(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
-// return: string
+// @return: string or nil if there are no more subscripts
 static int subscript_next(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -332,20 +331,21 @@ static int subscript_next(lua_State *L) {
     YDB_REALLOC_BUFFER_SAFE(&ret_value);
     status = ydb_subscript_next_s(&varname, subs_used, subsarray, &ret_value);
   }
-  if (status == YDB_OK) {
+  if (status == YDB_OK)
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
-  }
   YDB_FREE_BUFFER(&ret_value);
-  ydb_assert(L, status);
+  if (status == YDB_ERR_NODEEND)
+    lua_pushnil(L);
+  else
+    ydb_assert(L, status);
   return 1;
 }
 
 // Returns the previous subscript for a variable/node.
-// Raises an error of there are not previous subscripts.
 // _yottadb.subscript_previous(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
-// return: string
+// @return: string or nil if there are not any previous subscripts
 static int subscript_previous(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -359,20 +359,22 @@ static int subscript_previous(lua_State *L) {
     YDB_REALLOC_BUFFER_SAFE(&ret_value);
     status = ydb_subscript_previous_s(&varname, subs_used, subsarray, &ret_value);
   }
-  if (status == YDB_OK) {
+  if (status == YDB_OK)
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
-  }
   YDB_FREE_BUFFER(&ret_value);
-  ydb_assert(L, status);
+  if (status == YDB_ERR_NODEEND)
+    lua_pushnil(L);
+  else
+    ydb_assert(L, status);
   return 1;
 }
 
-// Returns the next node for a variable/node.
-// Raises an error if there are no more nodes.
+// Returns the full subscript table of the next node after a variable/node.
+// A next node chain started from varname will eventually reach all nodes under that varname in order.
 // _yottadb.node_next(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
-// return: table of subscripts for the node
+// @return: table of subscripts for the node or nil if there are no next nodes
 static int node_next(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -381,15 +383,13 @@ static int node_next(lua_State *L) {
   get_subs(L, subs_used, subsarray);
   int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
   ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
-  for (int i = 0; i < ret_subs_alloc; i++) {
+  for (int i = 0; i < ret_subs_alloc; i++)
     YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-  }
   int status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   if (status == YDB_ERR_INSUFFSUBS) {
     ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
-    for (int i = ret_subs_alloc; i < ret_subs_used; i++) {
+    for (int i = ret_subs_alloc; i < ret_subs_used; i++)
       YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-    }
     ret_subs_alloc = ret_subs_used;
     status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
@@ -405,20 +405,22 @@ static int node_next(lua_State *L) {
       lua_seti(L, -2, i + 1);
     }
   }
-  for (int i = 0; i < ret_subs_alloc; i++) {
+  for (int i = 0; i < ret_subs_alloc; i++)
     YDB_FREE_BUFFER(&ret_subsarray[i]);
-  }
   free(ret_subsarray);
-  ydb_assert(L, status);
+  if (status == YDB_ERR_NODEEND)
+    lua_pushnil(L);
+  else
+    ydb_assert(L, status);
   return 1;
 }
 
-// Returns the previous node for a variable/node.
-// Raises an error if there are no previous nodes.
+// Returns the full subscript table of the node prior to a variable/node.
+// A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
 // _yottadb.node_previous(varname[, {subs}])
 // varname: string
 // subs: optional table of subscripts
-// return: table of subscripts for the node
+// @return: table of subscripts for the node or nil if there are no previous nodes
 static int node_previous(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -427,15 +429,13 @@ static int node_previous(lua_State *L) {
   get_subs(L, subs_used, subsarray);
   int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
   ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
-  for (int i = 0; i < ret_subs_alloc; i++) {
+  for (int i = 0; i < ret_subs_alloc; i++)
     YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-  }
   int status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   if (status == YDB_ERR_INSUFFSUBS) {
     ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
-    for (int i = ret_subs_alloc; i < ret_subs_used; i++) {
+    for (int i = ret_subs_alloc; i < ret_subs_used; i++)
       YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-    }
     ret_subs_alloc = ret_subs_used;
     status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
@@ -451,11 +451,13 @@ static int node_previous(lua_State *L) {
       lua_seti(L, -2, i + 1);
     }
   }
-  for (int i = 0; i < ret_subs_alloc; i++) {
+  for (int i = 0; i < ret_subs_alloc; i++)
     YDB_FREE_BUFFER(&ret_subsarray[i]);
-  }
   free(ret_subsarray);
-  ydb_assert(L, status);
+  if (status == YDB_ERR_NODEEND)
+    lua_pushnil(L);
+  else
+    ydb_assert(L, status);
   return 1;
 }
 

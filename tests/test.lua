@@ -121,7 +121,7 @@ local function validate_varname_inputs(f)
     _yottadb.set(string.rep('b', _yottadb.YDB_MAX_IDENT), 'val') -- avoid YDB_ERR_LVUNDEF
   end
   ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT))
-  assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(ok)
 
   ok, e = pcall(f, '\128')
   assert(not ok)
@@ -137,7 +137,7 @@ local function validate_subsarray_inputs(f)
   for i = 1, _yottadb.YDB_MAX_SUBS do subs[i] = 'b' end
   if f == _yottadb.get then _yottadb.set('test', subs, 'val') end -- avoid YDB_ERR_LVUNDEF
   local ok, e = pcall(f, 'test', subs)
-  assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(ok)
 
   subs[#subs + 1] = 'b'
   ok, e = pcall(f, 'test', subs)
@@ -153,7 +153,7 @@ local function validate_subsarray_inputs(f)
   end
   ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR)})
   -- Note: subscripts for lock functions are shorter, so ignore those errors.
-  assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND or yottadb.get_error_code(e) == _yottadb.YDB_ERR_LOCKSUB2LONG)
+  assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_LOCKSUB2LONG)
 
   --ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR + 1)})
   --assert(not ok)
@@ -805,32 +805,24 @@ function test_subscript_next()
   assert(_yottadb.subscript_next('^test1') == '^test2')
   assert(_yottadb.subscript_next('^test2') == '^test3')
   assert(_yottadb.subscript_next('^test3') == '^test4')
-  local ok, e = pcall(_yottadb.subscript_next, '^test7')
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_next('^test7') == nil)
 
   assert(_yottadb.subscript_next('^test4', {''}) == 'sub1')
   assert(_yottadb.subscript_next('^test4', {'sub1'}) == 'sub2')
   assert(_yottadb.subscript_next('^test4', {'sub2'}) == 'sub3')
-  ok, e = pcall(_yottadb.subscript_next, '^test4', {'sub3'})
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_next('^test4', {'sub3'}) == nil)
 
   assert(_yottadb.subscript_next('^test4', {'sub1', ''}) == 'subsub1')
   assert(_yottadb.subscript_next('^test4', {'sub1', 'subsub1'}) == 'subsub2')
   assert(_yottadb.subscript_next('^test4', {'sub1', 'subsub2'}) == 'subsub3')
-  ok, e = pcall(_yottadb.subscript_next, '^test4', {'sub3', 'subsub3'})
-    assert(not ok)
-    assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_next('^test4', {'sub3', 'subsub3'}) == nil)
 
   -- Test subscripts that include a non-UTF8 character
   assert(_yottadb.subscript_next('^test7', {''}) == 'sub1\128')
   assert(_yottadb.subscript_next('^test7', {'sub1\128'}) == 'sub2\128')
   assert(_yottadb.subscript_next('^test7', {'sub2\128'}) == 'sub3\128')
   assert(_yottadb.subscript_next('^test7', {'sub3\128'}) == 'sub4\128')
-  ok, e = pcall(_yottadb.subscript_next, '^test7', {'sub4\128'})
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_next('^test7', {'sub4\128'}) == nil)
 
   -- Validate inputs.
   validate_varname_inputs(_yottadb.subscript_next)
@@ -855,23 +847,17 @@ function test_subscript_previous()
   assert(_yottadb.subscript_previous('^test2') == '^test1')
   assert(_yottadb.subscript_previous('^test3') == '^test2')
   assert(_yottadb.subscript_previous('^test4') == '^test3')
-  local ok, e = pcall(_yottadb.subscript_previous, '^Test5')
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_previous('^Test5') == nil)
 
   assert(_yottadb.subscript_previous('^test4', {''}) == 'sub3')
   assert(_yottadb.subscript_previous('^test4', {'sub2'}) == 'sub1')
   assert(_yottadb.subscript_previous('^test4', {'sub3'}) == 'sub2')
-  local ok, e = pcall(_yottadb.subscript_previous, '^test4', {'sub1'})
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_previous('^test4', {'sub1'}) == nil)
 
   assert(_yottadb.subscript_previous('^test4', {'sub1', ''}) == 'subsub3')
   assert(_yottadb.subscript_previous('^test4', {'sub1', 'subsub2'}) == 'subsub1')
   assert(_yottadb.subscript_previous('^test4', {'sub1', 'subsub3'}) == 'subsub2')
-  local ok, e = pcall(_yottadb.subscript_previous, '^test4', {'sub3', 'subsub1'})
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.subscript_previous('^test4', {'sub3', 'subsub1'}) == nil)
 
   -- Validate inputs.
   validate_varname_inputs(_yottadb.subscript_previous)
@@ -890,9 +876,7 @@ function test_node_next()
   assert(#node == 2)
   assert(node[1] == 'sub1')
   assert(node[2] == 'sub2')
-  local ok, e = pcall(_yottadb.node_next, '^test3', {'sub1', 'sub2'})
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.node_next('^test3', {'sub1', 'sub2'}) == nil)
   node = _yottadb.node_next('^test6')
   assert(#node == 2)
   assert(node[1] == 'sub6')
@@ -921,9 +905,7 @@ end
 
 function test_node_previous()
   simple_data()
-  local ok, e = pcall(_yottadb.node_previous, '^test3')
-  assert(not ok)
-  assert(yottadb.get_error_code(e) == _yottadb.YDB_ERR_NODEEND)
+  assert(_yottadb.node_previous('^test3') == nil)
   local node = _yottadb.node_previous('^test3', {'sub1'})
   assert(#node == 0)
   node = _yottadb.node_previous('^test3', {'sub1', 'sub2'})

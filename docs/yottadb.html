@@ -95,6 +95,7 @@
 <br/>
 <li><a href="#Class_key"><b>Class key </b></a></li>
     <li><a href="#key.property">key.property</a></li>
+    <li><a href="#key:_methods_">key:_methods_ ()</a></li>
     <li><a href="#key:delete_node">key:delete_node ()</a></li>
     <li><a href="#key:subscript_next">key:subscript_next ([reset])</a></li>
     <li><a href="#key:subscript_previous">key:subscript_previous ([reset])</a></li>
@@ -186,15 +187,15 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node_next">node_next (varname[, subsarray])</a></td>
-	<td class="summary">Returns the next node for a database variable/node, or <code>nil</code> if there isn't one.</td>
+	<td class="summary">Returns the full subscript table ('path') of the next node after a database variable/node, or <code>nil</code> if there isn't one.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node_previous">node_previous (varname[, subsarray])</a></td>
-	<td class="summary">Returns the previous node for a database variable/node, or <code>nil</code> if there isn't one.</td>
+	<td class="summary">Returns the full subscript table ('path') of the previous node after a database variable/node, or <code>nil</code> if there isn't one.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#nodes">nodes (varname[, subsarray], reverse)</a></td>
-	<td class="summary">Returns an iterator for iterating over all nodes in a database variable/node.</td>
+	<td class="summary">Returns an iterator that yields a full subscript 'path' for each node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#set">set (varname[, subsarray], value)</a></td>
@@ -321,7 +322,11 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#key.property">key.property</a></td>
-	<td class="summary">Properties of key object</td>
+	<td class="summary">Properties of key object listed here, accessed with dot instead of colon.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#key:_methods_">key:_methods_ ()</a></td>
+	<td class="summary">All node methods are inherited except for key-specific methods shown here.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#key:delete_node">key:delete_node ()</a></td>
@@ -902,7 +907,8 @@
     <strong>node_next (varname[, subsarray])</strong>
     </dt>
     <dd>
-    Returns the next node for a database variable/node, or <code>nil</code> if there isn't one.
+    Returns the full subscript table ('path') of the next node after a database variable/node, or <code>nil</code> if there isn't one.
+ A next node chain started from varname will eventually reach all nodes under that varname in order.
 
 
     <h3>Parameters:</h3>
@@ -931,7 +937,8 @@
     <strong>node_previous (varname[, subsarray])</strong>
     </dt>
     <dd>
-    Returns the previous node for a database variable/node, or <code>nil</code> if there isn't one.
+    Returns the full subscript table ('path') of the previous node after a database variable/node, or <code>nil</code> if there isn't one.
+ A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
 
 
     <h3>Parameters:</h3>
@@ -960,7 +967,20 @@
     <strong>nodes (varname[, subsarray], reverse)</strong>
     </dt>
     <dd>
-    Returns an iterator for iterating over all nodes in a database variable/node.
+
+<p>Returns an iterator that yields a full subscript 'path' for each node.
+ <code>yottadb.nodes(varname)</code> will iterate all nodes under that varname.
+ <code>yottadb.nodes(varname, {subsarray})</code> will only iterate nodes under varname
+ that come after varname(subsarray) in order.</p>
+
+<p> Note: <code>node:gettree()</code> is a preferred way to iterate a node tree because</p>
+
+<ul>
+    <li>it only iterates nodes beneath (i.e. deeper than) <a href="yottadb.html#node">node</a> rather than all subsequent
+    nodes under varname</li>
+    <li>it should be faster once lua-yottadb cached subsarrays are implemented</li>
+</ul>
+
 
 
     <h3>Parameters:</h3>
@@ -1071,7 +1091,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        string subscript name or nil
+        string subscript name or nil if there are no more subscripts
     </ol>
 
 
@@ -1100,7 +1120,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        string subscript name or nil
+        string subscript name or nil if there are no previous subscripts
     </ol>
 
 
@@ -1331,15 +1351,21 @@
     <strong>key (varname[, subsarray])</strong>
     </dt>
     <dd>
-    Deprecated object that represents a YDB node.  <br>
- <a href="yottadb.html#key">key</a> is the same as <a href="yottadb.html#node">node</a> except that it retains
- deprecated property names as follows for backward compatibility: <br>
-   * <a href="yottadb.html#node:name">name</a> (this node's subscript or variable name) <br>
-   * <code>value</code> (this node's value in the YottaDB database) <br>
-   * <a href="yottadb.html#data">data</a> (see data()) <br>
-   * <a href="yottadb.html#node:has_value">has_value</a> (whether or not this node has a value) <br>
-   * <a href="yottadb.html#node:has_tree">has_tree</a> (whether or not this node has a subtree) <br>
- and deprecated definitions of <code>key:subscript()</code>, <code>key:subscript_next()</code>, <code>key:subscript_previous()</code>. <br>
+
+<p>Deprecated object that represents a YDB node. </p>
+
+<p> <a href="yottadb.html#key">key</a> is the same as <a href="yottadb.html#node">node</a> except that it retains
+ deprecated property names as follows for backward compatibility:</p>
+
+<ul>
+    <li><a href="yottadb.html#node:name">name</a> (this node's subscript or variable name) <br></li>
+    <li><code>value</code> (this node's value in the YottaDB database) <br></li>
+    <li><a href="yottadb.html#data">data</a> (see data()) <br></li>
+    <li><a href="yottadb.html#node:has_value">has_value</a> (whether or not this node has a value) <br></li>
+    <li><a href="yottadb.html#node:has_tree">has_tree</a> (whether or not this node has a subtree) <br>
+    and deprecated definitions of <code>key:subscript()</code>, <code>key:subscript_next()</code>, <code>key:subscript_previous()</code>. <br></li>
+</ul>
+
 
 
     <h3>Parameters:</h3>
@@ -1690,7 +1716,9 @@
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example"><span class="keyword">for</span> subscript <span class="keyword">in</span> node:subscripts() <span class="keyword">do</span> ...</pre>
+        <pre class="example"><span class="keyword">for</span> subscript <span class="keyword">in</span> node:subscripts() <span class="keyword">do</span> ...
+  which is equivalent but faster than: <span class="keyword">for</span> subscript <span class="keyword">in</span> <span class="global">pairs</span>(node) <span class="keyword">do</span> ...
+  because the <span class="global">pairs</span>() version also fetches the value (but the code above does <span class="keyword">not</span> use it).</pre>
     </ul>
 
 </dd>
@@ -1766,7 +1794,9 @@
     <strong>key.property</strong>
     </dt>
     <dd>
-    Properties of key object
+    Properties of key object listed here, accessed with dot instead of colon. </p>
+
+<p> For example, access data property with: <code>key.data</code>
 
 
     <h3>Fields:</h3>
@@ -1787,6 +1817,20 @@
          equivalent to <code>node.__</code>
         </li>
     </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "key:_methods_"></a>
+    <strong>key:_methods_ ()</strong>
+    </dt>
+    <dd>
+    All node methods are inherited except for key-specific methods shown here.
+
+
 
 
 
@@ -1846,7 +1890,7 @@
     <h3>See also:</h3>
     <ul>
          <li><a href="https://www.lua.org/manual/5.1/manual.html#pdf-pairs">pairs</a></li>
-         <li><a href="yottadb.html#subscript_next">subscript_next</a></li>
+         <li><a href="yottadb.html#subscript_previous">subscript_previous</a></li>
     </ul>
 
 
@@ -1872,7 +1916,7 @@
 
     <h3>See also:</h3>
     <ul>
-         <li><a href="yottadb.html#key:subscript_previous">key:subscript_previous</a></li>
+         <li><a href="yottadb.html#key:subscript_next">key:subscript_next</a></li>
          <li><a href="https://www.lua.org/manual/5.1/manual.html#pdf-pairs">pairs</a></li>
     </ul>
 
@@ -1918,7 +1962,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-04-11 11:51:30 </i>
+<i style="float:right;">Last updated 2023-04-13 12:49:58 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

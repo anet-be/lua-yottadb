@@ -187,6 +187,10 @@ subtable (table: 0x56494c7dd5b0):
 
 Version history is documented in [changes.md](docs/changes.md).
 
+### Reference docs
+
+The [API reference documentation](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), is generated from source file comments. To update them, run `make docs` and commit changes to the resulting file `docs/yottadb.html`. Prerequisite: `luarocks install ldoc`.
+
 ### Thread Safety
 
 Lua co-routines, are perfectly safe to use with YDB, since they are cooperative rather than preemptive.
