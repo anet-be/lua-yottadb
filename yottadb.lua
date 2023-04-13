@@ -777,6 +777,16 @@ end
 --- Node object creation
 -- @section
 
+-- raw node creation
+local function ___new_node(varname, subsarray)
+  local subsarray_copy = {}
+  if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = tostring(sub) end end
+  return setmetatable({
+    __varname = varname,
+    __subsarray = subsarray_copy,
+  }, node)
+end
+
 --- Creates and returns a new YottaDB node object.
 -- This node has all of the class methods defined below.
 -- Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
@@ -793,36 +803,22 @@ function M.node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  -- make it possible to inherit from node or key objects
+  -- make it possible to inherit from either node or key objects
   local mt = getmetatable(varname)
   if mt==node or mt==key then
-    local new_subsarray = {}
-    table.move(varname.__subsarray, 1, #varname.__subsarray, 1, new_subsarray)
+    local new_subsarray = table.move(varname.__subsarray, 1, #varname.__subsarray, 1, {})
     table.move(subsarray, 1, #subsarray, #new_subsarray+1, new_subsarray)
     varname = varname.__varname
     subsarray = new_subsarray
   end
   assert_type(varname, 'string', 1)
-
-  local subsarray_copy = {}
-  if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = tostring(sub) end end
-
-  -- For use with subscript_next() and subscript_previous().
-  local next_subsarray = {}
-  for i = 1, #subsarray_copy - 1 do next_subsarray[i] = subsarray_copy[i] end
-  table.insert(next_subsarray, '')
-
-  return setmetatable({
-    __varname = varname,
-    __subsarray = subsarray_copy,
-    __next_subsarray = next_subsarray
-  }, node)
+  return ___new_node(varname, subsarray)
 end
 
 --- @section end
 
--- Define this to tell __call() whether to create new node using M.node or M.key
-node.___new = M.node
+-- Define this to tell __call() whether to create new node using ___new_node() or ___new_key()
+node.___new = ___new_node
 
 -- Note: the following doc must be here instead of up at the definition of node to retain its position in the html doc
 
@@ -1064,9 +1060,6 @@ function node:__call(...)
     end
     table.insert(new_node.__subsarray, tostring(name))
   end
-  -- also add to __next_subsarray so that subscript_next() works
-  for i = #new_node.__next_subsarray, #new_node.__subsarray-1 do  new_node.__next_subsarray[i] = new_node.__subsarray[i] end
-  table.insert(new_node.__next_subsarray, '')
   return new_node
 end
 
@@ -1109,7 +1102,7 @@ end
 
 -- Returns indexes into the node
 -- Search order for node attribute k:
---   self[k] (implemented by Lua -- finds self.__varname, self.__subsarray, self.__next_subsarray)
+--   self[k] (implemented by Lua -- finds self.__varname, self.__subsarray)
 --   node value, if k=='__' (the only node property)
 --   node method, if k starts with '__' (k:__method() is the same as k:method() but 15x faster at ~200ns)
 --   if nothing found, returns a new dbase subnode with subscript k
@@ -1159,6 +1152,15 @@ function node:has_tree()  return node.data(self)   >= 10  end
 --- Node object creation
 -- @section
 
+-- raw key creation
+local function ___new_key(varname, subsarray)
+  local new_key = ___new_node(varname, subsarray)
+  setmetatable(new_key, key)
+  new_key.varname = new_key.__varname
+  new_key.subsarray = new_key.__subsarray
+  return new_key
+end
+
 --- Deprecated object that represents a YDB node.
 --
 -- `key` is the same as `node` except that it retains
@@ -1176,18 +1178,16 @@ function node:has_tree()  return node.data(self)   >= 10  end
 -- @see node, data
 function M.key(varname, subsarray)
   assert_type(subsarray, _table_nil, 2)
-  local new_key = M.node(varname, subsarray)
-  setmetatable(new_key, key)
-  new_key.varname = new_key.__varname
-  new_key.subsarray = new_key.__subsarray
-  return new_key
+  assert_subscripts(subsarray, 'subsarray', 2)
+  assert_type(varname, 'string', 1)
+  return ___new_key(varname, subsarray)
 end
 
 --- Deprecated object that represents a YDB node.
 --- @type key
 
 for k, v in pairs(node) do  key[k]=v  end
-key.___new = M.key
+key.___new = ___new_key
 
 --- Properties of key object listed here, accessed with dot instead of colon.
 -- This kind of property access is for backward compatibility.
@@ -1248,12 +1248,18 @@ function key:delete_node() M.delete_node(self.__varname, self.__subsarray) end
 --
 -- * it keeps dangerous state in the object: causes bugs where old references to it think it's still original
 -- * it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
--- * if sibling access is a common use-case, it should be reimplemented as node:subscript_next() by
---      returning a fresh node object (after node efficiency improvement to avoid subsarray duplication)
+-- * if sibling access becomes a common use-case, it should be reimplemented differently, by
+--      returning a fresh node object (after completing node efficiency improvements that avoid
+--      subsarray duplication)
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
 -- @see pairs, subscript_previous
 function key:subscript_next(reset)
+  -- Ensure we have a next_subsarray -- used only by key:subscript_next() and key:subscript_previous()
+  if not self.__next_subsarray then
+    self.__next_subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
+    table.insert(self.__next_subsarray, '')
+  end
   if reset then self.__next_subsarray[#self.__next_subsarray] = '' end
   local next_sub = M.subscript_next(self.__varname, self.__next_subsarray)
   if next_sub then self.__next_subsarray[#self.__next_subsarray] = next_sub end
@@ -1266,6 +1272,11 @@ end
 --   or subscript_previous()
 -- @see key:subscript_next, pairs
 function key:subscript_previous(reset)
+  -- Ensure we have a next_subsarray -- used only by key:subscript_next() and key:subscript_previous()
+  if not self.__next_subsarray then
+    self.__next_subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
+    table.insert(self.__next_subsarray, '')
+  end
   if reset then self.__next_subsarray[#self.__next_subsarray] = '' end
   local prev_sub = M.subscript_previous(self.__varname, self.__next_subsarray)
   if prev_sub then self.__next_subsarray[#self.__next_subsarray] = prev_sub end
