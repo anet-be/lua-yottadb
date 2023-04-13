@@ -88,7 +88,7 @@ local _table_string_number_nil = {table=true, string=true, number=true, ['nil']=
 -- number `narg`.
 -- Used with API function arguments so users receive more helpful error messages.
 -- @param v Value to assert the type of.
--- @param expected_types String of valid type or Table of valid type names to check against.
+-- @param expected_types String of valid type or Table whose keys are valid type names to check against.
 -- @param narg The positional argument number `v` is associated with. This is not required to
 --   be a number.
 -- @usage assert_type(value, _string_nil, 1)
@@ -357,35 +357,42 @@ function M.lock_decr(varname, ...)
   return _yottadb.lock_decr(varname, subsarray)
 end
 
---- Returns the next node for a database variable/node, or `nil` if there isn't one.
+--- Returns the full subscript list ('path') of the next node after a database variable/node, or `nil` if there isn't one.
+-- A next node chain started from varname will eventually reach all nodes under that varname in order.
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}.
--- @return list of subscripts for the node, or nil
+-- @return list of subscripts for the node, or nil if there isn't a next node
 function M.node_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  local ok, node_next = pcall(_yottadb.node_next, varname, subsarray)
-  assert(ok or M.get_error_code(node_next) == _yottadb.YDB_ERR_NODEEND, node_next)
-  return ok and node_next or nil
+  return _yottadb.node_next(varname, subsarray)
 end
 
---- Returns the previous node for a database variable/node, or `nil` if there isn't one.
+--- Returns the full subscript list ('path') of the previous node after a database variable/node, or `nil` if there isn't one.
+-- A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}.
--- @return list of subscripts for the node, or nil
+-- @return list of subscripts for the node, or nil if there isn't a previous node
 function M.node_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  local ok, node_prev = pcall(_yottadb.node_previous, varname, subsarray)
-  assert(ok or M.get_error_code(node_prev) == _yottadb.YDB_ERR_NODEEND, node_prev)
-  return ok and node_prev or nil
+  return _yottadb.node_previous(varname, subsarray)
 end
 
---- Returns an iterator for iterating over all nodes in a database variable/node.
+--- Returns an iterator that yields a full subscript 'path' for each node.
+-- `yottadb.nodes(varname)` will iterate all nodes under that varname.
+-- `yottadb.nodes(varname, {subsarray})` will only iterate nodes under varname
+-- that come after varname(subsarray) in order.
+--
+-- Note: `node:gettree()` is a preferred way to iterate a node tree because
+--
+-- * it only iterates nodes beneath (i.e. deeper than) `node` rather than all subsequent
+--    nodes under varname
+-- * it should be faster once lua-yottadb cached subsarrays are implemented
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}
 -- @param reverse Flag that indicates whether to iterate backwards.
@@ -484,29 +491,25 @@ end
 --- Returns the next subscript for a database variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}.
--- @return string subscript name or nil
+-- @return string subscript name or nil if there are no more subscripts
 function M.subscript_next(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  local ok, sub_next = pcall(_yottadb.subscript_next, varname, subsarray)
-  assert(ok or M.get_error_code(sub_next) == _yottadb.YDB_ERR_NODEEND, sub_next)
-  return ok and sub_next or nil
+  return _yottadb.subscript_next(varname, subsarray)
 end
 
 --- Returns the previous subscript for a database variable/node, or `nil` if there isn't one.
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}.
--- @return string subscript name or nil
+-- @return string subscript name or nil if there are no previous subscripts
 function M.subscript_previous(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(varname, 'string', 1)
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  local ok, sub_prev = pcall(_yottadb.subscript_previous, varname, subsarray)
-  assert(ok or M.get_error_code(sub_prev) == _yottadb.YDB_ERR_NODEEND, sub_prev)
-  return ok and sub_prev or nil
+  return _yottadb.subscript_previous(varname, subsarray)
 end
 
 --- Returns an iterator for iterating over database *sibling* subscripts starting from given varname(subs).
@@ -870,6 +873,8 @@ function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) e
 -- Note that subscripts() order is guaranteed to equal the M collation sequence
 -- @param[opt] reverse set to true to iterate in reverse order
 -- @usage for subscript in node:subscripts() do ...
+--   which is equivalent but faster than: for subscript in pairs(node) do ...
+--   because the pairs() version also fetches the value (but the code above does not use it).
 function node:subscripts(reverse)
   local actuator = not reverse and M.subscript_next or M.subscript_previous
   local subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
@@ -1142,14 +1147,16 @@ function node:has_tree()  return node.data(self)   >= 10  end
 --- Node object creation
 -- @section
 
---- Deprecated object that represents a YDB node. <br>
+--- Deprecated object that represents a YDB node.
+--
 -- `key` is the same as `node` except that it retains
--- deprecated property names as follows for backward compatibility: <br>
---   * `name` (this node's subscript or variable name) <br>
---   * `value` (this node's value in the YottaDB database) <br>
---   * `data` (see data()) <br>
---   * `has_value` (whether or not this node has a value) <br>
---   * `has_tree` (whether or not this node has a subtree) <br>
+-- deprecated property names as follows for backward compatibility:
+--
+-- * `name` (this node's subscript or variable name) <br>
+-- * `value` (this node's value in the YottaDB database) <br>
+-- * `data` (see data()) <br>
+-- * `has_value` (whether or not this node has a value) <br>
+-- * `has_tree` (whether or not this node has a subtree) <br>
 -- and deprecated definitions of `key:subscript()`, `key:subscript_next()`, `key:subscript_previous()`. <br>
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}
@@ -1170,7 +1177,9 @@ end
 for k, v in pairs(node) do  key[k]=v  end
 key.___new = M.key
 
---- Properties of key object
+--- Properties of key object listed here, accessed with dot instead of colon.
+--
+-- For example, access data property with: `key.data`
 -- @table property
 -- @field name equivalent to `node:name()`
 -- @field data equivalent to `node:data()`
@@ -1184,6 +1193,9 @@ key_properties = {
   has_tree = key.has_tree,
   value = key.get,
 }
+
+--- All node methods are inherited except for key-specific methods shown here.
+-- @function key:_methods_
 
 -- Returns indexes into the key
 -- Search order for key attribute k:
@@ -1226,7 +1238,7 @@ function key:delete_node() M.delete_node(self.__varname, self.__subsarray) end
 --      returning a fresh node object (after node efficiency improvement to avoid subsarray duplication)
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
--- @see pairs, subscript_next
+-- @see pairs, subscript_previous
 function key:subscript_next(reset)
   if reset then self.__next_subsarray[#self.__next_subsarray] = '' end
   local next_sub = M.subscript_next(self.__varname, self.__next_subsarray)
@@ -1238,7 +1250,7 @@ end
 --- Deprecated way to get previous *sibling* subscript.
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
--- @see key:subscript_previous, pairs
+-- @see key:subscript_next, pairs
 function key:subscript_previous(reset)
   if reset then self.__next_subsarray[#self.__next_subsarray] = '' end
   local prev_sub = M.subscript_previous(self.__varname, self.__next_subsarray)
