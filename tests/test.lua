@@ -105,7 +105,7 @@ local function skip(f)
   if #arg > 0 then return end -- do not skip manually specified tests
   local skip = {}
   for k, v in pairs(_G) do if v == f then skip[#skip + 1] = k end end
-  for _, name in ipairs(skip) do _G['skip_' .. name], _G[name] = v, nil end
+  for _, name in ipairs(skip) do _G['skip_' .. name], _G[name] = f, nil end
 end
 
 local function validate_varname_inputs(f)
@@ -2256,7 +2256,7 @@ local skipped = 0
 if #arg == 0 then
   for k, v in pairs(_G) do
     if k:find('^test_') and type(v) == 'function' then tests[#tests + 1] = k end
-    if k:find('^skip_') and type(v) == 'function' then skipped = skipped + 1 end
+    if k:find('^skip_') and type(v) == 'function' then print("Skipping "..k:sub(6)..".") skipped = skipped + 1 end
   end
 else
   for i = 1, #arg do

@@ -357,8 +357,10 @@ function M.lock_decr(varname, ...)
   return _yottadb.lock_decr(varname, subsarray)
 end
 
---- Returns the full subscript list ('path') of the next node after a database variable/node, or `nil` if there isn't one.
+--- Returns the full subscript list ('path') of the next node after a database variable/node.
 -- A next node chain started from varname will eventually reach all nodes under that varname in order.
+--
+-- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil if there isn't a next node
@@ -370,8 +372,10 @@ function M.node_next(varname, ...)
   return _yottadb.node_next(varname, subsarray)
 end
 
---- Returns the full subscript list ('path') of the previous node after a database variable/node, or `nil` if there isn't one.
+--- Returns the full subscript list ('path') of the previous node after a database variable/node.
 -- A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
+--
+-- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}.
 -- @return list of subscripts for the node, or nil if there isn't a previous node
@@ -383,12 +387,12 @@ function M.node_previous(varname, ...)
   return _yottadb.node_previous(varname, subsarray)
 end
 
---- Returns an iterator that yields a full subscript 'path' for each node.
+--- Deprecated; returns an iterator that yields a full subscript 'path' for each node.
 -- `yottadb.nodes(varname)` will iterate all nodes under that varname.
 -- `yottadb.nodes(varname, {subsarray})` will only iterate nodes under varname
 -- that come after varname(subsarray) in order.
 --
--- Note: `node:gettree()` is a preferred way to iterate a node tree because
+-- Note: `node:gettree()` is the preferred way to iterate a node tree because
 --
 -- * it only iterates nodes beneath (i.e. deeper than) `node` rather than all subsequent
 --    nodes under varname
@@ -401,6 +405,7 @@ end
 -- @usage for node_subscripts in yottadb.nodes(varname, subsarray) do ... end
 function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
   local subsarray, reverse
+  -- First do parameter checking
   if ... and type(...)=='table' then
     subsarray, reverse = ...
   else
@@ -409,7 +414,6 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
     subsarray = {...}
     reverse = table.remove(subsarray) -- pop
   end
-
   assert_type(varname, 'string', 1)
   if reverse == nil then
     assert_type(subsarray, _table_boolean_nil, 2)
@@ -418,22 +422,28 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
     assert_type(subsarray, 'table', 2)
   end
   assert_subscripts(subsarray, 'subsarray', 2)
+
+  -- Now do the actual work
   local subsarray_copy = {}
   for i, v in ipairs(subsarray) do subsarray_copy[i] = v end
-  local f = not reverse and M.node_next or M.node_previous
+  local actuator = not reverse and _yottadb.node_next or _yottadb.node_previous
   local initialized = false
   return function()
     if not initialized then
       local status = _yottadb.data(varname, reverse and subsarray_copy or nil)
       if not reverse then
         initialized = true
-        if type(subsarray_copy) == 'table' and #subsarray_copy == 0 and (status == 1 or status == 11) then
+        if #subsarray_copy == 0 and (status == 1 or status == 11) then  -- if root node and it has a value
           return subsarray_copy
         end
       else
+        -- This code is Mitchell's. It searches for maximum depth of previous node because,
+        -- for some reason, node_previous() doesn't do this, and
+        -- subscript_previous() only adds one depth level at a time.
+        -- I don't understand the reason for either fact: some quirk of ydb reverse $ORDER
         if status > 0 then table.insert(subsarray_copy, '') end
         while not initialized do
-          local sub_prev = M.subscript_previous(varname, subsarray_copy)
+          local sub_prev = _yottadb.subscript_previous(varname, subsarray_copy)
           if sub_prev then
             table.insert(subsarray_copy, #subsarray_copy, sub_prev)
           else
@@ -444,7 +454,7 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
         return subsarray_copy
       end
     end
-    subsarray_copy = f(varname, subsarray_copy)
+    subsarray_copy = actuator(varname, subsarray_copy)
     return subsarray_copy
   end
 end
@@ -523,6 +533,7 @@ end
 -- @usage for name in yottadb.subscripts(varname, subsarray) do ... end
 function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR  sub1, sub2, ..., reverse
   local subsarray, reverse
+  -- First do parameter checking
   if ... and type(...)=='table' then
     subsarray, reverse = ...
   else
@@ -531,7 +542,6 @@ function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, revers
     subsarray = {...}
     reverse = table.remove(subsarray) -- pop
   end
-
   assert_type(varname, 'string', 1)
   if reverse == nil then
     assert_type(subsarray, _table_boolean_nil, 2)
@@ -540,11 +550,13 @@ function M.subscripts(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, revers
     assert_type(subsarray, 'table', 2)
     assert_subscripts(subsarray, 'subsarray', 2)
   end
+
+  -- Now do the actual work
   local subsarray_copy = {}
   if type(subsarray) == 'table' then for i, v in ipairs(subsarray) do subsarray_copy[i] = v end end
-  local f = not reverse and M.subscript_next or M.subscript_previous
+  local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   return function()
-    local next_or_prev = f(varname, subsarray_copy)
+    local next_or_prev = actuator(varname, subsarray_copy)
     if #subsarray_copy > 0 then
       subsarray_copy[#subsarray_copy] = next_or_prev
     else
@@ -876,7 +888,7 @@ function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) e
 --   which is equivalent but faster than: for subscript in pairs(node) do ...
 --   because the pairs() version also fetches the value (but the code above does not use it).
 function node:subscripts(reverse)
-  local actuator = not reverse and M.subscript_next or M.subscript_previous
+  local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   local subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
   table.insert(subsarray, '')  -- empty subscript is starting point for iterating all subscripts
   local function iterator()
@@ -1178,6 +1190,7 @@ for k, v in pairs(node) do  key[k]=v  end
 key.___new = M.key
 
 --- Properties of key object listed here, accessed with dot instead of colon.
+-- This kind of property access is for backward compatibility.
 --
 -- For example, access data property with: `key.data`
 -- @table property
@@ -1194,7 +1207,8 @@ key_properties = {
   value = key.get,
 }
 
---- All node methods are inherited except for key-specific methods shown here.
+--- All node methods are inherited, plus key-specific method overrides shown here.
+-- These methods are for backward compatibility.
 -- @function key:_methods_
 
 -- Returns indexes into the key
