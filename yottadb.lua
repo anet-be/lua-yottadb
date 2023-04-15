@@ -194,6 +194,15 @@ local function assert_subscripts(t, name, narg)
   return t
 end
 
+--- Convert str to number if the lua representation is identical.
+-- Otherwise return nil
+-- @param str string for potential conversion to a number
+-- @return number or nil
+local function q_number(str)
+  local num = tonumber(str)
+  return num and tostring(num)==str and num or nil
+end
+
 --- Get the YDB error code (if any) contained in the given error message.
 -- @param message String error message.
 -- @return the YDB error code (if any) for the given error message,
@@ -881,8 +890,7 @@ function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) e
 -- Note that subscripts() order is guaranteed to equal the M collation sequence
 -- @param[opt] reverse set to true to iterate in reverse order
 -- @usage for subscript in node:subscripts() do ...
---   which is equivalent but faster than: for subscript in pairs(node) do ...
---   because the pairs() version also fetches the value (but the code above does not use it).
+-- @return iterator over *child* subscripts of a node, returning a sequence of subscript name strings
 function node:subscripts(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   local subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
@@ -943,11 +951,10 @@ end
 
 --- Fetch database node and subtree and return a Lua table of it.
 -- But be aware that order is not preserved by Lua tables.
--- Where possible, it converts strings to numbers using `tonumber()` (occurs before calling optional filter function).
 --
 --  Note: special field name `__` in the returned table indicates the value of the node itself.
 -- @param[opt] maxdepth subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
--- @param[opt] filter optional `function(node, node_top_subscript, value, recurse, depth)` or nil
+-- @param[opt] filter optional `function(node, node_top_subscript_name, value, recurse, depth)` or nil
 --
 -- * if filter is nil, all values are fetched unfiltered
 -- * if filter is a function it is invoked on every subscript
@@ -968,16 +975,13 @@ function node:gettree(maxdepth, filter, _value, _depth)
     _depth = _depth or 0
     maxdepth = maxdepth or 1/0  -- or infinity
     _value = node.get(self)
-    _value = tonumber(_value) or _value
     if filter then  _value = filter(self, '', _value, true, _depth)  end
   end
   local tbl = {}
   if _value then  tbl.__ = _value  end
   _depth = _depth + 1
-  for subscript, subnode in self:__pairs() do   -- use self:__pairs() instead of pairs(self) so that it works in Lua 5.1
+  for subnode, _value, subscript in self:__pairs() do   -- use self:__pairs() instead of pairs(self) so that it works in Lua 5.1
     local recurse = _depth <= maxdepth and node.data(subnode) >= 10
-    _value = node.get(subnode)
-    _value = tonumber(_value) or _value
     if filter then
       local _recurse
       _value, _recurse = filter(subnode, subscript, _value, recurse, _depth)
@@ -1013,12 +1017,14 @@ end
 -- @param[opt] reverse Boolean flag iterates in reverse if true
 -- @usage for subscript,subnode in pairs(node) do ...
 --     where subnode is a node/key object. If you need its value use node._
+-- @return subnode, subnode subnode_value_or_nil, subscript
 function node:__pairs(reverse)
   local sub_iter, state, start = node.subscripts(self, reverse)
   local function iterator()
-    local sub=sub_iter()
-    if sub==nil then return nil end
-    return sub, self(sub)
+    local subscript=sub_iter()
+    if subscript==nil then return nil end
+    local subnode = self(subscript)
+    return subnode, node.get(subnode), subscript
   end
   return iterator, state, start
 end
@@ -1095,7 +1101,7 @@ function node:__tostring()
   local subs = {}
   -- ensure numeric subscripts are not quoted so node name strings look more like in M but still Lua-compatible
   -- prior to lua-yottadb version 1.2 used M.str2zwr() which was slower and produced strings that Lua does not understand
-  for i, name in ipairs(self.__subsarray) do  subs[i] = tonumber(name) or string.format('%q', name)  end
+  for i, name in ipairs(self.__subsarray) do  subs[i] = q_number(name) or string.format('%q', name)  end
   local subscripts = table.concat(subs, ',')
   return subscripts == '' and self.__varname or string.format('%s(%s)', self.__varname, subscripts)
 end
@@ -1319,7 +1325,7 @@ function M.dump(node, ...)
   local output = {}
   local function print_func(node, sub, val)
     if not val then  return  end
-    table.insert(output, string.format('%s=%s', node, tonumber(val) or string.format('%q',val)))
+    table.insert(output, string.format('%s=%s', node, q_number(val) or string.format('%q',val)))
     assert(#output < maxlines, too_many_lines_error)
   end
   ok, err = pcall(node.gettree, node, nil, print_func)

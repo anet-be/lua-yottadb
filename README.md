@@ -109,6 +109,8 @@ Oak 2 is 7.5m high
 Oak 3 is 15.0m high
 ```
 
+You may also wish to look at **`node:gettree()`** which has multiple uses. On first appearances, it just loads a database tree into a Lua table (opposite of `settree` above), but it also allows you to iterate over a whole database tree and process each node through a filter function. For example, to use `print` as a filter function, do `node:gettree(nil, print) end)` from the [API docs](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#node:gettree). Under the covers, it is actually `getree` that is used to create `node:dump()`.
+
 ### Database transactions are also available:
 
 ```lua
