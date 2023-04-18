@@ -2249,8 +2249,10 @@ function test_signals()
 end
 
 function test_cachearray()
-  local node = {__depth=3, __parent={'person','3'}, __name='male'}
-  local cachearray = _yottadb.cachearray_generate(node)
+  local ok, e, node, cachearray
+
+  node = {__depth=3, __parent={'person','3'}, __name='male'}
+  cachearray = _yottadb.cachearray_generate(node)
   assert(_yottadb.cachearray_tostring(cachearray) == '"person",3,"male"')
   assert(_yottadb.cachearray_tostring(cachearray,2) == '"person",3')
   assert(_yottadb.cachearray_tostring(cachearray,1) == '"person"')
@@ -2259,6 +2261,17 @@ function test_cachearray()
   assert(not ok and e == 'Parameter #2 to cachearray_tostring is not a valid node depth in the range 0-3 (got -1)')
   ok, e = pcall(_yottadb.cachearray_tostring, cachearray, 4)
   assert(not ok and e == 'Parameter #2 to cachearray_tostring is not a valid node depth in the range 0-3 (got 4)')
+
+  local expected = _yottadb.cachearray_tostring(cachearray)
+  assert(node.__cachearray == nil)
+  local stored_cachearray = _yottadb.cachearray(node)
+  assert(stored_cachearray ~= cachearray)
+  assert(node.__cachearray == stored_cachearray)
+  assert(_yottadb.cachearray_tostring(stored_cachearray) == expected)
+  assert(_yottadb.cachearray(node) == stored_cachearray)
+  local regenerated = _yottadb.cachearray_generate(node)
+  assert(regenerated ~= stored_cachearray)
+  assert(_yottadb.cachearray_tostring(regenerated) == _yottadb.cachearray_tostring(stored_cachearray))
 end
 
 -- Run tests.

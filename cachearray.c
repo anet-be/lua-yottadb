@@ -187,20 +187,22 @@ append_name:  // STACK: node, __parent, newarray
 // @see cachearray_generate
 int cachearray(lua_State *L) {
 // TODO: change to use a '__cachearray' Lua string constant for speed
-  if (lua_getfield(L, -1, "__cachearray") == LUA_TUSERDATA) {
+  if (lua_getfield(L, -1, "__cachearray") != LUA_TUSERDATA) {
     lua_pop(L, 1); // pop __cachearray (nil)
-    lua_pushvalue(L, 1);  // duplicate tos (node)
+    lua_copy(L, 1, lua_upvalueindex(UPVALUE_NODE));  // save tos (node) in upvalue
     cachearray_generate(L);
-    lua_pushvalue(L, 1);  // duplicate tos (newarray)
+    // STACK: newarray
     // set: node.__cachearray=newarray
 // TODO: change to use a '__cachearray' Lua string constant for speed
     lua_pushstring(L, "__cachearray");
-    lua_insert(L, -2);
-    // STACK: node, newarray, "__cachearray", newarray
-    lua_rawset(L, 1);
+    lua_pushvalue(L, -2);  // duplicate newarray
+    // STACK: newarray, "__cachearray", newarray
+    lua_rawset(L, lua_upvalueindex(UPVALUE_NODE));
+    // STACK: newarray
+    lua_pushvalue(L, -1);  // duplicate newarray
   }
-  lua_remove(L, 1);
-  return -1;
+  lua_remove(L, -2);
+  return 1;
 }
 
 // Replace existing element `index` of cachearray with `string`
@@ -211,14 +213,14 @@ int cachearray(lua_State *L) {
 int cachearray_replace(lua_State *L) {
   cachearray_t *array = lua_touserdata(L, 1);
   if (!array)
-    luaL_error(L, "Parameter #1 must be a cachearray userdata");
+    luaL_error(L, "Parameter #1 to cachearray_replace must be a cachearray userdata");
   int index = luaL_checkinteger(L, 2) - 1;  // -1 converts Lua index to C index
   if (index < 0 || index >= array->length)
-    luaL_error(L, "Parameter #2 must be an index into cachearray within the range 1-%d", array->length);
+    luaL_error(L, "Parameter #2 to cachearray_replace must be an index into cachearray within the range 1-%d", array->length);
   ydb_buffer_t *element = &array->subs[index];
   int type = lua_type(L, 3);
   if (type != LUA_TSTRING)
-    luaL_error(L, "Parameter #3 must be a string");
+    luaL_error(L, "Parameter #3 to cachearray_replace must be a string");
 
   size_t len;
   element->buf_addr = luaL_checklstring(L, 3, &len);
