@@ -10,6 +10,7 @@
 
 #include "yottadb.h"
 #include "callins.h"
+#include "cachearray.h"
 
 #ifndef NDEBUG
 #define RECORD_STACK_TOP(l) int orig_stack_top = lua_gettop(l);
@@ -660,6 +661,9 @@ static const luaL_Reg yottadb_functions[] = {
   {"block_M_signals", block_M_signals},
   {"init", init},
   {"ydb_eintr_handler", _ydb_eintr_handler},
+  {"cachearray", cachearray},
+  {"cachearray_generate", cachearray_generate},
+  {"cachearray_tostring", cachearray_tostring},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},
     {"table_unpack", unpack},

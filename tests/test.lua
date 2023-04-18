@@ -2248,6 +2248,18 @@ function test_signals()
   assert(not ok and e:find('Interrupted system call'))
 end
 
+function test_cachearray()
+  local node = {__depth=3, __parent={'person','3'}, __name='male'}
+  local cachearray = _yottadb.cachearray_generate(node)
+  assert(_yottadb.cachearray_tostring(cachearray) == '"person",3,"male"')
+  assert(_yottadb.cachearray_tostring(cachearray,2) == '"person",3')
+  assert(_yottadb.cachearray_tostring(cachearray,1) == '"person"')
+  assert(_yottadb.cachearray_tostring(cachearray,0) == '')
+  ok, e = pcall(_yottadb.cachearray_tostring, cachearray, -1)
+  assert(not ok and e == 'Parameter #2 to cachearray_tostring is not a valid node depth in the range 0-3 (got -1)')
+  ok, e = pcall(_yottadb.cachearray_tostring, cachearray, 4)
+  assert(not ok and e == 'Parameter #2 to cachearray_tostring is not a valid node depth in the range 0-3 (got 4)')
+end
 
 -- Run tests.
 print('Starting test suite.')

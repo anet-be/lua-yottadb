@@ -27,9 +27,9 @@ endif
 CC=gcc
 CFLAGS=-g -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -pedantic -Wall -Wno-unknown-pragmas -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist) -Wl,--gc-sections
-SOURCES=yottadb.c callins.c compat-5.3/c-api/compat-5.3.c
+SOURCES=yottadb.c callins.c cachearray.c compat-5.3/c-api/compat-5.3.c
 
-_yottadb.so: $(SOURCES) yottadb.h callins.h exports.map
+_yottadb.so: $(SOURCES) yottadb.h callins.h cachearray.h exports.map
 	$(CC) $(SOURCES) -o $@  -shared -Wl,--version-script=exports.map $(CFLAGS) $(LDFLAGS)
 %: %.c
 	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)
