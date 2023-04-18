@@ -113,8 +113,8 @@ int cachearray_generate(lua_State *L) {
   cachearray_t *array;
   ydb_buffer_t *element;
   size_t len;
-// TODO: change to use a '__parent' Lua string constant for speed
-  if (!lua_istable(L, 1) || lua_getfield(L, 1, "__depth") != LUA_TNUMBER)
+  lua_pushvalue(L, lua_upvalueindex(__DEPTH));
+  if (lua_rawget(L, 1) != LUA_TNUMBER)
     luaL_error(L, "Parameter #1 to cachearray_generate must be a node object");
   int depth = lua_tointeger(L, -1);
   if (depth <= 0) {
@@ -126,12 +126,12 @@ int cachearray_generate(lua_State *L) {
   }
   lua_pop(L, 1); // __depth
   // Does parent have __cachearray or is it the root node?
-// TODO: change to use a '__parent' Lua string constant for speed
-  if (lua_getfield(L, 1, "__parent") != LUA_TTABLE)
+  lua_pushvalue(L, lua_upvalueindex(__PARENT));
+  if (lua_rawget(L, 1) != LUA_TTABLE)
     luaL_error(L, "Node passed to cachearray_generate() has invalid `__parent` field at depth %d", depth);
   // STACK: node, __parent
-// TODO: change this to a raw lookup for speed, and use a '__cachearray' Lua string constant
-  if (lua_getfield(L, -1, "__cachearray") == LUA_TUSERDATA) {
+  lua_pushvalue(L, lua_upvalueindex(__CACHEARRAY));
+  if (lua_rawget(L, -2) == LUA_TUSERDATA) {
     // Does parent's cachearray have spare room?
     array = lua_touserdata(L, -1);
     // If no room, then copy __cachearray, but with more space
@@ -169,8 +169,8 @@ append_name:  // STACK: node, __parent, newarray
   // Append __name to cachearray
   array->length = depth;
   element = &array->subs[depth-1];  // -1 converts from Lua index to C index
-// TODO: change this to a raw lookup for speed, and use a '__name' Lua string constant
-  if (lua_getfield(L, 1, "__name") != LUA_TSTRING)
+  lua_pushvalue(L, lua_upvalueindex(__NAME));
+  if (lua_rawget(L, 1) != LUA_TSTRING)
     luaL_error(L, "Node passed to cachearray_generate() has invalid subscript `__name` field at depth %d", depth);
   element->buf_addr = lua_tolstring(L, -1, &len);
   element->len_used = element->len_alloc = len;
@@ -186,15 +186,14 @@ append_name:  // STACK: node, __parent, newarray
 // @return cachearray
 // @see cachearray_generate
 int cachearray(lua_State *L) {
-// TODO: change to use a '__cachearray' Lua string constant for speed
-  if (lua_getfield(L, -1, "__cachearray") != LUA_TUSERDATA) {
+  lua_pushvalue(L, lua_upvalueindex(__CACHEARRAY));
+  if (lua_rawget(L, -2) != LUA_TUSERDATA) {
     lua_pop(L, 1); // pop __cachearray (nil)
     lua_copy(L, 1, lua_upvalueindex(UPVALUE_NODE));  // save tos (node) in upvalue
     cachearray_generate(L);
     // STACK: newarray
     // set: node.__cachearray=newarray
-// TODO: change to use a '__cachearray' Lua string constant for speed
-    lua_pushstring(L, "__cachearray");
+    lua_pushvalue(L, lua_upvalueindex(__CACHEARRAY));
     lua_pushvalue(L, -2);  // duplicate newarray
     // STACK: newarray, "__cachearray", newarray
     lua_rawset(L, lua_upvalueindex(UPVALUE_NODE));

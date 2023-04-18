@@ -708,7 +708,7 @@ int luaopen__yottadb(lua_State *L) {
   luaL_newlibtable(L, yottadb_functions);
   // Push upvalues used by cachearray functions
   lua_pushnil(L); // UPVALUE_NODE=nil
-  lua_pushstring(L, "__depth");
+  lua_pushstring(L, "__depth");  // these used for faster string access
   lua_pushstring(L, "__parent");
   lua_pushstring(L, "__cachearray");
   lua_pushstring(L, "__name");
