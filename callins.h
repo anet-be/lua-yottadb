@@ -12,7 +12,7 @@ typedef struct const_Reg {
   int value;
 } const_Reg;
 
-extern const const_Reg yottadb_types[];
+extern const const_Reg yottadb_types[21];
 extern const char *LUA_YDB_ERR_PREFIX;
 
 // Make enum that expresses a bitfield for speedy category lookup when processing
