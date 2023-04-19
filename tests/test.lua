@@ -2272,6 +2272,12 @@ function test_cachearray()
   local regenerated = _yottadb.cachearray_generate(node)
   assert(regenerated ~= stored_cachearray)
   assert(_yottadb.cachearray_tostring(regenerated) == _yottadb.cachearray_tostring(stored_cachearray))
+  
+  node = {__depth=20, __parent={'person','3','male','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19'}, __name='20'}
+  cachearray = _yottadb.cachearray_generate(node)
+  collectgarbage()  -- catch allocation problems such as the one fixed in commit 4bed5e6
+  expected = '"person",3,"male",4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20'
+  assert(_yottadb.cachearray_tostring(cachearray) == expected)
 end
 
 -- Run tests.
