@@ -893,11 +893,13 @@ function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) e
 -- @return iterator over *child* subscripts of a node, returning a sequence of subscript name strings
 function node:subscripts(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
-  local subsarray = table.move(self.__subsarray, 1, #self.__subsarray, 1, {})
-  table.insert(subsarray, '')  -- empty subscript is starting point for iterating all subscripts
+  local next_or_prev = ''  -- NOTE: must be an upvalue of iterator so that it retains ref to string in cachearray for next iteration
+  local cachearray = _yottadb.cachearray_fromtable(self.__subsarray, next_or_prev)
+  local depth = #self.__subsarray + 1
   local function iterator()
-    local next_or_prev = actuator(self.__varname, subsarray)
-    subsarray[#subsarray] = next_or_prev
+    next_or_prev = actuator(self.__varname, cachearray)
+    --self.__name = next_or_prev
+    _yottadb.cachearray_replace(cachearray, depth, next_or_prev or '')
     return next_or_prev
   end
   return iterator, subsarray, ''  -- iterate using child from ''

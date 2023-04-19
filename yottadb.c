@@ -323,8 +323,17 @@ static int subscript_next(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
   get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
+  ydb_buffer_t _subsarray[subs_used];
+  ydb_buffer_t *subsarray;
+  cachearray_t *array = lua_touserdata(L, -1);
+  if (array) {
+    YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), &varname);
+    subs_used = array->length;
+    subsarray = array->subs;
+  } else {
+    subsarray = _subsarray;
+    get_subs(L, subs_used, subsarray);
+  }
   ydb_buffer_t ret_value;
   YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
   int status = ydb_subscript_next_s(&varname, subs_used, subsarray, &ret_value);
@@ -663,7 +672,9 @@ static const luaL_Reg yottadb_functions[] = {
   {"ydb_eintr_handler", _ydb_eintr_handler},
   {"cachearray", cachearray},
   {"cachearray_generate", cachearray_generate},
+  {"cachearray_fromtable", cachearray_fromtable},
   {"cachearray_tostring", cachearray_tostring},
+  {"cachearray_replace", cachearray_replace},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},
     {"table_unpack", unpack},
