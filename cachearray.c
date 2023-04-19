@@ -14,13 +14,7 @@
 // Number of extra items to allocate in cachearray.
 // Assumes most uses will only dive into subscripts this deep below their starting point node (however deep that is)
 // If users do go deeper, it all still works; it just creates an additional cachearray object for deeper nodes
-#define ARRAY_OVER_ALLOC 5
-
-typedef struct cachearray_t {
-  int length; // number of items in array
-  int alloc_length; // number of items space was allocated for
-  ydb_buffer_t subs[];  // first lot of subs stored here, then moved to another malloc if it grows too much
-} cachearray_t;
+#define ARRAY_OVERALLOC 5
 
 // Generate a C-style cachearray of subscripts from a tables/tables/list of subscripts
 // _yottadb.cachearray_fromtables(t1[, t2|...])
@@ -52,14 +46,13 @@ int cachearray_fromtable(lua_State *L) {
     luaL_error(L, "Parameter #2 to cachearray_fromtable, if supplied, must be a table/string_list");
 
   // Checking the stack lets us push & then pop all subscripts in one function call
-  // Must do this check before malloc
   int depth = len1+len2;
   luaL_checkstack(L, depth+1, "Lua stack in cachearray_fromtable() can't grow to fit M subscripts (less than 32)");
 
   // init array -- leave some room to grow without realloc in case user creates subnodes
-  cachearray_t *array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVER_ALLOC)*sizeof(ydb_buffer_t *));
+  cachearray_t *array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
   array->length = depth;
-  array->alloc_length = depth+ARRAY_OVER_ALLOC;
+  array->alloc_length = depth+ARRAY_OVERALLOC;
   ydb_buffer_t *element = &array->subs[0];
 
   // Append t1 and, if t2 is a table, also append t2 elements
@@ -119,8 +112,8 @@ int cachearray_generate(lua_State *L) {
   int depth = lua_tointeger(L, -1);
   if (depth <= 0) {
     lua_pop(L, 2);  // drop node, __depth
-    cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVER_ALLOC)*sizeof(ydb_buffer_t *));
-    newarray->alloc_length = depth+ARRAY_OVER_ALLOC;
+    cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
+    newarray->alloc_length = depth+ARRAY_OVERALLOC;
     newarray->length = 0;
     return 1;
   }
@@ -136,8 +129,8 @@ int cachearray_generate(lua_State *L) {
     array = lua_touserdata(L, -1);
     // If no room, then copy __cachearray, but with more space
     if (array->length >= depth || depth >= array->alloc_length) {
-      cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVER_ALLOC)*sizeof(ydb_buffer_t *));
-      newarray->alloc_length = depth+ARRAY_OVER_ALLOC;
+      cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
+      newarray->alloc_length = depth+ARRAY_OVERALLOC;
       memcpy(&newarray->subs[0], &array->subs[0], sizeof(ydb_buffer_t)*(depth-1));
       array = newarray;
       // STACK: node, __parent, parent_cachearray, newarray
@@ -150,9 +143,9 @@ int cachearray_generate(lua_State *L) {
     lua_pop(L, 1); // pop __cachearray (=nil)
     // STACK: node, __parentlist
     // Create array from list of strings in table at __parent (since there is no parent node)
-    array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVER_ALLOC)*sizeof(ydb_buffer_t *));
+    array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
     array->length = depth;
-    array->alloc_length = depth+ARRAY_OVER_ALLOC;
+    array->alloc_length = depth+ARRAY_OVERALLOC;
     // STACK: node, __parentlist, newarray
     element = &array->subs[0];
     for (int i=1; i<depth; i++) {
@@ -204,8 +197,12 @@ int cachearray(lua_State *L) {
   return 1;
 }
 
-// Replace existing element `index` of cachearray with `string`
-// _yottadb.cachearray_set(cachearray, index, string)
+// Replace existing element `index` of cachearray with `string`.
+// _yottadb.cachearray_replace(cachearray, index, string)
+// This is used by node:subscripts() to efficiently iterate subscripts
+// without creating a new cachearray for every single iteration.
+// The __mutable field should be set to true by the iterator on any node 
+// that has a cachearray that will be changed after creation.
 // @param cachearray userdata
 // @param index into array (from 1 to length of array)
 // @param string to store in array index
@@ -219,7 +216,7 @@ int cachearray_replace(lua_State *L) {
   ydb_buffer_t *element = &array->subs[index];
   int type = lua_type(L, 3);
   if (type != LUA_TSTRING)
-    luaL_error(L, "Parameter #3 to cachearray_replace must be a string");
+    luaL_error(L, "Parameter #3 to cachearray_replace must be a string (got %s)", lua_typename(L, type));
 
   size_t len;
   element->buf_addr = luaL_checklstring(L, 3, &len);
