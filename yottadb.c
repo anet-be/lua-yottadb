@@ -59,7 +59,7 @@ static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
 const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
 // Returns an error message to match the supplied YDB error code
-// _yottadb.message(code)
+// @usage _yottadb.message(code)
 static int message(lua_State *L) {
   ydb_buffer_t buf;
   char *msg;
@@ -96,10 +96,10 @@ int ydb_assert(lua_State *L, int code) {
   return 0;
 }
 
-// Lua function to call ydb_eintr_handler().
+// Lua function to call `ydb_eintr_handler()`.
 // If users wish to handle EINTR errors themselves, instead of blocking signals, they should call
 // `ydb_eintr_handler()` when they get an EINTR error, before restarting the erroring OS system call.
-// @return YDB_OK on success, and >0 on error (with message in ZSTATUS)
+// @return `YDB_OK` on success, and >0 on error (with message in ZSTATUS)
 // @see block_M_signals
 static int _ydb_eintr_handler(lua_State *L) {
   lua_pushinteger(L, ydb_eintr_handler());
@@ -107,12 +107,12 @@ static int _ydb_eintr_handler(lua_State *L) {
 }
 
 
-// Gets the value of a variable/node.
+/// Gets the value of a variable/node.
 // Raises an error if variable/node does not exist.
-// _yottadb.get(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
-// return: string
+// @usage _yottadb.get(varname[, {subs}])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @return string
 static int get(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -134,12 +134,12 @@ static int get(lua_State *L) {
   return 1;
 }
 
-// Sets the value of a variable/node.
+/// Sets the value of a variable/node.
 // Raises an error of no such intrinsic variable exists.
-// _yottadb.set(varname[, {subs}], value)
-// varname: string
-// subs: optional table of subscripts
-// value: string or number convertible to string
+// @usage _yottadb.set(varname[, {subs}], value)
+// @param varname string
+// @param subs[opt] table of subscripts
+// @param value string or number convertible to string
 static int set(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -154,11 +154,11 @@ static int set(lua_State *L) {
   return 0;
 }
 
-// Deletes a node or tree of nodes.
-// _yottadb.delete(varname[, {subs}][, type=_yottadb.YDB_DEL_NODE])
-// varname: string
-// subs: optional table of subscripts
-// type: _yottadb.YDB_DEL_NODE or _yottadb.YDB_DEL_TREE
+/// Deletes a node or tree of nodes.
+// @usage _yottadb.delete(varname[, {subs}][, type=_yottadb.YDB_DEL_NODE])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @param type `_yottadb.YDB_DEL_NODE` or `_yottadb.YDB_DEL_TREE`
 static int delete(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -170,14 +170,14 @@ static int delete(lua_State *L) {
   return 0;
 }
 
-// Returns information about a variable/node (except intrinsic variables).
-// _yottadb.data(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
-// return: _yottadb.YDB_DATA_UNDEF (no value or subtree) or
-//   _yottadb.YDB_DATA_VALUE_NODESC (value, no subtree) or
-//   _yottadb.YDB_DATA_NOVALUE_DESC (no value, subtree) or
-//   _yottadb.YDB_DATA_VALUE_DESC (value and subtree)
+/// Returns information about a variable/node (except intrinsic variables).
+// @usage _yottadb.data(varname[, {subs}])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @return `_yottadb.YDB_DATA_UNDEF` (no value or subtree) or
+//   `_yottadb.YDB_DATA_VALUE_NODESC` (value, no subtree) or
+//   `_yottadb.YDB_DATA_NOVALUE_DESC` (no value, subtree) or
+//   `_yottadb.YDB_DATA_VALUE_DESC` (value and subtree)
 static int data(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -190,12 +190,12 @@ static int data(lua_State *L) {
   return 1;
 }
 
-// Attempts to acquire or increment a lock on a variable/node, waiting if requested.
+/// Attempts to acquire or increment a lock on a variable/node, waiting if requested.
 // Raises an error if a lock could not be acquired.
-// _yottadb.lock_incr(varname[, {subs}][, timeout=0])
-// varname: string
-// subs: optional table of subscripts
-// timeout: optional timeout in seconds to wait for lock
+// @usage _yottadb.lock_incr(varname[, {subs}][, timeout=0])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @param timeout[opt] timeout in seconds to wait for lock
 static int lock_incr(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -207,10 +207,10 @@ static int lock_incr(lua_State *L) {
   return 0;
 }
 
-// Decrements a lock on a variable/node, releasing it if possible.
-// _yottadb.lock_decr(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
+/// Decrements a lock on a variable/node, releasing it if possible.
+// @usage _yottadb.lock_decr(varname[, {subs}])
+// @param varname string
+// @param subs[opt] table of subscripts
 static int lock_decr(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -226,7 +226,7 @@ typedef struct tpfnparm_t {
   int ref;
 } tpfnparm_t;
 
-// Invokes the Lua transaction function passed to _yottadb.tp().
+/// Invokes the Lua transaction function passed to `_yottadb.tp()`.
 static int tpfn(void *tpfnparm) {
   lua_State *L = ((tpfnparm_t *)tpfnparm)->L;
   RECORD_STACK_TOP(L);
@@ -261,18 +261,19 @@ static int tpfn(void *tpfnparm) {
   return status;
 }
 
-// Initiates a transaction.
-// _yottadb.tp([transid,] [varnames,] f[, ...])
-// transid: optional string transaction id
-// varnames: optional table of local M varnames to restore on transaction restart
+/// Initiates a transaction.
+//   Note: restarts are subject to $ZMAXTPTIME after which they cause error `%YDB-E-TPTIMEOUT`
+// @usage _yottadb.tp([transid,] [varnames,] f[, ...])
+// @param transid[opt] string transaction id
+// @param varnames[opt] table of local M varnames to restore on transaction restart
 //   (or {'*'} for all locals) -- restoration does apply to rollback
-// f: Lua function to call (can have nested _yottadb.tp() calls for nested transactions)
-//   If f returns nothing or _yottadb.YDB_OK, the transaction's affected globals are committed.
-//   If f returns _yottadb.YDB_TP_RESTART or _yottadb.YDB_TP_ROLLBACK, the transaction is
+// @param f Lua function to call (can have nested `_yottadb.tp()` calls for nested transactions).
+//
+//  * If f returns nothing or `_yottadb.YDB_OK`, the transaction's affected globals are committed.
+//  * If f returns `_yottadb.YDB_TP_RESTART` or `_yottadb.YDB_TP_ROLLBACK`, the transaction is
 //     restarted (f will be called again) or not committed, respectively.
-//   If f errors, the transaction is not committed and the error propagated up the stack.
-// ...: optional arguments to pass to f
-//   Note: restarts are subject to $ZMAXTPTIME after which they cause error %YDB-E-TPTIMEOUT
+//  * If f errors, the transaction is not committed and the error propagated up the stack.
+// @param ...[opt] arguments to pass to f
 static int tp(lua_State *L) {
   const char *transid = lua_isstring(L, 1) ? lua_tostring(L, 1) : "";
   int npos = lua_isstring(L, 1) ? 2 : 1;
@@ -314,10 +315,11 @@ static int tp(lua_State *L) {
   return 0;
 }
 
-// Returns the next subscript for a variable/node.
-// _yottadb.subscript_next(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
+/// Returns the next subscript for a variable/node.
+// @usage _yottadb.subscript_next(varname[, {subs}])
+// @usage _yottadb.subscript_next(cachearray, depth)
+// @param varname string
+// @param subs[opt] table of subscripts
 // @return: string or nil if there are no more subscripts
 static int subscript_next(lua_State *L) {
   ydb_buffer_t varname;
@@ -351,11 +353,11 @@ static int subscript_next(lua_State *L) {
   return 1;
 }
 
-// Returns the previous subscript for a variable/node.
-// _yottadb.subscript_previous(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
-// @return: string or nil if there are not any previous subscripts
+/// Returns the previous subscript for a variable/node.
+// @usage _yottadb.subscript_previous(varname[, {subs}])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @return string or nil if there are not any previous subscripts
 static int subscript_previous(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -379,12 +381,12 @@ static int subscript_previous(lua_State *L) {
   return 1;
 }
 
-// Returns the full subscript table of the next node after a variable/node.
+/// Returns the full subscript table of the next node after a variable/node.
 // A next node chain started from varname will eventually reach all nodes under that varname in order.
-// _yottadb.node_next(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
-// @return: table of subscripts for the node or nil if there are no next nodes
+// @usage _yottadb.node_next(varname[, {subs}])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @return table of subscripts for the node or nil if there are no next nodes
 static int node_next(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -425,12 +427,12 @@ static int node_next(lua_State *L) {
   return 1;
 }
 
-// Returns the full subscript table of the node prior to a variable/node.
+/// Returns the full subscript table of the node prior to a variable/node.
 // A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
-// _yottadb.node_previous(varname[, {subs}])
-// varname: string
-// subs: optional table of subscripts
-// @return: table of subscripts for the node or nil if there are no previous nodes
+// @usage _yottadb.node_previous(varname[, {subs}])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @return table of subscripts for the node or nil if there are no previous nodes
 static int node_previous(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -477,11 +479,11 @@ typedef struct ydb_key_t {
   ydb_buffer_t *subsarray;
 } ydb_key_t;
 
-// Releases all locks held and attempts to acquire all requested locks, waiting if requested.
+/// Releases all locks held and attempts to acquire all requested locks, waiting if requested.
 // Raises an error if a lock could not be acquired.
-// _yottadb.lock([keys[, timeout=0]])
-// keys: optional table of {varname[, {subs}]} variable/nodes to lock
-// timeout: optional timeout in seconds to wait for lock
+// @usage _yottadb.lock([keys[, timeout=0]])
+// @param keys[opt] table of {varname[, {subs}]} variable/nodes to lock
+// @param timeout[opt] timeout in seconds to wait for lock
 static int lock(lua_State *L) {
   int num_keys = 0;
   if (lua_gettop(L) > 0) luaL_argcheck(L, lua_istable(L, 1), 1, "table of keys expected");
@@ -545,9 +547,9 @@ static int lock(lua_State *L) {
   return 0;
 }
 
-// Deletes trees of all local variables except the given ones.
-// _yottadb.delete_excl(varnames)
-// varnames: table of variable names to exclude (no subscripts)
+/// Deletes trees of all local variables except the given ones.
+// @usage _yottadb.delete_excl(varnames)
+// @param varnames table of variable names to exclude (no subscripts)
 static int delete_excl(lua_State *L) {
   luaL_argcheck(L, lua_istable(L, 1), 1, "table of varnames expected");
   int namecount = luaL_len(L, 1);
@@ -565,12 +567,12 @@ static int delete_excl(lua_State *L) {
   return 0;
 }
 
-// Increments the numeric value of a variable/node.
+/// Increments the numeric value of a variable/node.
 // Raises an error on overflow.
-// _yottadb.incr(varname[, {subs}][, increment=n])
-// varname: string
-// subs: optional table of subscripts
-// increment: amount to increment by = number, or string-of-a-canonical-number, default=1
+// @usage _yottadb.incr(varname[, {subs}][, increment=n])
+// @param varname string
+// @param subs[opt] table of subscripts
+// @param increment[opt] amount to increment by = number, or string-of-a-canonical-number, default=1
 static int incr(lua_State *L) {
   ydb_buffer_t varname;
   int subs_used;
@@ -594,10 +596,10 @@ static int incr(lua_State *L) {
   return 1;
 }
 
-// Returns the zwrite-formatted version of the given string.
-// _yottadb.str2zwr(s)
-// s: string
-// return: zwrite-formatted string
+/// Returns the zwrite-formatted version of the given string.
+// @usage _yottadb.str2zwr(s)
+// @param s string
+// @return zwrite-formatted string
 static int str2zwr(lua_State *L) {
   ydb_buffer_t str;
   YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), &str);
@@ -617,10 +619,10 @@ static int str2zwr(lua_State *L) {
   return 1;
 }
 
-// Returns the string described by the given zwrite-formatted string.
-// _yottadb.zwr2str(s)
-// s: zwrite-formatted string
-// return: string
+/// Returns the string described by the given zwrite-formatted string.
+// @usage _yottadb.zwr2str(s)
+// @param s zwrite-formatted string
+// @return string
 static int zwr2str(lua_State *L) {
   ydb_buffer_t zwr;
   YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), &zwr);
