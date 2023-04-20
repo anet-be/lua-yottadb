@@ -671,7 +671,6 @@ static const luaL_Reg yottadb_functions[] = {
   {"init", init},
   {"ydb_eintr_handler", _ydb_eintr_handler},
   {"cachearray", cachearray},
-  {"cachearray_generate", cachearray_generate},
   {"cachearray_fromtable", cachearray_fromtable},
   {"cachearray_tostring", cachearray_tostring},
   {"cachearray_replace", cachearray_replace},
@@ -717,13 +716,10 @@ static const const_Reg yottadb_constants[] = {
 
 int luaopen__yottadb(lua_State *L) {
   luaL_newlibtable(L, yottadb_functions);
-  // Push upvalues used by cachearray functions
-  lua_pushnil(L); // UPVALUE_NODE=nil
-  lua_pushstring(L, "__depth");  // these used for faster string access
-  lua_pushstring(L, "__parent");
-  lua_pushstring(L, "__cachearray");
-  lua_pushstring(L, "__name");
-  luaL_setfuncs(L, yottadb_functions, 5);
+  // Push upvalues used by module
+  int top = lua_gettop(L);
+  // Push any needed upvalues here, e.g.: cachearray_pushupvalues(L);
+  luaL_setfuncs(L, yottadb_functions, lua_gettop(L)-top);
 
   for (const_Reg *c = &yottadb_constants[0]; c->name; c++) {
     lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
