@@ -439,7 +439,7 @@ function M.nodes(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, reverse  OR
   local initialized = false
   return function()
     if not initialized then
-      local status = _yottadb.data(varname, reverse and subsarray_copy or nil)
+      local status = reverse and _yottadb.data(varname, subsarray_copy) or _yottadb.data(varname)
       if not reverse then
         initialized = true
         if #subsarray_copy == 0 and (status == 1 or status == 11) then  -- if root node and it has a value
@@ -501,7 +501,7 @@ function M.set(varname, ...)  -- Note: '...' is {sub1, sub2, ...}, value  OR  su
   assert_type(varname, 'string', 1)
   assert_type(subsarray, 'table', 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  if value == nil then  _yottadb.delete(varname, subsarray, _yottadb.YDB_DEL_NODE)  return nil  end
+  if value == nil then  _yottadb.delete(varname, subsarray)  return nil  end
   assert_type(value, _string_number, '<last>')
   _yottadb.set(varname, subsarray, value)
   return value
@@ -897,7 +897,7 @@ function node:subscripts(reverse)
   local cachearray = _yottadb.cachearray_fromtable(self.__varname, self.__subsarray, next_or_prev)
   local depth = #self.__subsarray + 1
   local function iterator()
-    next_or_prev = actuator(self.__varname, cachearray)
+    next_or_prev = actuator(cachearray, depth)
     --self.__name = next_or_prev
     _yottadb.cachearray_replace(cachearray, depth, next_or_prev or '')
     return next_or_prev

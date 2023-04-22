@@ -110,55 +110,49 @@ local function skip(f)
 end
 
 local function validate_varname_inputs(f)
-  local ok, e = pcall(f, true)
+  local function val() if f==_yottadb.set then  return 'val'  end end
+  local ok, e = pcall(f, true, val)
   assert(not ok)
-  assert(e:find('string expected'))
+  assert(e:find('expected'))
 
-  ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT + 1))
+  ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT + 1), val())
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_VARNAME2LONG)
 
   if f == _yottadb.get then
-    _yottadb.set(string.rep('b', _yottadb.YDB_MAX_IDENT), 'val') -- avoid YDB_ERR_LVUNDEF
+    _yottadb.set(string.rep('b', _yottadb.YDB_MAX_IDENT), 'val')
   end
-  ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT))
+  ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT), val())
   assert(ok)
 
-  ok, e = pcall(f, '\128')
+  ok, e = pcall(f, '\128', val())
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_INVVARNAME)
 end
 
 local function validate_subsarray_inputs(f)
-  --local ok, e = pcall(f, 'test', 'subsarray')
-  --assert(not ok)
-  --assert(e:find('table of subs expected'))
-
+  local function val() if f==_yottadb.set then  return 'val'  end end
   local subs = {}
   for i = 1, _yottadb.YDB_MAX_SUBS do subs[i] = 'b' end
   if f == _yottadb.get then _yottadb.set('test', subs, 'val') end -- avoid YDB_ERR_LVUNDEF
-  local ok, e = pcall(f, 'test', subs)
+  local ok, e = pcall(f, 'test', subs, val())
   assert(ok)
 
   subs[#subs + 1] = 'b'
-  ok, e = pcall(f, 'test', subs)
+  ok, e = pcall(f, 'test', subs, val())
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_MAXNRSUBSCRIPTS)
 
-  ok, e = pcall(f, 'test', {true})
+  ok, e = pcall(f, 'test', {true}, val())
   assert(not ok)
   assert(e:find('string expected'))
 
   if f == _yottadb.get then
     _yottadb.set('test', {string.rep('b', _yottadb.YDB_MAX_STR)}, 'val') -- avoid YDB_ERR_LVUNDEF
   end
-  ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR)})
+  ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR)}, val())
   -- Note: subscripts for lock functions are shorter, so ignore those errors.
   assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_LOCKSUB2LONG)
-
-  --ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR + 1)})
-  --assert(not ok)
-  --asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_INVSTRLEN)
 end
 
 function asserteq(value1, value2)
@@ -257,7 +251,7 @@ function test_delete()
   -- test deleting subnode value by setting it to nil
   _yottadb.set('test10', {'sub1'}, 'test10value')
   asserteq(_yottadb.get('test10', {'sub1'}), 'test10value')
-  yottadb.set('test10', {'sub1'}, nil)
+  yottadb.set('test10', {'sub1'}, nil)  -- Note: testing delete functionality of yottadb.set(), not _yottadb.set()
   ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
@@ -293,9 +287,9 @@ function test_delete()
   validate_varname_inputs(_yottadb.delete)
   validate_subsarray_inputs(_yottadb.delete)
 
-  ok, e = pcall(_yottadb.delete, 'test', {'b'}, true)
+  ok, e = pcall(_yottadb.delete, 'test', {'b'}, nil)
   assert(not ok)
-  assert(e:find('number expected'))
+  assert(e:find('expected'))
 end
 
 function test_delete_excl()
@@ -2256,14 +2250,22 @@ function test_signals()
 end
 
 function test_cachearray()
-  local ok, e, node, cachearray, expected
+  local ok, e, node, cachearray, expected, varname, subs
   
   local y_cachearray = _yottadb.cachearray
   local y_fromtable = _yottadb.cachearray_fromtable
   local y_tostring = _yottadb.cachearray_tostring
 
-  cachearray = y_fromtable('var', {'person','3'}, 'male', 'asian')
-  asserteq(y_tostring(cachearray), '"person",3,"male","asian"')
+  cachearray = y_fromtable('var')
+  subs, varname = y_tostring(cachearray)
+  asserteq(varname, 'var')  asserteq(subs, '')
+
+  cachearray = y_fromtable('var2', {'person', '3', 'male', 'asian'})
+  subs, varname = y_tostring(cachearray)
+  asserteq(varname, 'var2')  asserteq(subs, '"person",3,"male","asian"')
+
+  cachearray = y_fromtable('var', 'person', '3', '4', '5')
+  asserteq(y_tostring(cachearray), '"person",3,4,5')
 
   node = {__varname='var', __depth=0, __parent={}}
   cachearray = y_cachearray(node)

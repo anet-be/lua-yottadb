@@ -237,7 +237,7 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, cip_metad
     size_t preallocation = ydb_type->preallocation;
     if (preallocation==-1) preallocation=YDB_MAX_STR;
     size_t length;
-    char *s;
+    char *s=NULL;  // does nothing but satisfy gcc that we're not using it uninitialized
     if (isinput) {
       s = lua_tolstring(L, argi, &length);
       if (!s) typeerror_cleanup(L, meta, argi, "string");

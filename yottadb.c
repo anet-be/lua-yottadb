@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdint.h> // intptr_t
 #include <stdio.h>
+#include <stdbool.h>
 
 #include <libyottadb.h>
 #include <lua.h>
@@ -26,7 +27,6 @@ static const int LUA_YDB_ERR = -200000000; // arbitrary
 
 int unused; // used as junk dumping space
 
-
 // Define safe malloc routines that exit with error on failure, rather than unpredictably continuing
 // see related definitions in yottadb.h
 int _memory_error(size_t size, int line, char *file) {
@@ -38,23 +38,19 @@ int _memory_error(size_t size, int line, char *file) {
 }
 
 
-// Determines the key's varname and number of subs (if any).
-// Assumes the Lua stack starts with the key.
-static void get_key_info(lua_State *L, ydb_buffer_t *varname, int *subs_used) {
-  YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), varname);
-  *subs_used = (lua_gettop(L) > 1 && lua_istable(L, 2)) ? luaL_len(L, 2) : 0;
-}
-
-// Assumes subs table is second argument on Lua stack and subsarray is same length.
-static void get_subs(lua_State *L, int subs_used, ydb_buffer_t *subsarray) {
-  RECORD_STACK_TOP(L);
-  for (int i = 0; i < subs_used; i++) {
-    lua_geti(L, 2, i + 1);
-    YDB_STRING_TO_BUFFER(luaL_checkstring(L, -1), &subsarray[i]);
-    lua_pop(L, 1);
-  }
-  ASSERT_STACK_TOP(L);
-}
+// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray, depth)
+// Returns on the Lua stack any numbers converted to strings in cachearray so that there is still a Lua reference to them
+// (see doc for cachearray_fromtable().
+#define getsubs(L,_subs_used,_varname,_subsarray) \
+  cachearray_t *cachearray = lua_touserdata(L, 1); \
+  if (cachearray) \
+    _subs_used = luaL_checkinteger(L, 2); \
+  else { \
+    cachearray = lua_touserdata(L, -cachearray_fromtable(L)); \
+    _subs_used = cachearray->length; \
+  } \
+  _varname = &cachearray->varname; \
+  _subsarray = &cachearray->subs[0];
 
 const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
@@ -109,22 +105,23 @@ static int _ydb_eintr_handler(lua_State *L) {
 
 /// Gets the value of a variable/node.
 // Raises an error if variable/node does not exist.
-// @usage _yottadb.get(varname[, {subs}])
+// @usage _yottadb.get(varname[, {subs} | ...]),  or:
+// @usage _yottadb.get(cachearray, depth)
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] is a list of subscripts
 // @return string
 static int get(lua_State *L) {
-  ydb_buffer_t varname;
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
   ydb_buffer_t ret_value;
   YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
-  int status = ydb_get_s(&varname, subs_used, subsarray, &ret_value);
+  int status = ydb_get_s(varname, subs_used, subsarray, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
     YDB_REALLOC_BUFFER_SAFE(&ret_value);
-    status = ydb_get_s(&varname, subs_used, subsarray, &ret_value);
+    status = ydb_get_s(varname, subs_used, subsarray, &ret_value);
   }
   if (status == YDB_OK) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
@@ -136,94 +133,126 @@ static int get(lua_State *L) {
 
 /// Sets the value of a variable/node.
 // Raises an error of no such intrinsic variable exists.
-// @usage _yottadb.set(varname[, {subs}], value)
+// @usage _yottadb.set(varname[, {subs} | ...], value),  or
+// @usage _yottadb.set(cachearray, depth, value)
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] is a list of subscripts
 // @param value string or number convertible to string
 static int set(lua_State *L) {
-  ydb_buffer_t varname;
-  int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
+  // pop `value` off stack before calling getsubs
   ydb_buffer_t value;
   size_t length;
-  value.buf_addr = luaL_optlstring(L, !lua_isstring(L, 2) ? 3 : 2, "", &length);
+  value.buf_addr = luaL_checklstring(L, -1, &length);
   value.len_used = value.len_alloc = (unsigned int)length;
-  ydb_assert(L, ydb_set_s(&varname, subs_used, subsarray, &value));
+  // pop string `value` so we can call getsubs, but keep reference to it so it is valid until ydb_set_s() is complete
+  int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+  int subs_used;
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
+  int status = ydb_set_s(varname, subs_used, subsarray, &value);
+  luaL_unref(L, LUA_REGISTRYINDEX, ref);
+  ydb_assert(L, status);
   return 0;
 }
 
 /// Deletes a node or tree of nodes.
-// @usage _yottadb.delete(varname[, {subs}][, type=_yottadb.YDB_DEL_NODE])
+// `_yottadb.YDB_DEL_xxxx` are boolean constants and must be supplied as actual boolean
+// (not merely convertable to boolean), so that delete() can distinguish them from subscripts.
+// Note: `_yottadb.YDB_DEL_xxxx` values differ from the values in `libyottadb.h`, but they work the same.
+// @usage _yottadb.delete(varname[, {subs} | ...][, type=_yottadb.YDB_DEL_xxxx])
+// @usage _yottadb.delete(cachearray, depth[, type=_yottadb.YDB_DEL_xxxx])
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] list of subscripts
 // @param type `_yottadb.YDB_DEL_NODE` or `_yottadb.YDB_DEL_TREE`
 static int delete(lua_State *L) {
-  ydb_buffer_t varname;
+  int deltype = YDB_DEL_NODE;
+  if (lua_type(L, -1) == LUA_TBOOLEAN) {
+    if (lua_toboolean(L, -1))
+      deltype = YDB_DEL_TREE;
+    lua_pop(L, 1);  // pop type
+  }
+
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
-  int deltype = luaL_optinteger(L, lua_type(L, 2) != LUA_TNUMBER ? 3 : 2, YDB_DEL_NODE);
-  ydb_assert(L, ydb_delete_s(&varname, subs_used, subsarray, deltype));
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
+  ydb_assert(L, ydb_delete_s(varname, subs_used, subsarray, deltype));
   return 0;
 }
 
 /// Returns information about a variable/node (except intrinsic variables).
-// @usage _yottadb.data(varname[, {subs}])
+// @usage _yottadb.data(varname[, {subs | ...}]),  or:
+// @usage _yottadb.data(cachearray, depth)
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] list of subscripts
+// @param ...[opt] list of subscripts
 // @return `_yottadb.YDB_DATA_UNDEF` (no value or subtree) or
 //   `_yottadb.YDB_DATA_VALUE_NODESC` (value, no subtree) or
 //   `_yottadb.YDB_DATA_NOVALUE_DESC` (no value, subtree) or
 //   `_yottadb.YDB_DATA_VALUE_DESC` (value and subtree)
 static int data(lua_State *L) {
-  ydb_buffer_t varname;
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
   unsigned int ret_value;
-  ydb_assert(L, ydb_data_s(&varname, subs_used, subsarray, &ret_value));
+  ydb_assert(L, ydb_data_s(varname, subs_used, subsarray, &ret_value));
   lua_pushinteger(L, ret_value);
   return 1;
 }
 
 /// Attempts to acquire or increment a lock on a variable/node, waiting if requested.
 // Raises an error if a lock could not be acquired.
+// Caution: timeout is *not* optional if `...` list of subscript is provided.
+// Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 // @usage _yottadb.lock_incr(varname[, {subs}][, timeout=0])
+// @usage _yottadb.lock_incr(varname[, ...], timeout)
+// @usage _yottadb.lock_incr(cachearray, depth[, timeout=0])
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] list of subscripts
 // @param timeout[opt] timeout in seconds to wait for lock
 static int lock_incr(lua_State *L) {
-  ydb_buffer_t varname;
+  int argpos=-1;
+  if (lua_gettop(L) < 2)
+    argpos = 2;
+  else
+    if (lua_type(L, 1)==LUA_TUSERDATA || lua_type(L, 2)==LUA_TTABLE)
+      argpos = 3;
+  unsigned long long timeout_nsec = luaL_optnumber(L, argpos, 0) * 1000000000;
+  lua_settop(L, argpos-1);  // pop timeout if it was supplied
+
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
-  unsigned long long timeout = luaL_optnumber(L, lua_type(L, 2) != LUA_TNUMBER ? 3 : 2, 0) * 1000000000;
-  ydb_assert(L, ydb_lock_incr_s(timeout, &varname, subs_used, subsarray));
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
+  ydb_assert(L, ydb_lock_incr_s(timeout_nsec, varname, subs_used, subsarray));
   return 0;
 }
 
 /// Decrements a lock on a variable/node, releasing it if possible.
-// @usage _yottadb.lock_decr(varname[, {subs}])
+// @usage _yottadb.lock_decr(varname[, {subs} | ...]),  or:
+// @usage _yottadb.lock_decr(cachearray, depth)
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] list of subscripts
 static int lock_decr(lua_State *L) {
-  ydb_buffer_t varname;
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
-  ydb_assert(L, ydb_lock_decr_s(&varname, subs_used, subsarray));
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
+  ydb_assert(L, ydb_lock_decr_s(varname, subs_used, subsarray));
   return 0;
 }
 
 typedef struct tpfnparm_t {
   lua_State *L;
-  int ref;
+  int ref;  // ref to registry table used to store parameters that are passed to lua function invoked by tpfn()
 } tpfnparm_t;
 
 /// Invokes the Lua transaction function passed to `_yottadb.tp()`.
@@ -233,7 +262,7 @@ static int tpfn(void *tpfnparm) {
   int ref = ((tpfnparm_t *)tpfnparm)->ref;
   lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
   int top = lua_gettop(L), n = luaL_len(L, top);
-  luaL_checkstack(L, n, "too many callback args");
+  luaL_checkstack(L, n, "too many callback args -- cannot expand Lua stack to fit them");
   for (int i = 1; i <= n; i++) {
     lua_geti(L, top, i);
   }
@@ -246,7 +275,10 @@ static int tpfn(void *tpfnparm) {
       status = strtol(s, &endp, 10);
     }
     if (!s || endp == s) {
-      lua_pushvalue(L, -1), lua_setfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error"); // TODO: this is not thread-safe. It should be returned using luaL_ref()
+      // STACK: ref_table, retval
+      lua_pushvalue(L, -1);
+      // STACK: ref_table, retval, retval
+      lua_setfield(L, -3, "_yottadb_lua_error");
       status = LUA_YDB_ERR;
     }
   } else if (lua_isnil(L, -1)) {
@@ -256,7 +288,7 @@ static int tpfn(void *tpfnparm) {
   } else {
     status = YDB_ERR_TPCALLBACKINVRETVAL;
   }
-  lua_pop(L, 2); // retval and ref
+  lua_pop(L, 2); // retval and ref_table
   ASSERT_STACK_TOP(L);
   return status;
 }
@@ -297,51 +329,39 @@ static int tp(lua_State *L) {
   for (int i = npos; i < lua_gettop(L); i++) {
     lua_pushvalue(L, i), lua_seti(L, -2, luaL_len(L, -2) + 1);
   }
-  int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  int ref = luaL_ref(L, LUA_REGISTRYINDEX);  // store ref_table containing parameters to pass to Lua callback function
   tpfnparm_t *tpfnparm = MALLOC_SAFE(sizeof(tpfnparm_t));
   tpfnparm->L = L, tpfnparm->ref = ref;
   int status = ydb_tp_s(tpfn, (void *)tpfnparm, transid, namecount, varnames);
-  luaL_unref(L, LUA_REGISTRYINDEX, ref);
   free(tpfnparm);
   for (int i = 0; i < namecount; i++) {
     YDB_FREE_BUFFER(&varnames[i]);
   }
   if (status == LUA_YDB_ERR) {
-    lua_getfield(L, LUA_REGISTRYINDEX, "_yottadb_lua_error");
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ref);  // get ref_table cont
+    lua_getfield(L, -1, "_yottadb_lua_error");
+    luaL_unref(L, LUA_REGISTRYINDEX, ref);
     lua_error(L);
   } else if (status != YDB_TP_RESTART) {
+    luaL_unref(L, LUA_REGISTRYINDEX, ref);
     ydb_assert(L, status);
   }
   return 0;
 }
 
-/// Returns the next subscript for a variable/node.
-// @usage _yottadb.subscript_next(varname[, {subs}])
-// @usage _yottadb.subscript_next(cachearray, depth)
-// @param varname string
-// @param subs[opt] table of subscripts
-// @return: string or nil if there are no more subscripts
-static int subscript_next(lua_State *L) {
-  ydb_buffer_t varname;
+typedef int (*subscript_actuator_t) (const ydb_buffer_t *varname, int subs_used, const ydb_buffer_t *subsarray, ydb_buffer_t *ret_value);
+// Underlying function for subscript next or previous
+static int subscript_nexter(lua_State *L, subscript_actuator_t actuator) {
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t _subsarray[subs_used];
-  ydb_buffer_t *subsarray;
-  cachearray_t *array = lua_touserdata(L, -1);
-  if (array) {
-    YDB_STRING_TO_BUFFER(luaL_checkstring(L, 1), &varname);
-    subs_used = array->length;
-    subsarray = array->subs;
-  } else {
-    subsarray = _subsarray;
-    get_subs(L, subs_used, subsarray);
-  }
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
   ydb_buffer_t ret_value;
   YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
-  int status = ydb_subscript_next_s(&varname, subs_used, subsarray, &ret_value);
+  int status = actuator(varname, subs_used, subsarray, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
     YDB_REALLOC_BUFFER_SAFE(&ret_value);
-    status = ydb_subscript_next_s(&varname, subs_used, subsarray, &ret_value);
+    status = actuator(varname, subs_used, subsarray, &ret_value);
   }
   if (status == YDB_OK)
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
@@ -353,27 +373,62 @@ static int subscript_next(lua_State *L) {
   return 1;
 }
 
-/// Returns the previous subscript for a variable/node.
-// @usage _yottadb.subscript_previous(varname[, {subs}])
+/// Returns the next subscript for a variable/node.
+// @usage _yottadb.subscript_next(varname[, {subs} | ...]),  or:
+// @usage _yottadb.subscript_next(cachearray, depth)
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] is a list of subscripts
+// @return: string or nil if there are no more subscripts
+static int subscript_next(lua_State *L) {
+  return subscript_nexter(L, ydb_subscript_next_s);
+}
+
+/// Returns the previous subscript for a variable/node.
+// @usage _yottadb.subscript_previous(varname[, {subs} | ...]),  or:
+// @usage _yottadb.subscript_previous(cachearray, depth)
+// @param varname string
+// @param subs[opt] table of subscripts
+// @param ...[opt] is a list of subscripts
 // @return string or nil if there are not any previous subscripts
 static int subscript_previous(lua_State *L) {
-  ydb_buffer_t varname;
+  return subscript_nexter(L, ydb_subscript_previous_s);
+}
+
+typedef int (*node_actuator_t) (const ydb_buffer_t *varname, int subs_used, const ydb_buffer_t *subsarray, int *ret_subs_used, ydb_buffer_t *ret_subsarray);
+// Underlying function for node next or previous
+static int node_nexter(lua_State *L, node_actuator_t actuator) {
   int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
-  ydb_buffer_t ret_value;
-  YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
-  int status = ydb_subscript_previous_s(&varname, subs_used, subsarray, &ret_value);
-  if (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER_SAFE(&ret_value);
-    status = ydb_subscript_previous_s(&varname, subs_used, subsarray, &ret_value);
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
+  int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
+  ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
+  for (int i = 0; i < ret_subs_alloc; i++)
+    YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
+  int status = actuator(varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
+  if (status == YDB_ERR_INSUFFSUBS) {
+    ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
+    for (int i = ret_subs_alloc; i < ret_subs_used; i++)
+      YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
+    ret_subs_alloc = ret_subs_used;
+    status = actuator(varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
   }
-  if (status == YDB_OK)
-    lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
-  YDB_FREE_BUFFER(&ret_value);
+  while (status == YDB_ERR_INVSTRLEN) {
+    YDB_REALLOC_BUFFER_SAFE(&ret_subsarray[ret_subs_used]);
+    ret_subs_used = ret_subs_alloc;
+    status = actuator(varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
+  }
+  if (status == YDB_OK) {
+    lua_createtable(L, ret_subs_used, 0);
+    for (int i = 0; i < ret_subs_used; i++) {
+      lua_pushlstring(L, ret_subsarray[i].buf_addr, ret_subsarray[i].len_used);
+      lua_seti(L, -2, i + 1);
+    }
+  }
+  for (int i = 0; i < ret_subs_alloc; i++)
+    YDB_FREE_BUFFER(&ret_subsarray[i]);
+  free(ret_subsarray);
   if (status == YDB_ERR_NODEEND)
     lua_pushnil(L);
   else
@@ -383,48 +438,13 @@ static int subscript_previous(lua_State *L) {
 
 /// Returns the full subscript table of the next node after a variable/node.
 // A next node chain started from varname will eventually reach all nodes under that varname in order.
-// @usage _yottadb.node_next(varname[, {subs}])
+// @usage _yottadb.node_next(varname[, {subs} | ...])
 // @param varname string
 // @param subs[opt] table of subscripts
+// @param ...[opt] is a list of subscripts
 // @return table of subscripts for the node or nil if there are no next nodes
 static int node_next(lua_State *L) {
-  ydb_buffer_t varname;
-  int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
-  int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
-  ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
-  for (int i = 0; i < ret_subs_alloc; i++)
-    YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-  int status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
-  if (status == YDB_ERR_INSUFFSUBS) {
-    ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
-    for (int i = ret_subs_alloc; i < ret_subs_used; i++)
-      YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-    ret_subs_alloc = ret_subs_used;
-    status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
-  }
-  while (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER_SAFE(&ret_subsarray[ret_subs_used]);
-    ret_subs_used = ret_subs_alloc;
-    status = ydb_node_next_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
-  }
-  if (status == YDB_OK) {
-    lua_createtable(L, ret_subs_used, 0);
-    for (int i = 0; i < ret_subs_used; i++) {
-      lua_pushlstring(L, ret_subsarray[i].buf_addr, ret_subsarray[i].len_used);
-      lua_seti(L, -2, i + 1);
-    }
-  }
-  for (int i = 0; i < ret_subs_alloc; i++)
-    YDB_FREE_BUFFER(&ret_subsarray[i]);
-  free(ret_subsarray);
-  if (status == YDB_ERR_NODEEND)
-    lua_pushnil(L);
-  else
-    ydb_assert(L, status);
-  return 1;
+  return node_nexter(L, ydb_node_next_s);
 }
 
 /// Returns the full subscript table of the node prior to a variable/node.
@@ -434,43 +454,7 @@ static int node_next(lua_State *L) {
 // @param subs[opt] table of subscripts
 // @return table of subscripts for the node or nil if there are no previous nodes
 static int node_previous(lua_State *L) {
-  ydb_buffer_t varname;
-  int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
-  int ret_subs_alloc = LUA_YDB_SUBSIZ, ret_subs_used = 0;
-  ydb_buffer_t *ret_subsarray = MALLOC_SAFE(ret_subs_alloc * sizeof(ydb_buffer_t));
-  for (int i = 0; i < ret_subs_alloc; i++)
-    YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-  int status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
-  if (status == YDB_ERR_INSUFFSUBS) {
-    ret_subsarray = REALLOC_SAFE(ret_subsarray, ret_subs_used * sizeof(ydb_buffer_t));
-    for (int i = ret_subs_alloc; i < ret_subs_used; i++)
-      YDB_MALLOC_BUFFER_SAFE(&ret_subsarray[i], LUA_YDB_BUFSIZ);
-    ret_subs_alloc = ret_subs_used;
-    status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
-  }
-  while (status == YDB_ERR_INVSTRLEN) {
-    YDB_REALLOC_BUFFER_SAFE(&ret_subsarray[ret_subs_used]);
-    ret_subs_used = ret_subs_alloc;
-    status = ydb_node_previous_s(&varname, subs_used, subsarray, &ret_subs_used, ret_subsarray);
-  }
-  if (status == YDB_OK) {
-    lua_createtable(L, ret_subs_used, 0);
-    for (int i = 0; i < ret_subs_used; i++) {
-      lua_pushlstring(L, ret_subsarray[i].buf_addr, ret_subsarray[i].len_used);
-      lua_seti(L, -2, i + 1);
-    }
-  }
-  for (int i = 0; i < ret_subs_alloc; i++)
-    YDB_FREE_BUFFER(&ret_subsarray[i]);
-  free(ret_subsarray);
-  if (status == YDB_ERR_NODEEND)
-    lua_pushnil(L);
-  else
-    ydb_assert(L, status);
-  return 1;
+  return node_nexter(L, ydb_node_previous_s);
 }
 
 typedef struct ydb_key_t {
@@ -481,8 +465,8 @@ typedef struct ydb_key_t {
 
 /// Releases all locks held and attempts to acquire all requested locks, waiting if requested.
 // Raises an error if a lock could not be acquired.
-// @usage _yottadb.lock([keys[, timeout=0]])
-// @param keys[opt] table of {varname[, {subs}]} variable/nodes to lock
+// @usage _yottadb.lock([{keys}[, timeout=0]])
+// @param {keys}[opt] table of {varname[, {subs}]} variable/nodes to lock
 // @param timeout[opt] timeout in seconds to wait for lock
 static int lock(lua_State *L) {
   int num_keys = 0;
@@ -569,29 +553,45 @@ static int delete_excl(lua_State *L) {
 
 /// Increments the numeric value of a variable/node.
 // Raises an error on overflow.
-// @usage _yottadb.incr(varname[, {subs}][, increment=n])
+// Caution: increment is *not* optional if `...` list of subscript is provided.
+// Otherwise incr cannot tell whether it is a subscript or an increment.
+// @usage _yottadb.incr(varname[, {subs}][, increment=1])
+// @usage _yottadb.incr(varname[, ...], increment=n)
+// @usage _yottadb.incr(cachearray, depth[, increment=1])
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param increment[opt] amount to increment by = number, or string-of-a-canonical-number, default=1
 static int incr(lua_State *L) {
-  ydb_buffer_t varname;
-  int subs_used;
-  get_key_info(L, &varname, &subs_used);
-  ydb_buffer_t subsarray[subs_used];
-  get_subs(L, subs_used, subsarray);
+  int args = lua_gettop(L);
+  int argpos=-1;
+  if (args < 2)
+    argpos = 2;
+  else
+    if (lua_type(L, 1)==LUA_TUSERDATA || lua_type(L, 2)==LUA_TTABLE)
+      argpos = 3;
   ydb_buffer_t increment;
-  YDB_STRING_TO_BUFFER(luaL_optstring(L, !lua_isstring(L, 2) ? 3 : 2, ""), &increment);
+  YDB_STRING_TO_BUFFER(luaL_optstring(L, argpos, ""), &increment);
+  // pop string `value` so we can call getsubs, but keep reference to it so it is valid until ydb_incr_s() is complete
+  int ref = LUA_NOREF;
+  if (args >= argpos)
+    ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+  int subs_used;
+  ydb_buffer_t *varname, *subsarray;
+  getsubs(L, subs_used, varname, subsarray);
+
   ydb_buffer_t ret_value;
   YDB_MALLOC_BUFFER_SAFE(&ret_value, LUA_YDB_BUFSIZ);
-  int status = ydb_incr_s(&varname, subs_used, subsarray, &increment, &ret_value);
+  int status = ydb_incr_s(varname, subs_used, subsarray, &increment, &ret_value);
   if (status == YDB_ERR_INVSTRLEN) {
     YDB_REALLOC_BUFFER_SAFE(&ret_value);
-    status = ydb_incr_s(&varname, subs_used, subsarray, &increment, &ret_value);
+    status = ydb_incr_s(varname, subs_used, subsarray, &increment, &ret_value);
   }
   if (status == YDB_OK) {
     lua_pushlstring(L, ret_value.buf_addr, ret_value.len_used);
   }
   YDB_FREE_BUFFER(&ret_value);
+  luaL_unref(L, LUA_REGISTRYINDEX, ref);
   ydb_assert(L, status);
   return 1;
 }
@@ -690,8 +690,6 @@ static const const_Reg yottadb_constants[] = {
   {"YDB_ERR_GVUNDEF", YDB_ERR_GVUNDEF},
   {"YDB_ERR_LVUNDEF", YDB_ERR_LVUNDEF},
   {"YDB_MAX_STR", YDB_MAX_STR},
-  {"YDB_DEL_NODE", YDB_DEL_NODE},
-  {"YDB_DEL_TREE", YDB_DEL_TREE},
   {"YDB_DATA_UNDEF", 0},
   {"YDB_DATA_VALUE_NODESC", 1},
   {"YDB_DATA_NOVALUE_DESC", 10},
@@ -726,6 +724,8 @@ int luaopen__yottadb(lua_State *L) {
   for (const_Reg *c = &yottadb_constants[0]; c->name; c++) {
     lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
   }
+  lua_pushboolean(L, true), lua_setfield(L, -2, "YDB_DEL_TREE");  // these 2 values are changed from libyottadb.h so delete()
+  lua_pushboolean(L, false), lua_setfield(L, -2, "YDB_DEL_NODE");  // can detect their type is not string/number. No API change.
   lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
   lua_createtable(L, 0, (sizeof(yottadb_types)/sizeof(const_Reg))-1);
   for (const_Reg *c = &yottadb_types[0]; c->name; c++) {
