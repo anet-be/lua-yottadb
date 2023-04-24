@@ -181,7 +181,7 @@ end
 -- @param t Table to check. If it is not a table, the assertion passes.
 -- @param name String argument name to use in error messages.
 -- @param narg The position argument number *t* is associated with.
--- @usage assert_strings_integers(subsarray, 'subsarray', 2)
+-- @usage assert_subscripts(subsarray, 'subsarray', 2)
 -- @see assert_type
 local function assert_subscripts(t, name, narg)
   if type(t) ~= 'table' then return t end

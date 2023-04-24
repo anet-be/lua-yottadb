@@ -1,5 +1,9 @@
+/// Manage C-cached subscript arrays for speed.
 // Copyright 2022-2023 Berwyn Hoyt. See LICENSE.
-// Manage C-cached subscript arrays for speed
+// @module yottadb.c
+
+/// Cachearray functions
+// @section
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -23,7 +27,7 @@
   ( lua_pushvalue(L, (fieldindex)), lua_rawget(L, ((index)<0)? ((index)-1): (index)) )
 
 /// Generate a C-style cachearray of subscripts from a tables+list of subscripts.
-// The resulting full userdata contains a C array which may be passed to raw _yottadb() functions as a subsarray.
+// The resulting full userdata contains a C array which may be passed to raw `_yottadb()` functions as a subsarray. <br>
 // Notes:
 //
 // * The resulting cachearray links to Lua strings without referencing them, so the caller MUST
@@ -31,6 +35,7 @@
 // * For the same reason, numeric elements in the input are converted to strings to store in the cachearray
 // and then also returned so that the caller can be sure to keep a table of them.
 // * This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups)
+// @function cachearray_fromtable
 // @usage _yottadb.cachearray_fromtables(varname[, t1][, ...])
 // @param varname is a string: the M glvn
 // @param[opt] t1 is a subsarray table
@@ -93,23 +98,24 @@ int cachearray_fromtable(lua_State *L) {
 }
 
 /// Generate a C-style cachearray of subscripts from a node, its parents, and their names.
-// The resulting full userdata contains a C array which may be passed to raw _yottadb() functions as a subsarray.
+// The resulting full userdata contains a C array which may be passed to raw `_yottadb()` functions as a subsarray. <br>
 // Notes:
 //
 // * The resulting cachearray points to Lua strings without referencing them in Lua, so the
 // node must keep a reference to them to prevent garbage-collection.
-// These strings are kept in the node's __name field and the root node's __parent field (list of strings).
-// For the same reason, the root node's __parent table must be a copy rather than a reference to
+// These strings are kept in the node's `__name` field and the root node's `__parent` field (list of strings).
+// For the same reason, the root node's `__parent` table must be a copy rather than a reference to
 // a user-supplied table, and any number elements in it must be converted to strings when creating root node.
-// * This function is designed to be recursive from C without using lua_call() to reset stack top,
+// * This function is designed to be recursive from C without using `lua_call()` to reset stack top,
 // so it mustn't reference positive-numbered (absolute) stack indices which only refer to the first call's stack.
+// @function cachearray
 // @usage _yottadb.cachearray_generate(node[, apply])
 // @param node is a database node object containing the following mandatory attributes:
 //
 // * `__parent` a reference to the parent node object or a table of subscript strings if has no parent.
 // * `__name` of subscript at this node
 // * `__depth` of this node (i.e. number of subscripts to arrive at this node)
-// @param apply[opt] boolean whether to assign returned new cachearray to node's field __cachearray.
+// @param apply[opt] boolean whether to assign returned new cachearray to node's field `__cachearray`.
 // This is a recursive field passed on to generation of parent nodes' cachearrays.
 // It is an optional parameter only when called from Lua; not when recursed in C.
 // @return cachearray as a full userdata object
@@ -294,6 +300,7 @@ int cachearray_replace(lua_State *L) {
 
 /// Return string of cachearray subscripts or empty string if no subscripts.
 // Strings are quoted with %q. Numbers are quoted only if they differ from their string representation.
+// @function cachearray_tostring
 // @usage _yottadb.cachedump(cachearray[, depth])
 // @param cachearray userdata created by _yottadb.cachearray()
 // @param[opt] depth of subscripts to show (limits cachearray's inherent length)
@@ -351,3 +358,5 @@ push_varname:
   lua_remove(L, -3);
   return 2;
 }
+
+/// @section end
