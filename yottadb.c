@@ -1,4 +1,6 @@
-// Copyright 2021-2022 Mitchell. See LICENSE.
+/// Private yottadb funtions. These are not part of the public API and may change.
+// Copyright 2021-2022, Mitchell; Copyright 2022-2023, Berwyn Hoyt. See LICENSE.
+// @module yottadb.c
 
 #include <assert.h>
 #include <stdint.h> // intptr_t
@@ -105,6 +107,7 @@ static int _ydb_eintr_handler(lua_State *L) {
 
 /// Gets the value of a variable/node.
 // Raises an error if variable/node does not exist.
+// @function get
 // @usage _yottadb.get(varname[, {subs} | ...]),  or:
 // @usage _yottadb.get(cachearray, depth)
 // @param varname string
@@ -133,6 +136,7 @@ static int get(lua_State *L) {
 
 /// Sets the value of a variable/node.
 // Raises an error of no such intrinsic variable exists.
+// @function set
 // @usage _yottadb.set(varname[, {subs} | ...], value),  or
 // @usage _yottadb.set(cachearray, depth, value)
 // @param varname string
@@ -162,6 +166,7 @@ static int set(lua_State *L) {
 // `_yottadb.YDB_DEL_xxxx` are boolean constants and must be supplied as actual boolean
 // (not merely convertable to boolean), so that delete() can distinguish them from subscripts.
 // Note: `_yottadb.YDB_DEL_xxxx` values differ from the values in `libyottadb.h`, but they work the same.
+// @function delete
 // @usage _yottadb.delete(varname[, {subs} | ...][, type=_yottadb.YDB_DEL_xxxx])
 // @usage _yottadb.delete(cachearray, depth[, type=_yottadb.YDB_DEL_xxxx])
 // @param varname string
@@ -185,6 +190,7 @@ static int delete(lua_State *L) {
 }
 
 /// Returns information about a variable/node (except intrinsic variables).
+// @function data
 // @usage _yottadb.data(varname[, {subs | ...}]),  or:
 // @usage _yottadb.data(cachearray, depth)
 // @param varname string
@@ -210,6 +216,7 @@ static int data(lua_State *L) {
 // Raises an error if a lock could not be acquired.
 // Caution: timeout is *not* optional if `...` list of subscript is provided.
 // Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
+// @function lock_incr
 // @usage _yottadb.lock_incr(varname[, {subs}][, timeout=0])
 // @usage _yottadb.lock_incr(varname[, ...], timeout)
 // @usage _yottadb.lock_incr(cachearray, depth[, timeout=0])
@@ -236,6 +243,7 @@ static int lock_incr(lua_State *L) {
 }
 
 /// Decrements a lock on a variable/node, releasing it if possible.
+// @function lock_decr
 // @usage _yottadb.lock_decr(varname[, {subs} | ...]),  or:
 // @usage _yottadb.lock_decr(cachearray, depth)
 // @param varname string
@@ -256,6 +264,7 @@ typedef struct tpfnparm_t {
 } tpfnparm_t;
 
 /// Invokes the Lua transaction function passed to `_yottadb.tp()`.
+// @function tpfn
 static int tpfn(void *tpfnparm) {
   lua_State *L = ((tpfnparm_t *)tpfnparm)->L;
   RECORD_STACK_TOP(L);
@@ -295,6 +304,7 @@ static int tpfn(void *tpfnparm) {
 
 /// Initiates a transaction.
 //   Note: restarts are subject to $ZMAXTPTIME after which they cause error `%YDB-E-TPTIMEOUT`
+// @function tp
 // @usage _yottadb.tp([transid,] [varnames,] f[, ...])
 // @param transid[opt] string transaction id
 // @param varnames[opt] table of local M varnames to restore on transaction restart
@@ -374,6 +384,7 @@ static int subscript_nexter(lua_State *L, subscript_actuator_t actuator) {
 }
 
 /// Returns the next subscript for a variable/node.
+// @function subscript_next
 // @usage _yottadb.subscript_next(varname[, {subs} | ...]),  or:
 // @usage _yottadb.subscript_next(cachearray, depth)
 // @param varname string
@@ -385,6 +396,7 @@ static int subscript_next(lua_State *L) {
 }
 
 /// Returns the previous subscript for a variable/node.
+// @function subscript_previous
 // @usage _yottadb.subscript_previous(varname[, {subs} | ...]),  or:
 // @usage _yottadb.subscript_previous(cachearray, depth)
 // @param varname string
@@ -438,6 +450,7 @@ static int node_nexter(lua_State *L, node_actuator_t actuator) {
 
 /// Returns the full subscript table of the next node after a variable/node.
 // A next node chain started from varname will eventually reach all nodes under that varname in order.
+// @function node_next
 // @usage _yottadb.node_next(varname[, {subs} | ...])
 // @param varname string
 // @param subs[opt] table of subscripts
@@ -449,6 +462,7 @@ static int node_next(lua_State *L) {
 
 /// Returns the full subscript table of the node prior to a variable/node.
 // A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
+// @function node_previous
 // @usage _yottadb.node_previous(varname[, {subs}])
 // @param varname string
 // @param subs[opt] table of subscripts
@@ -465,6 +479,7 @@ typedef struct ydb_key_t {
 
 /// Releases all locks held and attempts to acquire all requested locks, waiting if requested.
 // Raises an error if a lock could not be acquired.
+// @function lock
 // @usage _yottadb.lock([{keys}[, timeout=0]])
 // @param {keys}[opt] table of {varname[, {subs}]} variable/nodes to lock
 // @param timeout[opt] timeout in seconds to wait for lock
@@ -532,6 +547,7 @@ static int lock(lua_State *L) {
 }
 
 /// Deletes trees of all local variables except the given ones.
+// @function delete_excl
 // @usage _yottadb.delete_excl(varnames)
 // @param varnames table of variable names to exclude (no subscripts)
 static int delete_excl(lua_State *L) {
@@ -555,6 +571,7 @@ static int delete_excl(lua_State *L) {
 // Raises an error on overflow.
 // Caution: increment is *not* optional if `...` list of subscript is provided.
 // Otherwise incr cannot tell whether it is a subscript or an increment.
+// @function incr
 // @usage _yottadb.incr(varname[, {subs}][, increment=1])
 // @usage _yottadb.incr(varname[, ...], increment=n)
 // @usage _yottadb.incr(cachearray, depth[, increment=1])
@@ -597,6 +614,7 @@ static int incr(lua_State *L) {
 }
 
 /// Returns the zwrite-formatted version of the given string.
+// @function str2zwr
 // @usage _yottadb.str2zwr(s)
 // @param s string
 // @return zwrite-formatted string
@@ -620,6 +638,7 @@ static int str2zwr(lua_State *L) {
 }
 
 /// Returns the string described by the given zwrite-formatted string.
+// @function zwr2str
 // @usage _yottadb.zwr2str(s)
 // @param s zwrite-formatted string
 // @return string

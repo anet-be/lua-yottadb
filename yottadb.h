@@ -3,11 +3,19 @@
 #ifndef LUA_YOTTADB_H
 #define LUA_YOTTADB_H
 
-// Enable build against Lua older than 5.3
-// for setting of COMPAT53_PREFIX see docs at: https://github.com/lunarmodules/lua-compat-5.3
-// but although it builds, it doesn't find the compat functions when run, so comment out:
-//#define COMPAT53_PREFIX luacompat
-#include "compat-5.3/c-api/compat-5.3.h"
+/* Version History
+v1.2 Version number bump purely MLua benchmark requires this version
+ - Enhance node:gettree() so that you can easily use it as a generic tree iterator.
+v1.1 Signal safety and robustness improvements
+v1.0 First release by Berwyn Hoyt:
+ - Syntax changes documented [here](v1.0-syntax-upgrade.md).
+ - Ability to call M routines
+ - Add new 'node' object. Deprecate 'key' object but retain it for backward compatibility
+ - Overhauled [README](../README.md) and [reference documentation](yottadb.html)
+ - Bugs fixed, including some that were critical
+v0.1 Initial release by Mitchel:
+ - Supports direct database access and access via Lua 'key' object.
+*/
 
 // Define version: Maj,Min
 #define LUA_YOTTADB_VERSION 1,2
@@ -18,6 +26,12 @@
 #define CREATE_VERSION_STRING(major, minor) #major "." #minor
 #define CREATE_VERSION_NUMBER(major, minor) ((major)*100 + (minor)
 
+
+// Enable build against Lua older than 5.3
+// for setting of COMPAT53_PREFIX see docs at: https://github.com/lunarmodules/lua-compat-5.3
+// but although it builds, it doesn't find the compat functions when run, so comment out:
+//#define COMPAT53_PREFIX luacompat
+#include "compat-5.3/c-api/compat-5.3.h"
 
 extern int ydb_assert(lua_State *L, int code);
 extern int _memory_error(size_t size, int line, char *file);

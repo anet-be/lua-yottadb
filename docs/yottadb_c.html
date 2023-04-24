@@ -1,0 +1,1139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>lua-yottadb (private functions)</h1>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><strong>yottadb.c</strong></li>
+</ul>
+<h2>Contents</h2>
+<ul>
+<li><a href=""><b>Summary</b></a></li>
+<br/>
+<li><a href="#Functions"><b>Functions</b></a></li>
+    <li><a href="#get">get (varname, subs, ...)</a></li>
+    <li><a href="#set">set (varname, subs, ..., value)</a></li>
+    <li><a href="#delete">delete (varname, subs, ..., type)</a></li>
+    <li><a href="#data">data (varname, subs, ..., ...)</a></li>
+    <li><a href="#lock_incr">lock_incr (varname, subs, ..., timeout)</a></li>
+    <li><a href="#lock_decr">lock_decr (varname, subs, ...)</a></li>
+    <li><a href="#tpfn">tpfn ()</a></li>
+    <li><a href="#tp">tp (transid, varnames, f, ...)</a></li>
+    <li><a href="#subscript_next">subscript_next (varname, subs, ...)</a></li>
+    <li><a href="#subscript_previous">subscript_previous (varname, subs, ...)</a></li>
+    <li><a href="#node_next">node_next (varname, subs, ...)</a></li>
+    <li><a href="#node_previous">node_previous (varname, subs)</a></li>
+    <li><a href="#lock">lock (keys, timeout)</a></li>
+    <li><a href="#delete_excl">delete_excl (varnames)</a></li>
+    <li><a href="#incr">incr (varname, subs, increment)</a></li>
+    <li><a href="#str2zwr">str2zwr (s)</a></li>
+    <li><a href="#zwr2str">zwr2str (s)</a></li>
+<br/>
+<li><a href="#YDB_Call_in_functions"><b>YDB Call-in functions </b></a></li>
+    <li><a href="#init">init ([signal_blocker])</a></li>
+    <li><a href="#block_M_signals">block_M_signals (bool)</a></li>
+    <li><a href="#cip">cip (ci_handle, routine_name_handle, type_list, n)</a></li>
+    <li><a href="#register_routine">register_routine (routine_name, entrypoint)</a></li>
+    <li><a href="#ci_tab_open">ci_tab_open (ci_table_filename)</a></li>
+<br/>
+<li><a href="#Cachearray_functions"><b>Cachearray functions </b></a></li>
+    <li><a href="#cachearray_fromtable">cachearray_fromtable (varname[, t1[, ...]])</a></li>
+    <li><a href="#cachearray">cachearray (node, apply)</a></li>
+    <li><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></li>
+
+
+</ul>
+
+
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>yottadb.c</code></h1>
+<p>Private yottadb funtions.</p>
+<p> These are not part of the public API and may change.
+ Copyright 2021-2022, Mitchell; Copyright 2022-2023, Berwyn Hoyt. See LICENSE.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#get">get (varname, subs, ...)</a></td>
+	<td class="summary">Gets the value of a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set">set (varname, subs, ..., value)</a></td>
+	<td class="summary">Sets the value of a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#delete">delete (varname, subs, ..., type)</a></td>
+	<td class="summary">Deletes a node or tree of nodes.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#data">data (varname, subs, ..., ...)</a></td>
+	<td class="summary">Returns information about a variable/node (except intrinsic variables).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lock_incr">lock_incr (varname, subs, ..., timeout)</a></td>
+	<td class="summary">Attempts to acquire or increment a lock on a variable/node, waiting if requested.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lock_decr">lock_decr (varname, subs, ...)</a></td>
+	<td class="summary">Decrements a lock on a variable/node, releasing it if possible.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tpfn">tpfn ()</a></td>
+	<td class="summary">Invokes the Lua transaction function passed to <code>_yottadb.tp()</code>.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#tp">tp (transid, varnames, f, ...)</a></td>
+	<td class="summary">Initiates a transaction.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#subscript_next">subscript_next (varname, subs, ...)</a></td>
+	<td class="summary">Returns the next subscript for a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#subscript_previous">subscript_previous (varname, subs, ...)</a></td>
+	<td class="summary">Returns the previous subscript for a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node_next">node_next (varname, subs, ...)</a></td>
+	<td class="summary">Returns the full subscript table of the next node after a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node_previous">node_previous (varname, subs)</a></td>
+	<td class="summary">Returns the full subscript table of the node prior to a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#lock">lock (keys, timeout)</a></td>
+	<td class="summary">Releases all locks held and attempts to acquire all requested locks, waiting if requested.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#delete_excl">delete_excl (varnames)</a></td>
+	<td class="summary">Deletes trees of all local variables except the given ones.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#incr">incr (varname, subs, increment)</a></td>
+	<td class="summary">Increments the numeric value of a variable/node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#str2zwr">str2zwr (s)</a></td>
+	<td class="summary">Returns the zwrite-formatted version of the given string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#zwr2str">zwr2str (s)</a></td>
+	<td class="summary">Returns the string described by the given zwrite-formatted string.</td>
+	</tr>
+</table>
+<h2><a href="#YDB_Call_in_functions">YDB Call-in functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#init">init ([signal_blocker])</a></td>
+	<td class="summary">Initialize ydb and set blocking of M signals.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#block_M_signals">block_M_signals (bool)</a></td>
+	<td class="summary">Block or unblock YDB signals for while M code is running.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cip">cip (ci_handle, routine_name_handle, type_list, n)</a></td>
+	<td class="summary">Call an M routine.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#register_routine">register_routine (routine_name, entrypoint)</a></td>
+	<td class="summary">Register a routine name for subsequent passing to <code>cip()</code>.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ci_tab_open">ci_tab_open (ci_table_filename)</a></td>
+	<td class="summary">Open a call-in table using ydb<em>ci</em>tab_open()</td>
+	</tr>
+</table>
+<h2><a href="#Cachearray_functions">Cachearray functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#cachearray_fromtable">cachearray_fromtable (varname[, t1[, ...]])</a></td>
+	<td class="summary">Generate a C-style cachearray of subscripts from a tables+list of subscripts.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cachearray">cachearray (node, apply)</a></td>
+	<td class="summary">Generate a C-style cachearray of subscripts from a node, its parents, and their names.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></td>
+	<td class="summary">Return string of cachearray subscripts or empty string if no subscripts.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "get"></a>
+    <strong>get (varname, subs, ...)</strong>
+    </dt>
+    <dd>
+    Gets the value of a variable/node.
+ Raises an error if variable/node does not exist.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] is a list of subscripts
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.get(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
+        <li><pre class="example">_yottadb.get(cachearray, depth)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "set"></a>
+    <strong>set (varname, subs, ..., value)</strong>
+    </dt>
+    <dd>
+    Sets the value of a variable/node.
+ Raises an error of no such intrinsic variable exists.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] is a list of subscripts
+        </li>
+        <li><span class="parameter">value</span>
+         string or number convertible to string
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.set(varname[, {subs} | ...], value),  <span class="keyword">or</span></pre></li>
+        <li><pre class="example">_yottadb.set(cachearray, depth, value)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "delete"></a>
+    <strong>delete (varname, subs, ..., type)</strong>
+    </dt>
+    <dd>
+    Deletes a node or tree of nodes.
+ <code>_yottadb.YDB_DEL_xxxx</code> are boolean constants and must be supplied as actual boolean
+ (not merely convertable to boolean), so that delete() can distinguish them from subscripts.
+ Note: <code>_yottadb.YDB_DEL_xxxx</code> values differ from the values in <code>libyottadb.h</code>, but they work the same.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] list of subscripts
+        </li>
+        <li><span class="parameter">type</span>
+         <code>_yottadb.YDB_DEL_NODE</code> or <code>_yottadb.YDB_DEL_TREE</code>
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.delete(varname[, {subs} | ...][, <span class="global">type</span>=_yottadb.YDB_DEL_xxxx])</pre></li>
+        <li><pre class="example">_yottadb.delete(cachearray, depth[, <span class="global">type</span>=_yottadb.YDB_DEL_xxxx])</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "data"></a>
+    <strong>data (varname, subs, ..., ...)</strong>
+    </dt>
+    <dd>
+    Returns information about a variable/node (except intrinsic variables).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] list of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] list of subscripts
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+         <code>_yottadb.YDB_DATA_UNDEF</code> (no value or subtree) or
+   <code>_yottadb.YDB_DATA_VALUE_NODESC</code> (value, no subtree) or
+   <code>_yottadb.YDB_DATA_NOVALUE_DESC</code> (no value, subtree) or
+   <code>_yottadb.YDB_DATA_VALUE_DESC</code> (value and subtree)
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.data(varname[, {subs | ...}]),  <span class="keyword">or</span>:</pre></li>
+        <li><pre class="example">_yottadb.data(cachearray, depth)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "lock_incr"></a>
+    <strong>lock_incr (varname, subs, ..., timeout)</strong>
+    </dt>
+    <dd>
+    Attempts to acquire or increment a lock on a variable/node, waiting if requested.
+ Raises an error if a lock could not be acquired.
+ Caution: timeout is <em>not</em> optional if <code>...</code> list of subscript is provided.
+ Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] list of subscripts
+        </li>
+        <li><span class="parameter">timeout</span>
+        [opt] timeout in seconds to wait for lock
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.lock_incr(varname[, {subs}][, timeout=<span class="number">0</span>])</pre></li>
+        <li><pre class="example">_yottadb.lock_incr(varname[, ...], timeout)</pre></li>
+        <li><pre class="example">_yottadb.lock_incr(cachearray, depth[, timeout=<span class="number">0</span>])</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "lock_decr"></a>
+    <strong>lock_decr (varname, subs, ...)</strong>
+    </dt>
+    <dd>
+    Decrements a lock on a variable/node, releasing it if possible.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] list of subscripts
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.lock_decr(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
+        <li><pre class="example">_yottadb.lock_decr(cachearray, depth)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "tpfn"></a>
+    <strong>tpfn ()</strong>
+    </dt>
+    <dd>
+    Invokes the Lua transaction function passed to <code>_yottadb.tp()</code>.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "tp"></a>
+    <strong>tp (transid, varnames, f, ...)</strong>
+    </dt>
+    <dd>
+    Initiates a transaction.
+   Note: restarts are subject to $ZMAXTPTIME after which they cause error <code>%YDB-E-TPTIMEOUT</code>
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">transid</span>
+        [opt] string transaction id
+        </li>
+        <li><span class="parameter">varnames</span>
+        [opt] table of local M varnames to restore on transaction restart
+   (or {'*'} for all locals) -- restoration does apply to rollback
+        </li>
+        <li><span class="parameter">f</span>
+
+<p> Lua function to call (can have nested <code>_yottadb.tp()</code> calls for nested transactions).</p>
+
+<ul>
+    <li>If f returns nothing or <code>_yottadb.YDB_OK</code>, the transaction's affected globals are committed.</li>
+    <li>If f returns <code>_yottadb.YDB_TP_RESTART</code> or <code>_yottadb.YDB_TP_ROLLBACK</code>, the transaction is
+     restarted (f will be called again) or not committed, respectively.</li>
+    <li>If f errors, the transaction is not committed and the error propagated up the stack.</li>
+</ul>
+
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] arguments to pass to f
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.tp([transid,] [varnames,] f[, ...])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "subscript_next"></a>
+    <strong>subscript_next (varname, subs, ...)</strong>
+    </dt>
+    <dd>
+    Returns the next subscript for a variable/node.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] is a list of subscripts
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        : string or nil if there are no more subscripts
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.subscript_next(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
+        <li><pre class="example">_yottadb.subscript_next(cachearray, depth)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "subscript_previous"></a>
+    <strong>subscript_previous (varname, subs, ...)</strong>
+    </dt>
+    <dd>
+    Returns the previous subscript for a variable/node.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] is a list of subscripts
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string or nil if there are not any previous subscripts
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.subscript_previous(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
+        <li><pre class="example">_yottadb.subscript_previous(cachearray, depth)</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "node_next"></a>
+    <strong>node_next (varname, subs, ...)</strong>
+    </dt>
+    <dd>
+    Returns the full subscript table of the next node after a variable/node.
+ A next node chain started from varname will eventually reach all nodes under that varname in order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] is a list of subscripts
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table of subscripts for the node or nil if there are no next nodes
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.node_next(varname[, {subs} | ...])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "node_previous"></a>
+    <strong>node_previous (varname, subs)</strong>
+    </dt>
+    <dd>
+    Returns the full subscript table of the node prior to a variable/node.
+ A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        table of subscripts for the node or nil if there are no previous nodes
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.node_previous(varname[, {subs}])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "lock"></a>
+    <strong>lock (keys, timeout)</strong>
+    </dt>
+    <dd>
+    Releases all locks held and attempts to acquire all requested locks, waiting if requested.
+ Raises an error if a lock could not be acquired.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">keys</span>
+        }[opt] table of {varname[, {subs}]} variable/nodes to lock
+        </li>
+        <li><span class="parameter">timeout</span>
+        [opt] timeout in seconds to wait for lock
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.lock([{keys}[, timeout=<span class="number">0</span>]])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "delete_excl"></a>
+    <strong>delete_excl (varnames)</strong>
+    </dt>
+    <dd>
+    Deletes trees of all local variables except the given ones.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varnames</span>
+         table of variable names to exclude (no subscripts)
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.delete_excl(varnames)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "incr"></a>
+    <strong>incr (varname, subs, increment)</strong>
+    </dt>
+    <dd>
+    Increments the numeric value of a variable/node.
+ Raises an error on overflow.
+ Caution: increment is <em>not</em> optional if <code>...</code> list of subscript is provided.
+ Otherwise incr cannot tell whether it is a subscript or an increment.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">increment</span>
+        [opt] amount to increment by = number, or string-of-a-canonical-number, default=1
+        </li>
+    </ul>
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.incr(varname[, {subs}][, increment=<span class="number">1</span>])</pre></li>
+        <li><pre class="example">_yottadb.incr(varname[, ...], increment=n)</pre></li>
+        <li><pre class="example">_yottadb.incr(cachearray, depth[, increment=<span class="number">1</span>])</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "str2zwr"></a>
+    <strong>str2zwr (s)</strong>
+    </dt>
+    <dd>
+    Returns the zwrite-formatted version of the given string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">s</span>
+         string
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        zwrite-formatted string
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.str2zwr(s)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "zwr2str"></a>
+    <strong>zwr2str (s)</strong>
+    </dt>
+    <dd>
+    Returns the string described by the given zwrite-formatted string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">s</span>
+         zwrite-formatted string
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.zwr2str(s)</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="YDB_Call_in_functions"></a>YDB Call-in functions </h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "init"></a>
+    <strong>init ([signal_blocker])</strong>
+    </dt>
+    <dd>
+    Initialize ydb and set blocking of M signals.
+ If <code>signal_blocker</code> is specified, block M signals which could otherwise interrupt slow IO operations like reading from user/pipe.
+ Assert any errors.
+ Also read the notes on signals in the README.
+ Note: any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">signal_blocker</span>
+         specifies a Lua callback CFunction (e.g. <code>yottadb.block_M_signals()</code>) which will be
+ called with parameter false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
+ Setting <code>signal_blocker</code> to nil switches off signal blocking.</p>
+
+<p> Note: Changing this to support a generic Lua function as callback would be possible but slow, as it would require
+ fetching the function pointer from a C closure, and using <code>lua_call()</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        nothing
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb_c.html#block_M_signals">block_M_signals</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.init(signal_blocker)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "block_M_signals"></a>
+    <strong>block_M_signals (bool)</strong>
+    </dt>
+    <dd>
+    Block or unblock YDB signals for while M code is running.
+ This function is designed to be passed to yottadb.init() as the <code>signal_blocker</code> parameter.
+ Most signals (listed in <code>BLOCKED_SIGNALS</code> in callins.c) are blocked using sigprocmask()
+ but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
+ in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are
+ interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
+ handler does actually run, allowing YDB to flush the database or IO as necessary without
+ your M code having to call the M command <code>VIEW &quot;FLUSH&quot;</code>.
+ Note: this function does take time, as OS calls are slow. Using it will increase the M calling
+ overhead by about 1.4 microseconds: 2-5x the bare calling overhead (see <code>make benchmarks</code>)
+ The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
+ OS calls and make it as fast as possible.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">bool</span>
+         true to block; false to unblock all YDB signals
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        nothing
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb_c.html#init">init</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">yottadb.block_M_signals(bool)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "cip"></a>
+    <strong>cip (ci_handle, routine_name_handle, type_list, n)</strong>
+    </dt>
+    <dd>
+
+<p>Call an M routine.
+ Notes:</p>
+
+<ul>
+    <li>This function is intended to be called by a wrapper in yottadb.lua rather than by the user,
+    so validity of type_list array is not checked.</li>
+    <li>If you change the number of parameters before var<em>args then you MUST also adjust CIP</em>ARGS.</li>
+    <li>You must pass float, double, and int as pointers instead of actuals: see note in cast2ydb().</li>
+    <li>This is designed for speed, which means all temporary data is allotted on the stack.
+    and it does no mallocs unless it has to return strings (which can be large so need malloc).
+    This is because mallocs+free takes 200 CPU instructions (50 cycles, 13ns  on my i7) - tested with perf stat.
+    So if you want it to be super fast, don't return strings or make them outputs!</li>
+    <li>TODO: could improve speed by having caller metadata remember total string-malloc space required and doing just one malloc for all.
+    But first check benchmarks first to see if YDB end is slow enough to make optimization meaningless.</li>
+</ul>
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ci_handle</span>
+         is a call-in table opened by ci<em>tab</em>open() that contains routine_name
+        </li>
+        <li><span class="parameter">routine_name_handle</span>
+         is the handle of an M routine registered by <em>yottadb.register</em>routine()
+        </li>
+        <li><span class="parameter">type_list</span>
+
+<p> is a Lua string containing an array of type<em>spec[] specifying ret</em>val and each parameter per the call-in table</p>
+<pre><code>(so the number of type_spec array elements must equal (1+n) where n is the number of parameters in the call-in file)
+</code></pre>
+
+        </li>
+        <li><span class="parameter">n</span>
+
+<blockquote>
+    <p>must list the parameters specified specified in the call-in table</p>
+</blockquote>
+<pre><code>each parameter is converted from its Lua type to the correct C type (e.g. ydb_int_t*) before calling the M routine
+an error results if the number of parameters does not match the number specified in the call-in table
+if too few parameters are supplied, an error results
+if too many parameters are supplied, they are ignored (typical Lua behaviour)
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        : Function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table.
+ Returned values are all converted from the call-in table type to Lua types
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.cip(ci_handle, routine_name_handle, type_list[, param1][, param2][, ...])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "register_routine"></a>
+    <strong>register_routine (routine_name, entrypoint)</strong>
+    </dt>
+    <dd>
+    Register a routine name for subsequent passing to <code>cip()</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">routine_name</span>
+         is the C name of the M routine (first field in the call-in table)
+        </li>
+        <li><span class="parameter">entrypoint</span>
+         is the M entrypoint specified in the call-in table
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        the handle (a ydb ci<em>name</em>descriptor struct in a new Lua userdata object).
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.register_routine(routine_name, entrypoint)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "ci_tab_open"></a>
+    <strong>ci_tab_open (ci_table_filename)</strong>
+    </dt>
+    <dd>
+    Open a call-in table using ydb<em>ci</em>tab_open()
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">ci_table_filename</span>
+         refers to the ydb call-in table file to open
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        integer handle to call-in table
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.ci_tab_open(ci_table_filename)</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Cachearray_functions"></a>Cachearray functions </h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "cachearray_fromtable"></a>
+    <strong>cachearray_fromtable (varname[, t1[, ...]])</strong>
+    </dt>
+    <dd>
+
+<p>Generate a C-style cachearray of subscripts from a tables+list of subscripts.
+ The resulting full userdata contains a C array which may be passed to raw <code>_yottadb()</code> functions as a subsarray. <br>
+ Notes:</p>
+
+<ul>
+    <li>The resulting cachearray links to Lua strings without referencing them, so the caller MUST
+    take care to ensure they are referenced elsewhere (e.g. in a Lua table) to prevent garbage-collection</li>
+    <li>For the same reason, numeric elements in the input are converted to strings to store in the cachearray
+    and then also returned so that the caller can be sure to keep a table of them.</li>
+    <li>This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups)</li>
+</ul>
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         is a string: the M glvn
+        </li>
+        <li><span class="parameter">t1</span>
+         is a subsarray table
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">...</span>
+         a list of strings (additional to optional t2).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        cachearray as a full userdata, followed by a list of strings of any numbers passed in -- see note 2 above.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.cachearray_fromtables(varname[, t1][, ...])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "cachearray"></a>
+    <strong>cachearray (node, apply)</strong>
+    </dt>
+    <dd>
+
+<p>Generate a C-style cachearray of subscripts from a node, its parents, and their names.
+ The resulting full userdata contains a C array which may be passed to raw <code>_yottadb()</code> functions as a subsarray. <br>
+ Notes:</p>
+
+<ul>
+    <li>The resulting cachearray points to Lua strings without referencing them in Lua, so the
+    node must keep a reference to them to prevent garbage-collection.
+    These strings are kept in the node's <code>__name</code> field and the root node's <code>__parent</code> field (list of strings).
+    For the same reason, the root node's <code>__parent</code> table must be a copy rather than a reference to
+    a user-supplied table, and any number elements in it must be converted to strings when creating root node.</li>
+    <li>This function is designed to be recursive from C without using <code>lua_call()</code> to reset stack top,
+    so it mustn't reference positive-numbered (absolute) stack indices which only refer to the first call's stack.</li>
+</ul>
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">node</span>
+
+<p> is a database node object containing the following mandatory attributes: <br /></p>
+
+<ul>
+    <li><code>__parent</code> a reference to the parent node object or a table of subscript strings if has no parent.</li>
+    <li><code>__name</code> of subscript at this node</li>
+    <li><code>__depth</code> of this node (i.e. number of subscripts to arrive at this node)</li>
+</ul>
+
+        </li>
+        <li><span class="parameter">apply</span>
+        [opt] boolean whether to assign returned new cachearray to node's field <code>__cachearray</code>.
+ This is a recursive field passed on to generation of parent nodes' cachearrays.
+ It is an optional parameter only when called from Lua; not when recursed in C.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        cachearray as a full userdata object
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.cachearray_generate(node[, apply])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "cachearray_tostring"></a>
+    <strong>cachearray_tostring (cachearray[, depth])</strong>
+    </dt>
+    <dd>
+    Return string of cachearray subscripts or empty string if no subscripts.
+ Strings are quoted with %q. Numbers are quoted only if they differ from their string representation.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">cachearray</span>
+         userdata created by _yottadb.cachearray()
+        </li>
+        <li><span class="parameter">depth</span>
+         of subscripts to show (limits cachearray's inherent length)
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        subscript_list, varname
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.cachedump(cachearray[, depth])</pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2023-04-24 20:19:25 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

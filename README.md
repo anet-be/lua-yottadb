@@ -19,7 +19,7 @@ sudo make install
 
 ## Intro by example
 
-There is API [reference documentation here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), but here are some examples to get you started.
+Below are some examples to get you started. When you have exhausted that, read the API [reference documentation here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html).
 
 Let's tinker with setting some database values in different ways:
 
@@ -187,11 +187,11 @@ subtable (table: 0x56494c7dd5b0):
 
 ## Technical details
 
-Version history is documented in [changes.md](docs/changes.md).
+Version history and current version number is documented at the top of [yottadb.h](yottadb.h).
 
 ### Reference docs
 
-The [API reference documentation](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), is generated from source file comments. To update them, run `make docs` and commit changes to the resulting file `docs/yottadb.html`. Prerequisite: `luarocks install ldoc`.
+The [API reference documentation](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html), is generated from source file comments. To update them, run `make docs` and commit changes to the resulting files `docs/*.html`. Prerequisite: `luarocks install ldoc`. There is also [documentation for the underlying C functions](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb_c.html), but keep in mind that the C interface is not part of the public API and may change.
 
 ### Thread Safety
 

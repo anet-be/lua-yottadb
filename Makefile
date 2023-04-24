@@ -39,11 +39,15 @@ _yottadb.so: $(SOURCES) yottadb.h callins.h cachearray.h exports.map Makefile
 
 # Requires: 'luarocks install ldoc'
 docs: docs/yottadb.html
-docs/yottadb.html: *.lua *.c config.ld docs/config/*
-	ldoc .
+docs/yottadb.html: *.lua *.c *.ld docs/config/* Makefile
+	@echo "Making yottadb.html"
+	ldoc . -c config_docs.ld
+	@echo
+	@echo "Making yottadb_private.html"
+	ldoc . -c config_private_docs.ld
 
 clean:
-	rm -f *.so *.o
+	rm -f *.so *.o docs/*.html
 
 PREFIX=/usr/local
 share_dir=$(PREFIX)/share/lua/$(lua_version)
