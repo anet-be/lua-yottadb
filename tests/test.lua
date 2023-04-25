@@ -1799,7 +1799,7 @@ function test_node()
   -- Validate input.
   ok, e = pcall(yottadb.node, 1)
   assert(not ok)
-  assert(e:find('string expected'))
+  assert(e:find('attempt to index a number value'))
   -- TODO: error subscripting ISV
   -- TODO: error creating more than YDB_MAX_SUBS subscripts
 

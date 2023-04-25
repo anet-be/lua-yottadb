@@ -366,7 +366,7 @@ function M.lock_decr(varname, ...)
   return _yottadb.lock_decr(varname, subsarray)
 end
 
---- Returns the full subscript list ('path') of the next node after a database variable/node.
+--- Returns the full subscript list (think 'path') of the next node after a database variable/node.
 -- A next node chain started from varname will eventually reach all nodes under that varname in order.
 --
 -- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
@@ -381,7 +381,7 @@ function M.node_next(varname, ...)
   return _yottadb.node_next(varname, subsarray)
 end
 
---- Returns the full subscript list ('path') of the previous node after a database variable/node.
+--- Returns the full subscript list (think 'path') of the previous node after a database variable/node.
 -- A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
 --
 -- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
@@ -787,7 +787,7 @@ end
 -- @section
 
 -- raw node creation
-local function ___new_node(varname, subsarray)
+local function _new_node(varname, subsarray)
   local subsarray_copy = {}
   if subsarray then for i, sub in ipairs(subsarray) do subsarray_copy[i] = tostring(sub) end end
   return setmetatable({
@@ -812,22 +812,22 @@ function M.node(varname, ...)
   local subsarray = ... and type(...)=='table' and ... or {...}
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
-  -- make it possible to inherit from either node or key objects
-  local mt = getmetatable(varname)
-  if mt==node or mt==key then
+  -- see if we're inheriting from a node or key object
+  -- test for this by the presence of __varname (faster than testing metatable)
+  if varname.__varname then
     local new_subsarray = table.move(varname.__subsarray, 1, #varname.__subsarray, 1, {})
     table.move(subsarray, 1, #subsarray, #new_subsarray+1, new_subsarray)
     varname = varname.__varname
     subsarray = new_subsarray
   end
   assert_type(varname, 'string', 1)
-  return ___new_node(varname, subsarray)
+  return _new_node(varname, subsarray)
 end
 
 --- @section end
 
--- Define this to tell __call() whether to create new node using ___new_node() or ___new_key()
-node.___new = ___new_node
+-- Define this to tell __call() whether to create new node using _new_node() or _new_key()
+node._new = _new_node
 
 -- Note: the following doc must be here instead of up at the definition of node to retain its position in the html doc
 
@@ -1060,7 +1060,7 @@ function node:__call(...)
     assert(method, string.format("could not find node method '%s()' on node %s", node.name(self), ...))
     return method(...) -- first parameter of '...' is parent, as the method call will expect
   end
-  local new_node = getmetatable(self).___new(self.__varname, self.__subsarray)
+  local new_node = self.___new(self.__varname, self.__subsarray)
   for i = 1, select('#', ...) do
     local name = select(i, ...)
     if type(name) ~= 'string' and not isinteger(name) then
@@ -1108,10 +1108,16 @@ function node:__tostring()
   return subscripts == '' and self.__varname or string.format('%s(%s)', self.__varname, subscripts)
 end
 
+-- Generates the cachearray of this node and assigns it to the node's __cachearray field for automatic access rather than generation next time
+function node:__cachearray()
+  return cachearray(self, true)
+end
+
 -- Returns indexes into the node
 -- Search order for node attribute k:
 --   self[k] (implemented by Lua -- finds self.__varname, self.__subsarray)
---   node value, if k=='__' (the only node property)
+--   node value, if k=='__' (node property, not a method -- does not require invoking with ()
+--   generate node's __cachearray, if k=='__cachearray' (node property, not a method)
 --   node method, if k starts with '__' (k:__method() is the same as k:method() but 15x faster at ~200ns)
 --   if nothing found, returns a new dbase subnode with subscript k
 --   node:method() also works as a method as follows:
@@ -1122,6 +1128,7 @@ end
 -- @param k Node attribute to look up
 function node:__index(k)
   if k == '__' then  return M.get(self.__varname, self.__subsarray)  end
+  if k == '__cachearray' then  return node.__cachearray(self)  end
   local __end = '__\xff'
   if type(k)=='string' and k < __end and k >= '__' then  -- fastest way to check if k:startswith('__') -- with majority case (lowercase key values) falling through fastest
     return node[k:sub(3)]  -- remove leading '__' to return node:method
@@ -1161,8 +1168,8 @@ function node:has_tree()  return node.data(self)   >= 10  end
 -- @section
 
 -- raw key creation
-local function ___new_key(varname, subsarray)
-  local new_key = ___new_node(varname, subsarray)
+local function _new_key(varname, subsarray)
+  local new_key = _new_node(varname, subsarray)
   setmetatable(new_key, key)
   new_key.varname = new_key.__varname
   new_key.subsarray = new_key.__subsarray
@@ -1188,14 +1195,14 @@ function M.key(varname, subsarray)
   assert_type(subsarray, _table_nil, 2)
   assert_subscripts(subsarray, 'subsarray', 2)
   assert_type(varname, 'string', 1)
-  return ___new_key(varname, subsarray)
+  return _new_key(varname, subsarray)
 end
 
 --- Deprecated object that represents a YDB node.
 --- @type key
 
 for k, v in pairs(node) do  key[k]=v  end
-key.___new = ___new_key
+key.___new = _new_key  -- key's new must have 2 extra underscores to match node's method lookup mechanism so __call can find it when inheriting node(key)
 
 --- Properties of key object listed here, accessed with dot instead of colon.
 -- This kind of property access is for backward compatibility.
