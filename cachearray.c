@@ -16,8 +16,9 @@
 #include "cachearray.h"
 
 // Number of extra items to allocate in cachearray.
-// Assumes most uses will only dive into subscripts this deep below their starting point node (however deep that is)
-// If users do go deeper, it all still works; it just creates an additional cachearray object for deeper nodes
+// This prevents having to create a new userdata for every single subnode
+// Assumes most uses will only dive into subscripts this much deeper than their starting point node
+// If users do go deeper, it all still works; it just has to create a new cachearray
 #define ARRAY_OVERALLOC 5
 
 // Raw version of lua_getfield() -- almost negligibly slower than lua_getfield(), but much faster if field not found
@@ -26,75 +27,120 @@
 #define lua_rawgetfieldbyindex(L, index, fieldindex) \
   ( lua_pushvalue(L, (fieldindex)), lua_rawget(L, ((index)<0)? ((index)-1): (index)) )
 
-/// Generate a C-style cachearray of subscripts from a tables+list of subscripts.
-// The resulting full userdata contains a C array which may be passed to raw `_yottadb()` functions as a subsarray. <br>
-// Notes:
-//
-// * The resulting cachearray links to Lua strings without referencing them, so the caller MUST
-// take care to ensure they are referenced elsewhere (e.g. in a Lua table) to prevent garbage-collection
-// * For the same reason, numeric elements in the input are converted to strings to store in the cachearray
-// and then also returned so that the caller can be sure to keep a table of them.
-// * This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups)
-// @function cachearray_fromtable
-// @usage _yottadb.cachearray_fromtables(varname[, t1][, ...])
-// @param varname is a string: the M glvn
-// @param[opt] t1 is a subsarray table
-// @param[opt] ... a list of strings (additional to optional t2).
-// @return cachearray as a full userdata, followed by a list of strings of any numbers passed in -- see note 2 above.
-int cachearray_fromtable(lua_State *L) {
-  size_t len, depth=0;
+static void addfield (lua_State *L, luaL_Buffer *b, lua_Integer i) {
+  lua_geti(L, 1, i);
+  if (luai_unlikely(!lua_isstring(L, -1)))
+    luaL_error(L, "invalid value (%s) at index %I in table for 'concat'",
+                  luaL_typename(L, -1), (LUAI_UACINT)i);
+  luaL_addvalue(b);
+}
+
+int cachearray_append (lua_State *L) {
+  luaL_Buffer b;
+  if (!lua_istable(L, 1))
+    luaL_error(L, "error");
+  lua_Integer last = luaL_len(L, 1);
+  size_t lsep;
+  const char *sep = luaL_optlstring(L, 2, "", &lsep);
+  lua_Integer i = luaL_optinteger(L, 3, 1);
+  last = luaL_optinteger(L, 4, last);
+  luaL_buffinit(L, &b);
+  for (; i < last; i++) {
+    addfield(L, &b, i);
+    luaL_addlstring(&b, sep, lsep);
+  }
+  if (i == last)  /* add last value (if interval was not empty) */
+    addfield(L, &b, i);
+  luaL_pushresult(&b);
+  return 1;
+}
+
+/// Generate and return a C-style array of subscripts as a userdata.
+// The resulting full userdata contains a C array which may be passed to raw `_yottadb()` functions as a subsarray. 
+// Also return a string of concatenated subscripts which Lua must keep a reference to as it contains the text data
+// that the cachearray points to.
+// This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups)
+// @function cachearray
+// @usage _yottadb.cachearray(varname[, t1][, ...])
+// @param varname is a string: the M glvn. (Note: If t1 is a cachearray, varname is ignored in favour of the one contained in t1)
+// @param[opt] t1 is a subsarray table or cachearray to be copied
+// @param[opt] ... a list of strings to be appended after t2.
+// @return cachearray as a full userdata, followed by a string containing subscript data -- see notes above
+int cachearray_create(lua_State *L) {
   int args = lua_gettop(L);
   if (lua_type(L, 1) != LUA_TSTRING)
     luaL_error(L, "Cannot generate cachearray: string expected at parameter #1 (varname) (got %s)", lua_typename(L, lua_type(L, 1)));
 
-  // determine depth of array to malloc
+  // determine depth of cachearray to malloc
   int type_t1 = lua_type(L, 2);
-  depth = args - 1;
-  if (type_t1 == LUA_TTABLE)
-    depth = luaL_len(L, 2) + args - 2;
+  int depth = args - 1;
+  int tlen = 0;
+  if (type_t1 == LUA_TTABLE) {
+    tlen = luaL_len(L, 2);
+    depth = tlen + args - 2;
+  }
 
   // init array -- leave some room to grow without realloc in case user creates subnodes
-  cachearray_t *array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
+//~   cachearray_t *array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
+  cachearray_t_maxsize _array;
+  cachearray_t *array = (cachearray_t *)&_array; //lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
   array->length = depth;
   array->alloc_length = depth+ARRAY_OVERALLOC;
-  ydb_buffer_t *element = &array->subs[0];
+  ydb_buffer_t *element = &array->varname;  // assumes array->subs[] come straight after array->varname
 
-  // store varname
-  array->varname.buf_addr = lua_tolstring(L, 1, &len);
-  array->varname.len_used = array->varname.len_alloc = len;
+  luaL_Buffer b;
+  luaL_buffinit(L, &b);
+  int start = 0;  // starting length of buffer
+
+  // Append varname
+  lua_pushvalue(L, 1);
+  luaL_addvalue(&b);
+  // store length of subscript in cachearray
+  int end = luaL_bufflen(&b);
+  element->len_used = element->len_alloc = end-start;
+  start = end;
+  element++;
 
   // Append t1 if it is a table
-  if (type_t1==LUA_TTABLE) {
-    for (int i=1; i<=luaL_len(L, 2); i++) {
-      lua_geti(L, 2, i); // put subscript onto the stack
-      int type = lua_type(L, -1);
-      char *buf = lua_tolstring(L, -1, &len);
-      if (!buf)
-        luaL_error(L, "Cannot generate cachearray: number/string expected at table element %d (got %s)", i, lua_typename(L, type));
-      element->buf_addr = buf;
-      element->len_used = element->len_alloc = len;
-      element++;
-      if (type == LUA_TSTRING)
-        lua_pop(L, 1);  // leave string on stack to return only if it was converted from a number (see note in docs above)
-    }
+  for (int i=1; i <= tlen; i++) {
+    lua_geti(L, 2, i);
+    if (luai_unlikely(!lua_isstring(L, -1)))
+      luaL_error(L, "Cannot generate cachearray: string/number expected in parameter #2 table index %d (got %s)", i, lua_typename(L, lua_type(L, -1)));
+    luaL_addvalue(&b);
+    // store length of subscript in cachearray
+    int end = luaL_bufflen(&b);
+    element->len_used = element->len_alloc = end-start;
+    start = end;
+    element++;
   }
 
   // Append `...` list of strings
-  for (int i=2+(type_t1==LUA_TTABLE); i<=args; i++) {
-    int type = lua_type(L, i);
-    char *buf = lua_tolstring(L, i, &len);
-    if (!buf)
-      luaL_error(L, "Cannot generate cachearray: number/string expected in parameter #%d (got %s)", i, lua_typename(L, type));
-    element->buf_addr = lua_tolstring(L, i, &len);
-    element->len_used = element->len_alloc = len;
+  for (int arg=2+(type_t1==LUA_TTABLE); arg<=args; arg++) {
+    if (luai_unlikely(!lua_isstring(L, arg)))
+      luaL_error(L, "Cannot generate cachearray: string/number expected at parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, arg)));
+    lua_pushvalue(L, arg);
+    luaL_addvalue(&b);
+    // store length of subscript in cachearray
+    int end = luaL_bufflen(&b);
+    element->len_used = element->len_alloc = end-start;
+    start = end;
     element++;
-    if (type == LUA_TNUMBER)
-      lua_pushvalue(L, i);  // if it was converted from a number, duplicate it an leave it on the stack to return (see note in docs above)
   }
-  // STACK: varname[, t1][, ...], cachearray, [list of numbers_to_strings...]
-  lua_rotate(L, 1, -args);  // delete original args
+  luaL_pushresult(&b);
+
+  // Get addr of final string and update cachearray with addr
+  char *addr = lua_tostring(L, -1);
+  element = &array->varname;  // assumes array->subs[] come straight after array->varname
+  for (int i=0; i <= depth; i++) {
+    element->buf_addr = addr;
+    addr += element->len_used;
+    element++;
+  }
+
+  // STACK: varname[, t1], ...], cachearray, cachestring
+  lua_rotate(L, 1, 2);
   lua_pop(L, args);
-  return lua_gettop(L);
+  return 2;
 }
 
 /// Generate a C-style cachearray of subscripts from a node, its parents, and their names.
@@ -119,7 +165,7 @@ int cachearray_fromtable(lua_State *L) {
 // This is a recursive field passed on to generation of parent nodes' cachearrays.
 // It is an optional parameter only when called from Lua; not when recursed in C.
 // @return cachearray as a full userdata object
-int cachearray(lua_State *L) {
+int _cachearray(lua_State *L) {
   cachearray_t *array;
   ydb_buffer_t *element;
   size_t len;
@@ -186,7 +232,7 @@ int cachearray(lua_State *L) {
       lua_pushboolean(L, apply);
       // STACK: node, __parent, __parent, apply
       luaL_checkstack(L, LUA_MINSTACK, "Cannot generate cachearray: stack can't grow to recurse all parent subscripts");
-      cachearray(L);
+      cachearray_create(L);
       has_cachearray = true;
       // STACK: node, __parent, parent.__cachearray
     }
@@ -268,29 +314,29 @@ apply_cachearray:  // STACK: node, cachearray
   return 1;
 }
 
-// Replace existing element `index` of cachearray with `string`.
+// Substitute existing element `index` of cachearray with `string`.
 // This is used by node:subscripts() to efficiently iterate subscripts
 // without creating a new cachearray for every single iteration.
 // The __mutable field should be set to true by the iterator on any node 
 // that has a cachearray that will be changed after creation.
-// @usage _yottadb.cachearray_replace(cachearray, index, string)
+// @usage _yottadb.cachearray_subst(cachearray, index, string)
 // @param cachearray userdata
 // @param index into array (from 1 to length of array)
 // @param string to store in array index
-int cachearray_replace(lua_State *L) {
+int cachearray_subst(lua_State *L) {
   cachearray_t *array = lua_touserdata(L, 1);
   if (!array)
-    luaL_error(L, "Parameter #1 to cachearray_replace must be a cachearray userdata");
+    luaL_error(L, "Parameter #1 to cachearray_subst must be a cachearray userdata");
   int index = luaL_checkinteger(L, 2) - 1;  // -1 converts Lua index to C index
   if (index < 0 || index >= array->length) {
     if (!array->length)
-      luaL_error(L, "Parameter #1 to cachearray_replace must be a cachearray with at least one subscript");
-    luaL_error(L, "Parameter #2 to cachearray_replace is %d but should be an index into cachearray between 1 and %d", index+1, array->length);
+      luaL_error(L, "Parameter #1 to cachearray_subst must be a cachearray with at least one subscript");
+    luaL_error(L, "Parameter #2 to cachearray_subst is %d but should be an index into cachearray between 1 and %d", index+1, array->length);
   }
   ydb_buffer_t *element = &array->subs[index];
   int type = lua_type(L, 3);
   if (type != LUA_TSTRING)
-    luaL_error(L, "Parameter #3 to cachearray_replace must be a string (got %s)", lua_typename(L, type));
+    luaL_error(L, "Parameter #3 to cachearray_subst must be a string (got %s)", lua_typename(L, type));
 
   size_t len;
   element->buf_addr = luaL_checklstring(L, 3, &len);

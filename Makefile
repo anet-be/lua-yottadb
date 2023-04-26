@@ -25,17 +25,15 @@ ydb_dist=$(shell pwd)/YDB/install
 endif
 
 CC=gcc
-CFLAGS=-g -O3 -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -pedantic -Wall -Werror -Wno-unknown-pragmas -Wno-discarded-qualifiers
+CFLAGS=-g -O3 -fPIC -std=c11 -I$(ydb_dist) -I$(lua_include) -pedantic -Wall -Werror -Wextra -Wno-cast-function-type -Wno-unknown-pragmas -Wno-discarded-qualifiers
 LDFLAGS=-L$(ydb_dist) -lyottadb -Wl,-rpath,$(ydb_dist) -Wl,--gc-sections
 SOURCES=yottadb.c callins.c cachearray.c compat-5.3/c-api/compat-5.3.c
 
 all: _yottadb.so
 _yottadb.so: $(SOURCES) yottadb.h callins.h cachearray.h exports.map Makefile
 	$(CC) $(SOURCES) -o $@  -shared -Wl,--version-script=exports.map $(CFLAGS) $(LDFLAGS)
-%: %.c
-	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)
-%.o: %.c
-	$(CC) $<  -o $@  -c $(CFLAGS) $(LDFLAGS)
+%: %.c _yottadb.so
+	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)  -llua -lm -l:_yottadb.so -L.
 
 # Requires: 'luarocks install ldoc'
 docs: docs/yottadb.html
@@ -47,7 +45,7 @@ docs/yottadb.html: *.lua *.c *.ld docs/config/* Makefile
 	ldoc . -c config_private_docs.ld
 
 clean:
-	rm -f *.so *.o docs/*.html
+	rm -f *.so *.o
 
 PREFIX=/usr/local
 share_dir=$(PREFIX)/share/lua/$(lua_version)

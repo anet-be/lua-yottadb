@@ -242,7 +242,7 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, cip_metad
   if (YDB_TYPE_ISSTR(type)) {
     // first handle all string types (number types later)
     size_t preallocation = ydb_type->preallocation;
-    if (preallocation==-1) preallocation=YDB_MAX_STR;
+    if (preallocation==(size_t)-1) preallocation=YDB_MAX_STR;
     size_t length;
     char *s=NULL;  // does nothing but satisfy gcc that we're not using it uninitialized
     if (isinput) {
