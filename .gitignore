@@ -1,5 +1,7 @@
 *.so
 *.o
+t
+t.c
 t.lua
 t?.lua
 

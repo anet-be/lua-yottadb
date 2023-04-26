@@ -48,7 +48,8 @@ int _memory_error(size_t size, int line, char *file) {
   if (cachearray) \
     _subs_used = luaL_checkinteger(L, 2); \
   else { \
-    cachearray = lua_touserdata(L, -cachearray_fromtable(L)); \
+    cachearray_create(L); \
+    cachearray = lua_touserdata(L, -2); \
     _subs_used = cachearray->length; \
   } \
   _varname = &cachearray->varname; \
@@ -691,10 +692,10 @@ static const luaL_Reg yottadb_functions[] = {
   {"block_M_signals", block_M_signals},
   {"init", init},
   {"ydb_eintr_handler", _ydb_eintr_handler},
-  {"cachearray", cachearray},
-  {"cachearray_fromtable", cachearray_fromtable},
+  {"cachearray_create", cachearray_create},
+  {"cachearray_append", cachearray_append},
+  {"cachearray_subst", cachearray_subst},
   {"cachearray_tostring", cachearray_tostring},
-  {"cachearray_replace", cachearray_replace},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},
     {"table_unpack", unpack},
