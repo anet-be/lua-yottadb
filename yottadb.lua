@@ -885,21 +885,22 @@ function node:lock_incr(timeout) return M.lock_incr(self.__varname, self.__subsa
 -- @see lock_decr
 function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) end
 
---- Return iterator over the *child* subscripts of a node (in M terms, collate from "" to "").
+--- Return iterator over the *child* subscript names of a node (in M terms, collate from "" to "").
 -- Unlike `yottadb.subscripts()`, `node:subscripts()` returns all *child* subscripts, not subsequent *sibling* subscripts in the same level.
--- Note that subscripts() order is guaranteed to equal the M collation sequence
+-- Note that subscripts() order is guaranteed to equal the M collation sequence.
 -- @param[opt] reverse set to true to iterate in reverse order
 -- @usage for subscript in node:subscripts() do ...
--- @return iterator over *child* subscripts of a node, returning a sequence of subscript name strings
+-- @return iterator over *child* subscript names of a node, returning a sequence of subscript name strings
+-- @see node:__pairs
 function node:subscripts(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   local next_or_prev = ''  -- NOTE: must be an upvalue of iterator so that it retains ref to string in cachearray for next iteration
-  local cachearray = _yottadb.cachearray_fromtable(self.__varname, self.__subsarray, next_or_prev)
+  local cachearray, subsdata = _yottadb.cachearray_createmutable(self.__varname, self.__subsarray, next_or_prev)
   local depth = #self.__subsarray + 1
   local function iterator()
     next_or_prev = actuator(cachearray, depth)
     --self.__name = next_or_prev
-    _yottadb.cachearray_replace(cachearray, depth, next_or_prev or '')
+    subsdata = _yottadb.cachearray_subst(cachearray, next_or_prev or '')
     return next_or_prev
   end
   return iterator, nil, ''  -- iterate using child from ''
@@ -1009,17 +1010,23 @@ end
 --- Class node
 -- @section
 
---- Makes pairs() work - iterate over the child subscripts, values of given node.
+--- Makes pairs() work - iterate over the child (subnode, subnode_value, subscript) of given node.
 -- You can use either `pairs(node)` or `node:pairs()`.
 -- If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).
--- Note that pairs() order is guaranteed to equal the M collation sequence order
---   (even though pairs() order is not normally guaranteed for Lua tables).
---   This means that pairs() is a reasonable substitute for ipairs which is not implemented.
+--
+-- Notes:
+--
+-- * pairs() order is guaranteed to equal the M collation sequence order
+-- (even though pairs() order is not normally guaranteed for Lua tables).
+-- This means that pairs() is a reasonable substitute for ipairs which is not implemented.
+-- * this is very slightly slower than node:subscripts() which only iterates subscript names without
+-- creating nodes.
 -- @function node:__pairs
 -- @param[opt] reverse Boolean flag iterates in reverse if true
 -- @usage for subscript,subnode in pairs(node) do ...
 --     where subnode is a node/key object. If you need its value use node._
 -- @return subnode, subnode subnode_value_or_nil, subscript
+-- @see node:subscripts
 function node:__pairs(reverse)
   local sub_iter, state, start = node.subscripts(self, reverse)
   local function iterator()
@@ -1268,7 +1275,7 @@ function key:delete_node() M.delete_node(self.__varname, self.__subsarray) end
 --      subsarray duplication)
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
--- @see pairs, subscript_previous
+-- @see node:__pairs, subscript_previous
 function key:subscript_next(reset)
   -- Ensure we have a next_subsarray -- used only by key:subscript_next() and key:subscript_previous()
   if not self.__next_subsarray then
@@ -1285,7 +1292,7 @@ end
 --- Deprecated way to get previous *sibling* subscript.
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 --   or subscript_previous()
--- @see key:subscript_next, pairs
+-- @see node:__pairs, subscript_next
 function key:subscript_previous(reset)
   -- Ensure we have a next_subsarray -- used only by key:subscript_next() and key:subscript_previous()
   if not self.__next_subsarray then
