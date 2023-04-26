@@ -44,7 +44,7 @@ void _cachearray_updateaddr(cachearray_t *array, char *addr) {
 // @param cachearray pointer to allocated memory to fit a maximum sized cachearray.
 // If it is NULL, the function will allocate cachearray using lua_newuserdata()
 // @return cachearray, subsdata_string -- see notes above -- cachearray returns lightuserdata if array is supplied on entry.
-int _cachearray_create(lua_State *L, cachearray_t *array_maxsize) {
+int _cachearray_create(lua_State *L, cachearray_t *array_prealloc) {
   int args = lua_gettop(L);
   if (lua_type(L, 1) != LUA_TSTRING)
     luaL_error(L, "Cannot generate cachearray: string expected at parameter #1 (varname) (got %s)", lua_typename(L, lua_type(L, 1)));
@@ -59,63 +59,58 @@ int _cachearray_create(lua_State *L, cachearray_t *array_maxsize) {
   }
 
   // init array -- leave some room to grow without realloc in case user creates subnodes
-  cachearray_t *array = (cachearray_t *)array_maxsize;
-  if (array)
-    lua_pushlightuserdata(L, array);
-  else
-    array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
+  cachearray_t *array;
+  if (array_prealloc)
+    array = array_prealloc;
+  else {
+works, but need to update this 1024 to a constant and add it to cachearray_t_maxsize
+also, if we have this data in the cachearray, it will need to be able to grow if cachearray grows
+    char _tmp_array[sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + 1024];
+    array = (cachearray_t *)_tmp_array;
+  }
+
   array->depth = depth;
   array->alloc_size = depth+ARRAY_OVERALLOC;
+  char *addr = (char *)&array->subs[array->alloc_size];
   ydb_buffer_t *element = &array->varname;  // assumes array->subs[] come straight after array->varname
 
-  luaL_Buffer b;
-  luaL_buffinit(L, &b);
-  int start = 0;  // starting length of buffer
-
-  // Append varname
-  lua_pushvalue(L, 1);
-  luaL_addvalue(&b);
-  // store length of subscript in cachearray
-  int end = luaL_bufflen(&b);
-  element->len_used = element->len_alloc = end-start;
-  start = end;
-  element++;
-
   // Append t1 if it is a table
-  for (int i=1; i <= tlen; i++) {
-    lua_geti(L, 2, i);
-    if (luai_unlikely(!lua_isstring(L, -1)))
-      luaL_error(L, "Cannot generate cachearray: string/number expected in parameter #2 table index %d (got %s)", i, lua_typename(L, lua_type(L, -1)));
-    luaL_addvalue(&b);
-    // store length of subscript in cachearray
-    int end = luaL_bufflen(&b);
-    element->len_used = element->len_alloc = end-start;
-    start = end;
+  char *string;
+  size_t len;
+  int i = 1;
+  for (int arg=1; arg <= args;) {
+    if (type_t1==LUA_TTABLE && arg==2 && i <= tlen) {
+      lua_geti(L, 2, i);
+      string = lua_tolstring(L, -1, &len);
+      if (luai_unlikely(!string))
+        luaL_error(L, "Cannot generate cachearray: string/number expected in parameter #2 table index %d (got %s)", i, lua_typename(L, lua_type(L, -1)));
+      memcpy(addr, string, len);
+      lua_pop(L, 1);
+      if (i++ == tlen) arg++;
+    } else {
+      string = lua_tolstring(L, arg, &len);
+      if (luai_unlikely(!string))
+        luaL_error(L, "Cannot generate cachearray: string/number expected at parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, arg)));
+      memcpy(addr, string, len);
+      arg++;
+    }
+    element->buf_addr = addr;
+    element->len_used = element->len_alloc = len;
+    addr += len;
     element++;
   }
 
-  // Append `...` list of strings
-  for (int arg=2+(type_t1==LUA_TTABLE); arg<=args; arg++) {
-    if (luai_unlikely(!lua_isstring(L, arg)))
-      luaL_error(L, "Cannot generate cachearray: string/number expected at parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, arg)));
-    lua_pushvalue(L, arg);
-    luaL_addvalue(&b);
-    // store length of subscript in cachearray
-    int end = luaL_bufflen(&b);
-    element->len_used = element->len_alloc = end-start;
-    start = end;
-    element++;
+  if (array_prealloc)
+    lua_pushlightuserdata(L, array);
+  else {
+    cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + 1024);
+    memcpy(newarray, array, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + 1024);
   }
-  luaL_pushresult(&b);
-
-  // Update cachearray with final address of string
-  char *addr = lua_tostring(L, -1);
-  _cachearray_updateaddr(array, addr);
 
   // STACK: varname[, t1], ...], cachearray, cachestring
-  lua_rotate(L, 1, 2);
+  lua_rotate(L, 1, 1);
   lua_pop(L, args);
-  return 2;
+  return 1;
 }
 
 /// Generate and return a C-style array of subscripts as a userdata.
