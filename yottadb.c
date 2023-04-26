@@ -40,20 +40,24 @@ int _memory_error(size_t size, int line, char *file) {
 }
 
 
-// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray, depth)
-// Returns on the Lua stack any numbers converted to strings in cachearray so that there is still a Lua reference to them
-// (see doc for cachearray_fromtable().
+// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray)
+// May returns on the Lua stack the subsdata_string for the cachearray so that there is still a Lua reference to it
+// (see doc for cachearray_create().
+// Any new cachearray is allocated on the C stack to be faster than lua_newuserdata(),
+// but be aware that this will expire as soon as the function returns.
 #define getsubs(L,_subs_used,_varname,_subsarray) \
-  cachearray_t *cachearray = lua_touserdata(L, 1); \
-  if (cachearray) \
+  cachearray_t *___cachearray = lua_touserdata(L, 1); \
+  if (___cachearray) \
     _subs_used = luaL_checkinteger(L, 2); \
   else { \
-    cachearray_create(L); \
-    cachearray = lua_touserdata(L, -2); \
-    _subs_used = cachearray->length; \
+    cachearray_t_maxsize ___cachearray_; \
+    ___cachearray = (cachearray_t *)&___cachearray_; \
+    _cachearray_create(L, NULL); \
+    ___cachearray = lua_touserdata(L, -2); \
+    _subs_used = ___cachearray->depth; \
   } \
-  _varname = &cachearray->varname; \
-  _subsarray = &cachearray->subs[0];
+  _varname = &___cachearray->varname; \
+  _subsarray = &___cachearray->subs[0];
 
 const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
@@ -693,8 +697,9 @@ static const luaL_Reg yottadb_functions[] = {
   {"init", init},
   {"ydb_eintr_handler", _ydb_eintr_handler},
   {"cachearray_create", cachearray_create},
-  {"cachearray_append", cachearray_append},
+  {"cachearray_createmutable", cachearray_createmutable},
   {"cachearray_subst", cachearray_subst},
+//  {"cachearray_append", cachearray_append},
   {"cachearray_tostring", cachearray_tostring},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},
