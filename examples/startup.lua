@@ -15,7 +15,7 @@ M = {}
 -- `_output` (optional) is for internal use only (table of collected output strings)
 -- I could also consider alternative table dump formats at http://lua-users.org/wiki/TableSerialization
 function M.dump(tbl, maxlines, maxdepth, as_table, _indent, _seen, _output)
-  if not tbl then  return "usage: table_dump.dump(<table>, [maxlines], [maxdepth])"  end
+  if not tbl then  return "usage: table.dump(<table>, [maxlines], [maxdepth])"  end
   maxlines = maxlines or 1/0  -- infinite
   _indent = _indent or 0
   _seen = _seen or {}
@@ -44,12 +44,14 @@ function M.dump(tbl, maxlines, maxdepth, as_table, _indent, _seen, _output)
   end
   if _indent==0 then
     if #_output >= maxlines then
-      table.insert(_output, string.format("...etc.   -- stopped at %s lines; to show more use table_dump.dump(<table>, [maxlines], [maxdepth])", maxlines))
+      table.insert(_output, string.format("...etc.   -- stopped at %s lines; to show more use table.dump(<table>, [maxlines], [maxdepth])", maxlines))
     end
     if as_table then  return _output  end
     return table.concat(_output, '\n')
   end
 end
+
+table.dump = M.dump
 
 -- hook print()
 local original_print = print
