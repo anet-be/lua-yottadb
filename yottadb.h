@@ -93,6 +93,7 @@ inline static void dumpStack (lua_State *L) {
     printf(" "); /* put a separator */
   }
   printf("\n"); /* end the listing */
+  fflush(stdout);
 }
 
 // Debug macro to print a field `fieldstr` of the table at index

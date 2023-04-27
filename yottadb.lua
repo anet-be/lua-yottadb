@@ -895,12 +895,11 @@ function node:lock_decr() return M.lock_decr(self.__varname, self.__subsarray) e
 function node:subscripts(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   local next_or_prev = ''  -- NOTE: must be an upvalue of iterator so that it retains ref to string in cachearray for next iteration
-  local cachearray, subsdata = _yottadb.cachearray_createmutable(self.__varname, self.__subsarray, next_or_prev)
+  local cachearray = _yottadb.cachearray_createmutable(self.__varname, self.__subsarray, next_or_prev)
   local depth = #self.__subsarray + 1
   local function iterator()
     next_or_prev = actuator(cachearray, depth)
-    --self.__name = next_or_prev
-    subsdata = _yottadb.cachearray_subst(cachearray, next_or_prev or '')
+    cachearray = _yottadb.cachearray_subst(cachearray, next_or_prev or '')
     return next_or_prev
   end
   return iterator, nil, ''  -- iterate using child from ''

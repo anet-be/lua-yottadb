@@ -62,9 +62,9 @@
     <li><a href="#ci_tab_open">ci_tab_open (ci_table_filename)</a></li>
 <br/>
 <li><a href="#Cachearray_functions"><b>Cachearray functions </b></a></li>
-    <li><a href="#cachearray">cachearray</a></li>
+    <li><a href="#array_prealloc">array_prealloc</a></li>
     <li><a href="#cachearray">cachearray (varname[, t1[, ...]])</a></li>
-    <li><a href="#cachearray">cachearray (node, apply)</a></li>
+    <li><a href="#cachearray_append">cachearray_append (cachearray[, ...])</a></li>
     <li><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></li>
 
 
@@ -179,7 +179,7 @@
 <h2><a href="#Cachearray_functions">Cachearray functions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#cachearray">cachearray</a></td>
+	<td class="name" nowrap><a href="#array_prealloc">array_prealloc</a></td>
 	<td class="summary">Underlying core of <code>cachearray_create()</code>, designed to call from C.</td>
 	</tr>
 	<tr>
@@ -187,8 +187,8 @@
 	<td class="summary">Generate and return a C-style array of subscripts as a userdata.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#cachearray">cachearray (node, apply)</a></td>
-	<td class="summary">Generate a C-style cachearray of subscripts from a node, its parents, and their names.</td>
+	<td class="name" nowrap><a href="#cachearray_append">cachearray_append (cachearray[, ...])</a></td>
+	<td class="summary">Append subscripts to an existing cachearray, creating a copy if it is full at this depth.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></td>
@@ -992,19 +992,21 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 
     <dl class="function">
     <dt>
-    <a name = "cachearray"></a>
-    <strong>cachearray</strong>
+    <a name = "array_prealloc"></a>
+    <strong>array_prealloc</strong>
     </dt>
     <dd>
     Underlying core of <code>cachearray_create()</code>, designed to call from C.
- For the sake of speed, this can be called from a C function that has pre-allocated cachearray_t.
+ This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups).
+ For the sake of speed, the caller can pre-allocate <code>cachearray_t_maxsize</code> on its stack
+ (in which case the returned cachearray will only be valid while inside that C function).
  For example, pre-allocating it on the C stack is 20% (400ns) faster than <code>lua_newuserdata()</code>
 
 
     <ul>
-        <li><span class="parameter">cachearray</span>
-         pointer to allocated memory to fit a maximum sized cachearray.
- If it is NULL, the function will allocate cachearray using lua_newuserdata()
+        <li><span class="parameter">array_prealloc</span>
+         is a pointer to allocated memory that fits a maximum sized cachearray.
+ If it is NULL, the function will allocate cachearray itself, using <code>lua_newuserdata()</code>.
         </li>
     </ul>
 
@@ -1019,10 +1021,8 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     </dt>
     <dd>
     Generate and return a C-style array of subscripts as a userdata.
- The resulting full userdata contains a C array which may be passed to raw <code>_yottadb()</code> functions as a subsarray.
- Also return a string of concatenated subscripts which Lua must keep a reference to as it contains the text data
- that the cachearray points to.
- This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups)
+ The resulting full userdata contains a cached C array of varname and subscripts which may be passed
+ to raw <code>_yottadb()</code> functions as a speedy subsarray.
 
 
     <h3>Parameters:</h3>
@@ -1043,7 +1043,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     <h3>Returns:</h3>
     <ol>
 
-        cachearray, subsdata_string -- see notes above
+        cachearray
     </ol>
 
 
@@ -1055,58 +1055,36 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 
 </dd>
     <dt>
-    <a name = "cachearray"></a>
-    <strong>cachearray (node, apply)</strong>
+    <a name = "cachearray_append"></a>
+    <strong>cachearray_append (cachearray[, ...])</strong>
     </dt>
     <dd>
-
-<p>Generate a C-style cachearray of subscripts from a node, its parents, and their names.
- The resulting full userdata contains a C array which may be passed to raw <code>_yottadb()</code> functions as a subsarray. <br>
- Notes:</p>
-
-<ul>
-    <li>The resulting cachearray points to Lua strings without referencing them in Lua, so the
-    node must keep a reference to them to prevent garbage-collection.
-    These strings are kept in the node's <code>__name</code> field and the root node's <code>__parent</code> field (list of strings).
-    For the same reason, the root node's <code>__parent</code> table must be a copy rather than a reference to
-    a user-supplied table, and any number elements in it must be converted to strings when creating root node.</li>
-    <li>This function is designed to be recursive from C without using <code>lua_call()</code> to reset stack top,
-    so it mustn't reference positive-numbered (absolute) stack indices which only refer to the first call's stack.</li>
-</ul>
-
+    Append subscripts to an existing cachearray, creating a copy if it is full at this depth.
+ Function may be called by C as it tidies up its Lua stack itself
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">node</span>
-
-<p> is a database node object containing the following mandatory attributes:</p>
-
-<ul>
-    <li><code>__parent</code> a reference to the parent node object or a table of subscript strings if has no parent.</li>
-    <li><code>__name</code> of subscript at this node</li>
-    <li><code>__depth</code> of this node (i.e. number of subscripts to arrive at this node)</li>
-</ul>
-
+        <li><span class="parameter">cachearray</span>
+         is an existing cachearray created by cachearray_create()
         </li>
-        <li><span class="parameter">apply</span>
-        [opt] boolean whether to assign returned new cachearray to node's field <code>__cachearray</code>.
- This is a recursive field passed on to generation of parent nodes' cachearrays.
- It is an optional parameter only when called from Lua; not when recursed in C.
+        <li><span class="parameter">...</span>
+         a list of strings to be appended
+         (<em>optional</em>)
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-        cachearray as a full userdata object
+        cachearray (the same or new)
     </ol>
 
 
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">_yottadb.cachearray_generate(node[, apply])</pre>
+        <pre class="example">_yottadb.cachearray_append(cachearray[, ...])</pre>
     </ul>
 
 </dd>
@@ -1151,7 +1129,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-04-26 21:56:22 </i>
+<i style="float:right;">Last updated 2023-04-27 23:28:15 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

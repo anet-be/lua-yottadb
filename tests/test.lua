@@ -109,7 +109,7 @@ local function skip(f)
   for _, name in ipairs(skip) do _G['skip_' .. name], _G[name] = f, nil end
 end
 
-local function validate_varname_inputs(f)
+local function validate_varname_inputs(f, skip_invalid)
   local function val() if f==_yottadb.set then  return 'val'  end end
   local ok, e = pcall(f, true, val)
   assert(not ok)
@@ -117,7 +117,7 @@ local function validate_varname_inputs(f)
 
   ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT + 1), val())
   assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_VARNAME2LONG)
+  assert(e:find("name length exceeds"))
 
   if f == _yottadb.get then
     _yottadb.set(string.rep('b', _yottadb.YDB_MAX_IDENT), 'val')
@@ -125,9 +125,11 @@ local function validate_varname_inputs(f)
   ok, e = pcall(f, string.rep('b', _yottadb.YDB_MAX_IDENT), val())
   assert(ok)
 
-  ok, e = pcall(f, '\128', val())
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_INVVARNAME)
+  if not skip_invalid then
+    ok, e = pcall(f, '\128', val())
+    assert(not ok)
+    asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_INVVARNAME)
+  end
 end
 
 local function validate_subsarray_inputs(f)
@@ -141,16 +143,16 @@ local function validate_subsarray_inputs(f)
   subs[#subs + 1] = 'b'
   ok, e = pcall(f, 'test', subs, val())
   assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_MAXNRSUBSCRIPTS)
+  assert(e:find("number of subscripts exceeded"))
 
   ok, e = pcall(f, 'test', {true}, val())
   assert(not ok)
-  assert(e:find('string expected'))
+  assert(e:find('expected'))
 
   if f == _yottadb.get then
-    _yottadb.set('test', {string.rep('b', _yottadb.YDB_MAX_STR)}, 'val') -- avoid YDB_ERR_LVUNDEF
+    _yottadb.set('test', {string.rep('b', _yottadb.YDB_MAX_IDENT)}, 'val') -- avoid YDB_ERR_LVUNDEF
   end
-  ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_STR)}, val())
+  ok, e = pcall(f, 'test', {string.rep('b', _yottadb.YDB_MAX_IDENT)}, val())
   -- Note: subscripts for lock functions are shorter, so ignore those errors.
   assert(ok or yottadb.get_error_code(e) == _yottadb.YDB_ERR_LOCKSUB2LONG)
 end
@@ -1273,7 +1275,7 @@ function test_module_nodes()
 
   local ok, e = pcall(yottadb.nodes(string.rep('a', yottadb.YDB_MAX_IDENT + 1)))
   assert(not ok)
-  asserteq(yottadb.get_error_code(e), yottadb.YDB_ERR_VARNAME2LONG)
+  assert(e:find("name length exceeds"))
 
   ok, e = pcall(yottadb.nodes('\128'))
   assert(not ok)
@@ -1390,7 +1392,7 @@ function test_module_subscripts()
 
   local ok, e = pcall(yottadb.subscripts(string.rep('a', yottadb.YDB_MAX_IDENT + 1)))
   assert(not ok)
-  asserteq(yottadb.get_error_code(e), yottadb.YDB_ERR_VARNAME2LONG)
+  assert(e:find("name length exceeds"))
 
   ok, e = pcall(yottadb.subscripts('\128'))
   assert(not ok)
@@ -2250,63 +2252,68 @@ function test_signals()
 end
 
 function test_cachearray()
-  local ok, e, node, cachearray, expected, varname, subs
-  
-  local y_cachearray = _yottadb.cachearray
-  local y_fromtable = _yottadb.cachearray_fromtable
-  local y_tostring = _yottadb.cachearray_tostring
+  local ok, e, node, cachearray, newarray, expected, varname, subs
 
-  cachearray = y_fromtable('var')
-  subs, varname = y_tostring(cachearray)
+  local cache_create = _yottadb.cachearray_create
+  local cache_createmutable = _yottadb.cachearray_createmutable
+  local cache_subst = _yottadb.cachearray_subst
+  local cache_append = _yottadb.cachearray_append
+  local cache_tostring = _yottadb.cachearray_tostring
+
+  cachearray = cache_create('var')
+  subs, varname = cache_tostring(cachearray)
   asserteq(varname, 'var')  asserteq(subs, '')
 
-  cachearray = y_fromtable('var2', {'person', '3', 'male', 'asian'})
-  subs, varname = y_tostring(cachearray)
+  cachearray = cache_create('var2', {'person', '3', 'male', 'asian'})
+  subs, varname = cache_tostring(cachearray)
   asserteq(varname, 'var2')  asserteq(subs, '"person",3,"male","asian"')
 
-  cachearray = y_fromtable('var', 'person', '3', '4', '5')
-  asserteq(y_tostring(cachearray), '"person",3,4,5')
+  cachearray = cache_create('var', 'person', '3', '4', '5')
+  asserteq(cache_tostring(cachearray), '"person",3,4,5')
 
-  node = {__varname='var', __depth=0, __parent={}}
-  cachearray = y_cachearray(node)
-  asserteq(y_tostring(cachearray), '')
-
-  node = {__varname='var', __depth=3, __parent={'person','3'}, __name='male'}
-  cachearray = y_cachearray(node)
-  asserteq(y_tostring(cachearray), '"person",3,"male"')
-  asserteq(y_tostring(cachearray,2), '"person",3')
-  asserteq(y_tostring(cachearray,1), '"person"')
-  asserteq(y_tostring(cachearray,0), '')
-  ok, e = pcall(y_tostring, cachearray, -1)
+  cachearray = cache_create('var', {'person','3'}, 'male')
+  asserteq(cache_tostring(cachearray), '"person",3,"male"')
+  asserteq(cache_tostring(cachearray,2), '"person",3')
+  asserteq(cache_tostring(cachearray,1), '"person"')
+  asserteq(cache_tostring(cachearray,0), '')
+  ok, e = pcall(cache_tostring, cachearray, -1)
   assert(not ok)  asserteq(e, 'Parameter #2 to cachearray_tostring is not a valid node depth in the range 0-3 (got -1)')
-  ok, e = pcall(y_tostring, cachearray, 4)
+  ok, e = pcall(cache_tostring, cachearray, 4)
   assert(not ok)  asserteq(e, 'Parameter #2 to cachearray_tostring is not a valid node depth in the range 0-3 (got 4)')
 
   -- Check that generating a new cachearray looks the same but is a different object
-  assert(cachearray ~= y_cachearray(node))  -- should not equal the previously generated cachearray without apply=true
-  asserteq(y_tostring(cachearray), y_tostring(y_cachearray(node)))  -- but should look the same
+  -- Assume that ARRAY_OVERALLOC is 5 in array.c
+  -- This means that if you append more than 5 subscripts, it will have to allocate a new cachearray
+  cachearray = cache_create('var', {'person','3'}, 'male')
+  newarray = cache_append(cachearray,1,2,3,4,5)
+  assert(cachearray == newarray)  -- should be same cachearray until ARRAY_OVERALLOC exceded
+  newarray = cache_append(cachearray,6)
+  assert(cachearray ~= newarray)
+  asserteq(cache_tostring(newarray), '"person",3,"male",1,2,3,4,5,6')
 
-  -- Check that making a child of a node that has no __cachearray will auto-generate its __cachearray
-  -- if not, this will fill early nodes with nil
-  local child = {__varname=node.__varname, __depth=node.__depth+1, __parent=node, __name='asian'}
-  local child_cachearray = y_cachearray(child)
-  asserteq(y_tostring(child_cachearray), '"person",3,"male","asian"')
-  asserteq(node.__cachearray, nil)
-  local stored_cachearray = y_cachearray(child, true)
-  assert(stored_cachearray ~= cachearray)  -- should not equal the cachearray generated previously without apply=true
-  assert(y_tostring(stored_cachearray) ~= y_tostring(cachearray))  -- neither should it look like previously generated cachearray
-  asserteq(stored_cachearray, child.__cachearray)  -- but should equal the one now stored in child node
-  asserteq(stored_cachearray, node.__cachearray)  -- should also equal node stored in node since we re-used cachearrays up to ARRAY_OVERALLOC slots
-  asserteq(y_tostring(stored_cachearray), y_tostring(child_cachearray))  -- should also look like the child cachearray
-  asserteq(stored_cachearray, y_cachearray(node, true))  -- calling cachearray() again should just fetch the stored one
-  assert(y_tostring(cachearray) ~= y_tostring(child_cachearray))
-  asserteq(y_tostring(cachearray), y_tostring(child_cachearray,3))
-
-  node = {__varname='var', __depth=20, __parent={'person','3','male','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19'}, __name='20'}
-  cachearray = y_cachearray(node)
+  subs = {'person','3','male','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19', '20'}
+  cachearray = cache_create('var', subs)
   collectgarbage()  -- catch allocation problems such as the one fixed in commit 4bed5e6
   expected = '"person",3,"male",4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20'
-  asserteq(y_tostring(cachearray), expected)
+  asserteq(cache_tostring(cachearray), expected)
+
+  subs = {'person', 'male'}
+  cachearray = cache_createmutable('var', subs)
+  asserteq(cache_tostring(cachearray), '"person","male"')
+  local cachearray2 = cache_subst(cachearray, 'female')
+  asserteq(cache_tostring(cachearray2), '"person","female"')
+  assert(cachearray == cachearray2)
+  local bigsub = string.rep('b', 1000)
+  cachearray2 = cache_subst(cachearray, bigsub) -- make new subscript big enough to force reallocation of cachearray
+  asserteq(cache_tostring(cachearray2), '"person","' .. bigsub .. '"')
+  assert(cachearray ~= cachearray2)
+  local cachearray3 = cache_append(cachearray2, 'sub3')
+  asserteq(cache_tostring(cachearray3), '"person","' .. bigsub .. '","sub3"')
+  assert(cachearray2 ~= cachearray3)  -- make sure child of a *reallocated* mutable cachearray is still non-extendable
+
+  -- Validate inputs.
+  validate_subsarray_inputs(_yottadb.cachearray_create, true)
+  validate_subsarray_inputs(_yottadb.cachearray_createmutable, true)
 end
 
 -- Run tests.

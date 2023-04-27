@@ -40,20 +40,17 @@ int _memory_error(size_t size, int line, char *file) {
 }
 
 
-// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray)
-// May returns on the Lua stack the subsdata_string for the cachearray so that there is still a Lua reference to it
-// (see doc for cachearray_create().
+// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray, depth)
 // Any new cachearray is allocated on the C stack to be faster than lua_newuserdata(),
 // but be aware that this will expire as soon as the function returns.
 #define getsubs(L,_subs_used,_varname,_subsarray) \
   cachearray_t *___cachearray = lua_touserdata(L, 1); \
+  cachearray_t_maxsize ___cachearray_; \
   if (___cachearray) \
     _subs_used = luaL_checkinteger(L, 2); \
   else { \
-    cachearray_t_maxsize ___cachearray_; \
-    ___cachearray = (cachearray_t *)&___cachearray_; \
-    _cachearray_create(L, NULL); \
-    ___cachearray = lua_touserdata(L, -2); \
+    _cachearray_create(L, &___cachearray_); \
+    ___cachearray = lua_touserdata(L, -1); \
     _subs_used = ___cachearray->depth; \
   } \
   _varname = &___cachearray->varname; \
@@ -63,6 +60,7 @@ const char *LUA_YDB_ERR_PREFIX = "YDB Error: ";
 
 // Returns an error message to match the supplied YDB error code
 // @usage _yottadb.message(code)
+// @param code is the YDB error code
 static int message(lua_State *L) {
   ydb_buffer_t buf;
   char *msg;
@@ -699,7 +697,7 @@ static const luaL_Reg yottadb_functions[] = {
   {"cachearray_create", cachearray_create},
   {"cachearray_createmutable", cachearray_createmutable},
   {"cachearray_subst", cachearray_subst},
-//  {"cachearray_append", cachearray_append},
+  {"cachearray_append", cachearray_append},
   {"cachearray_tostring", cachearray_tostring},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},

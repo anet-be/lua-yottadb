@@ -28,275 +28,209 @@
   ( lua_pushvalue(L, (fieldindex)), lua_rawget(L, ((index)<0)? ((index)-1): (index)) )
 
 // Update cachearray subscript pointers to match subsdata_string at addr
-void _cachearray_updateaddr(cachearray_t *array, char *addr) {
+static void _cachearray_updateaddr(cachearray_t *array, char *subsdata) {
   ydb_buffer_t *element = &array->varname;  // assumes array->subs[] come straight after array->varname
-  int depth = array->depth;
-  for (int i=0; i <= depth; i++) {
-    element->buf_addr = addr;
-    addr += element->len_used;
+  // unsigned comparison is important below to handle when we get junk data in depth
+  int depth = (unsigned)array->depth > (unsigned)array->depth_alloc? array->depth_alloc: array->depth;
+  do {
+    element->buf_addr = subsdata;
+    subsdata += element->len_used;
     element++;
-  }
+  } while (depth--);
+}
+
+// Reallocate (expand) cachearray at stack location `index` and replace it with a new one in the same stack index
+// @param index of Lua stack where cachearray resides
+// @param new_depth is the required depth in the new cachearray (ARRAY_OVERALLOC will be added to this)
+// @param new_subslen is the required subsdata_string length (ARRAY_OVERALLOC*YDB_TYPICAL_SUBLEN will be added)
+// @param **subsdata points to where to copy subsdata_string from and where to store the address of the new subsdata_string
+// @return cachearray
+static cachearray_t *_cachearray_realloc(lua_State *L, int index, int new_depth, int new_subslen, char **subsdata) {
+  cachearray_t *array = lua_touserdata(L, index);
+  int depth_alloc2 = new_depth + ARRAY_OVERALLOC;
+  int arraysize2 = depth_alloc2 * sizeof(ydb_buffer_t);
+  int subsdata_alloc2 = new_subslen + (ARRAY_OVERALLOC*YDB_TYPICAL_SUBLEN);
+  int allocsize = sizeof(cachearray_t) + arraysize2 + subsdata_alloc2;
+
+  cachearray_t *newarray = lua_newuserdata(L, allocsize);
+  newarray->subsdata_alloc = subsdata_alloc2;
+  newarray->depth_alloc = depth_alloc2;
+  char *new_subsdata = get_subsdata(newarray);  // must set ->subsdata_alloc first
+  
+  int copydepth = 1 + array->depth_alloc<new_depth? array->depth_alloc: new_depth; // 1+ for varname
+  memcpy(&newarray->depth, &array->depth, sizeof(cachearray_t) - offsetof(cachearray_t,depth) + copydepth*sizeof(ydb_buffer_t));
+
+  int copysize = array->subsdata_alloc < new_subslen? array->subsdata_alloc: new_subslen;
+  memcpy(new_subsdata, *subsdata, copysize);
+
+  // Set up array sizes before update
+  newarray->subsdata_alloc = subsdata_alloc2;
+  newarray->depth_alloc = depth_alloc2;
+  _cachearray_updateaddr(newarray, new_subsdata);
+  *subsdata = new_subsdata;
+  lua_replace(L, index-(index<0)); // sub this cachearray onto the stack instead of the original one.
+  return newarray;
 }
 
 /// Underlying core of `cachearray_create()`, designed to call from C.
-// For the sake of speed, this can be called from a C function that has pre-allocated cachearray_t.
+// This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups).
+// For the sake of speed, the caller can pre-allocate `cachearray_t_maxsize` on its stack
+// (in which case the returned cachearray will only be valid while inside that C function).
 // For example, pre-allocating it on the C stack is 20% (400ns) faster than `lua_newuserdata()`
-// @param cachearray pointer to allocated memory to fit a maximum sized cachearray.
-// If it is NULL, the function will allocate cachearray using lua_newuserdata()
-// @return cachearray, subsdata_string -- see notes above -- cachearray returns lightuserdata if array is supplied on entry.
-int _cachearray_create(lua_State *L, cachearray_t *array_prealloc) {
+// @param array_prealloc is a pointer to allocated memory that fits a maximum sized cachearray.
+// If it is NULL, the function will allocate cachearray itself, using `lua_newuserdata()`.
+// @return cachearray -- lightuserdata if array is supplied in C parameter; otherwise full userdata
+int _cachearray_create(lua_State *L, cachearray_t_maxsize *array_prealloc) {
   int args = lua_gettop(L);
   if (lua_type(L, 1) != LUA_TSTRING)
     luaL_error(L, "Cannot generate cachearray: string expected at parameter #1 (varname) (got %s)", lua_typename(L, lua_type(L, 1)));
 
-  // determine depth of cachearray to malloc
+  // Determine depth of cachearray to malloc
   int type_t1 = lua_type(L, 2);
-  int depth = args - 1;
+  int depth2 = args - 1;
   int tlen = 0;
   if (type_t1 == LUA_TTABLE) {
     tlen = luaL_len(L, 2);
-    depth = tlen + args - 2;
+    depth2 = tlen + args - 2;
   }
+  if (depth2 > YDB_MAX_SUBS)
+    luaL_error(L, "Cannot generate cachearray: maximum %d number of subscripts exceeded (got %d)", YDB_MAX_SUBS, depth2);
 
-  // init array -- leave some room to grow without realloc in case user creates subnodes
+  // Init array -- leave some room to grow without realloc in case user creates subnodes
   cachearray_t *array;
-  if (array_prealloc)
-    array = array_prealloc;
-  else {
-works, but need to update this 1024 to a constant and add it to cachearray_t_maxsize
-also, if we have this data in the cachearray, it will need to be able to grow if cachearray grows
-    char _tmp_array[sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + 1024];
+  // Allocate temporary array on stack for speed
+  char _tmp_array[sizeof(cachearray_t) + (depth2+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + YDB_LARGE_SUBSLEN];
+  if (array_prealloc) {
+    array = (cachearray_t *)array_prealloc;
+    array->subsdata_alloc = member_size(cachearray_t_maxsize, _subsdata);
+    array->depth_alloc = member_len(cachearray_t_maxsize, subs);
+  } else {
     array = (cachearray_t *)_tmp_array;
+    array->subsdata_alloc = YDB_LARGE_SUBSLEN;
+    array->depth_alloc = depth2+ARRAY_OVERALLOC;
   }
+  // Push cachearray on the Lua stack -- we will realloc it later if necessary
+  lua_pushlightuserdata(L, array);
 
-  array->depth = depth;
-  array->alloc_size = depth+ARRAY_OVERALLOC;
-  char *addr = (char *)&array->subs[array->alloc_size];
-  ydb_buffer_t *element = &array->varname;  // assumes array->subs[] come straight after array->varname
+  char *subsdata = get_subsdata(array);
+  int subslen = 0;
+  int sub = 0;  // assumes array->subs[] come straight after array->varname
 
   // Append t1 if it is a table
   char *string;
   size_t len;
   int i = 1;
-  for (int arg=1; arg <= args;) {
-    if (type_t1==LUA_TTABLE && arg==2 && i <= tlen) {
-      lua_geti(L, 2, i);
-      string = lua_tolstring(L, -1, &len);
-      if (luai_unlikely(!string))
-        luaL_error(L, "Cannot generate cachearray: string/number expected in parameter #2 table index %d (got %s)", i, lua_typename(L, lua_type(L, -1)));
-      memcpy(addr, string, len);
-      lua_pop(L, 1);
-      if (i++ == tlen) arg++;
-    } else {
-      string = lua_tolstring(L, arg, &len);
-      if (luai_unlikely(!string))
-        luaL_error(L, "Cannot generate cachearray: string/number expected at parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, arg)));
-      memcpy(addr, string, len);
-      arg++;
-    }
-    element->buf_addr = addr;
+  for (int arg=1; arg <= args; arg++) {
+    if (type_t1==LUA_TTABLE && arg==2) {
+      if (i > tlen) continue;
+      lua_geti(L, 2, i++);
+      arg--;
+    } else
+      lua_pushvalue(L, arg);
+    // Fetch string from top of stack
+    string = lua_tolstring(L, -1, &len);
+    if (luai_unlikely(!string))
+      luaL_error(L, "Cannot generate cachearray: string/number expected in parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, -1)));
+    // Reallocate array if necessary
+    if (subslen+(int)len > array->subsdata_alloc)
+      array = _cachearray_realloc(L, -2, depth2, subslen+len, &subsdata);
+    memcpy(subsdata+subslen, string, len);
+    lua_pop(L, 1);  // pop appended string
+
+    ydb_buffer_t *element = (ydb_buffer_t*)&array->varname+sub;
+    element->buf_addr = subsdata+subslen;
     element->len_used = element->len_alloc = len;
-    addr += len;
-    element++;
+    subslen += len;
+    sub++;
   }
+  array->depth = depth2;
 
-  if (array_prealloc)
-    lua_pushlightuserdata(L, array);
-  else {
-    cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + 1024);
-    memcpy(newarray, array, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t) + 1024);
-  }
+  if (array == (cachearray_t *)_tmp_array)
+    array = _cachearray_realloc(L, -1, depth2, subslen, &subsdata);
 
-  // STACK: varname[, t1], ...], cachearray, cachestring
+  // STACK: varname[, t1], ...], cachearray
   lua_rotate(L, 1, 1);
   lua_pop(L, args);
   return 1;
 }
 
 /// Generate and return a C-style array of subscripts as a userdata.
-// The resulting full userdata contains a C array which may be passed to raw `_yottadb()` functions as a subsarray. 
-// Also return a string of concatenated subscripts which Lua must keep a reference to as it contains the text data
-// that the cachearray points to.
-// This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups)
+// The resulting full userdata contains a cached C array of varname and subscripts which may be passed
+// to raw `_yottadb()` functions as a speedy subsarray.
 // @function cachearray
 // @usage _yottadb.cachearray(varname[, t1][, ...])
 // @param varname is a string: the M glvn. (Note: If t1 is a cachearray, varname is ignored in favour of the one contained in t1)
 // @param[opt] t1 is a subsarray table or cachearray to be copied
 // @param[opt] ... a list of strings to be appended after t2.
-// @return cachearray, subsdata_string -- see notes above
+// @return cachearray
 int cachearray_create(lua_State *L) {
   return _cachearray_create(L, NULL);
 }
 
-/// Generate a C-style cachearray of subscripts from a node, its parents, and their names.
-// The resulting full userdata contains a C array which may be passed to raw `_yottadb()` functions as a subsarray. <br>
-// Notes:
-//
-// * The resulting cachearray points to Lua strings without referencing them in Lua, so the
-// node must keep a reference to them to prevent garbage-collection.
-// These strings are kept in the node's `__name` field and the root node's `__parent` field (list of strings).
-// For the same reason, the root node's `__parent` table must be a copy rather than a reference to
-// a user-supplied table, and any number elements in it must be converted to strings when creating root node.
-// * This function is designed to be recursive from C without using `lua_call()` to reset stack top,
-// so it mustn't reference positive-numbered (absolute) stack indices which only refer to the first call's stack.
-// @function cachearray
-// @usage _yottadb.cachearray_generate(node[, apply])
-// @param node is a database node object containing the following mandatory attributes:
-//
-// * `__parent` a reference to the parent node object or a table of subscript strings if has no parent.
-// * `__name` of subscript at this node
-// * `__depth` of this node (i.e. number of subscripts to arrive at this node)
-// @param apply[opt] boolean whether to assign returned new cachearray to node's field `__cachearray`.
-// This is a recursive field passed on to generation of parent nodes' cachearrays.
-// It is an optional parameter only when called from Lua; not when recursed in C.
-// @return cachearray as a full userdata object
-int _cachearray(lua_State *L) {
-  cachearray_t *array;
-  ydb_buffer_t *element;
-  size_t len;
-  int depth;
+/// Append subscripts to an existing cachearray, creating a copy if it is full at this depth.
+// Function may be called by C as it tidies up its Lua stack itself
+// @function cachearray_append
+// @usage _yottadb.cachearray_append(cachearray[, ...])
+// @param cachearray is an existing cachearray created by cachearray_create()
+// @param[opt] ... a list of strings to be appended
+// @return cachearray (the same or new)
+int cachearray_append(lua_State *L) {
+  int args = lua_gettop(L);
+  cachearray_t *array = lua_touserdata(L, 1);
+  if (!array)
+    luaL_error(L, "Cannot append to cachearray: cachearray expected at parameter #1 (got %s)", lua_typename(L, lua_type(L, 1)));
+  // Determine depth of cachearray required (depth2)
+  int depth = array->depth;
+  int additions = args - 1;
+  int depth2 = depth + additions;  // newdepth
+  if (depth2 > YDB_MAX_SUBS)
+    luaL_error(L, "Cannot append to cachearray: maximum %d number of subscripts exceeded (got %d)", YDB_MAX_SUBS, depth2);
+  char *subsdata = get_subsdata(array);
 
-  // Make sure there is an 'apply' parameter or stack references below don't work
-  if (lua_gettop(L) < 2)
-    lua_pushnil(L);
+  int subslen = array->subs[array->depth-1].buf_addr + array->subs[array->depth-1].len_used - subsdata;
+  // If no room, or next slot already used, then copy parent.__cachearray, but with more space
+  if (depth2 > array->depth_alloc || array->depth >= depth2)
+    array = _cachearray_realloc(L, 1, depth2, subslen + additions*YDB_TYPICAL_SUBLEN, &subsdata);
 
-  // Return immediately if node has __cachearray. Must do this first to be fast: it is used often
-  // STACK: node, apply
-  if (lua_rawgetfield(L, -2, "__cachearray") == LUA_TUSERDATA) {
-    // STACK: node, apply, __cachearray
-    lua_copy(L, -1, -3);  // replace node with __cachearray
-    lua_pop(L, 2); // pop apply, __cachearray
-    return 1;
-  }
-
-  // Fetch parameter `apply`
-  // STACK: node, apply, __cachearray(nil)
-  bool apply = lua_toboolean(L, -2);
-  lua_pop(L, 2);  // pop apply, __cachearray(nil)
-
-  // Check __depth
-  // STACK: node
-  int depth_type = lua_rawgetfield(L, -1, "__depth");
-  if (depth_type != LUA_TNUMBER || !lua_isinteger(L, -1))
-    luaL_error(L, "Cannot generate cachearray: node object does not have an integer '__depth' field (got %s)", lua_typename(L, lua_type(L, -1)));
-  depth = lua_tointeger(L, -1);
-  lua_pop(L, 1); // pop __depth
-
-  // Handle zero-depth nodes
-  // STACK: node
-  if (depth <= 0) {
-    cachearray_t *array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
-    array->alloc_size = depth+ARRAY_OVERALLOC;
-    array->depth = 0;
-    // Store varname in cachearray
-    // STACK: node, cachearray
-    if (lua_getfield(L, -2, "__varname") != LUA_TSTRING)
-      luaL_error(L, "Cannot generate cachearray: node has invalid __varname (got %s expected string) at depth %d", lua_typename(L, lua_type(L, -1)), depth);
-    array->varname.buf_addr = lua_tolstring(L, -1, &len);
-    array->varname.len_used = array->varname.len_alloc = len;
-    lua_pop(L, 1);  // pop varname
-    // STACK: node, cachearray
-    goto apply_cachearray;
-  }
-  // Does parent have __cachearray or is it the root node?
-  // STACK: node
-  if (lua_getfield(L, -1, "__parent") != LUA_TTABLE)
-    luaL_error(L, "Cannot generate cachearray: node object does not have a table in field '__parent' at depth %d", depth);
-  bool has_cachearray = lua_rawgetfield(L, -1, "__cachearray") == LUA_TUSERDATA;
-  // STACK: node, __parent, parent.__cachearray
-  if (!has_cachearray) {
-    // Since __parent has no __cachearray, see if it is a node (i.e. has __depth)
-    bool isnode = lua_getfield(L, -2, "__depth") == LUA_TNUMBER;
-    lua_pop(L, 1); // pop __depth
-    // STACK: node, __parent, parent.__cachearray
-    if (isnode) {
-      // Recurse() -- which returns parent_cachearray on stack
-      lua_pop(L, 1); // old_cachearray(nil)
-      // STACK: node, __parent
-      lua_pushvalue(L, -1);
-      lua_pushboolean(L, apply);
-      // STACK: node, __parent, __parent, apply
-      luaL_checkstack(L, LUA_MINSTACK, "Cannot generate cachearray: stack can't grow to recurse all parent subscripts");
-      cachearray_create(L);
-      has_cachearray = true;
-      // STACK: node, __parent, parent.__cachearray
+  // Append subscripts to array and subsdata_string
+  for (int arg=2; arg <= args; arg++) {
+    size_t len;
+    char *string = lua_tolstring(L, arg, &len);
+    if (luai_unlikely(!string))
+      luaL_error(L, "Cannot append subscript to cachearray: string/number expected at parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, arg)));
+    if (subslen+(int)len > array->subsdata_alloc) {
+      // re-allocate userdata now that we know more about actual string lengths required
+      int args_left = args-arg;
+      array = _cachearray_realloc(L, 1, depth2, subslen+len + args_left*YDB_TYPICAL_SUBLEN, &subsdata);
     }
+    // Copy string into subsdata. No need to check max len as we allocated maximum possible
+    memcpy(subsdata+subslen, string, len);
+
+    ydb_buffer_t *element = &array->subs[depth];
+    element->buf_addr = subsdata+subslen;
+    element->len_used = element->len_alloc = len;
+    subslen += len;
+    depth++;
   }
-
-  if (has_cachearray) {
-    // Does parent's cachearray have spare room?
-    // STACK: node, __parent, parent.__cachearray
-    array = lua_touserdata(L, -1);
-    // If no room, or next slot already used, then copy parent.__cachearray, but with more space
-    if (depth >= array->alloc_size || array->depth >= depth) {
-      cachearray_t *newarray = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
-      newarray->alloc_size = depth+ARRAY_OVERALLOC;
-      // copy varname and subs from parent
-      // STACK: node, __parent, parent.__cachearray, new_cachearray
-      memcpy(&newarray->varname, &array->varname, sizeof(ydb_buffer_t)*(depth+1-1));  // copy depth +1(__varname) -1(__name)
-      array = newarray;
-      // STACK: node, __parent, parent.__cachearray, newarray
-      lua_copy(L, -1, -3);
-      lua_pop(L, 2);
-      // STACK: node, newarray
-    } else
-      lua_remove(L, -2);
-    // STACK: node, newarray
-
-  } else { // no __cachearray, so __parent = {list_of_strings}
-    // STACK: node, __parentlist, parent_cachearray
-    lua_pop(L, 1);
-    // Create array from list of strings in table at __parent (since there is no parent node)
-    // STACK: node, __parentlist
-    array = lua_newuserdata(L, sizeof(cachearray_t) + (depth+ARRAY_OVERALLOC)*sizeof(ydb_buffer_t));
-    array->depth = depth;
-    array->alloc_size = depth+ARRAY_OVERALLOC;
-    // STACK: node, __parentlist, newarray
-    element = &array->subs[0];
-    for (int i=1; i<depth; i++) {
-      lua_geti(L, -2, i); // put subscript onto the stack
-      int type = lua_type(L, -1);
-      if (type != LUA_TSTRING)  // do not replace with lua_isstring() because it also accepts numbers
-        lua_getfield(L, -3, "__name"),
-          luaL_error(L, "Node '%s' has malformed __parent: should be a node reference or a list of subscript strings (got %s at __parent[%d])",
-            lua_tostring(L, -1), lua_typename(L, type), i);
-      element->buf_addr = lua_tolstring(L, -1, &len);
-      element->len_used = element->len_alloc = len;
-      element++;
-      lua_pop(L, 1); // pop subscript
-    }
-    // Apply __varname to new array
-    lua_remove(L, -2);  // pop __parentlist
-    // STACK: node, newarray
-    if (lua_getfield(L, -2, "__varname") != LUA_TSTRING)
-      luaL_error(L, "Cannot generate cachearray: node has invalid __varname (got %s expected string) at depth %d", lua_typename(L, lua_type(L, -1)), depth);
-    array->varname.buf_addr = lua_tolstring(L, -1, &len);
-    array->varname.len_used = array->varname.len_alloc = len;
-    lua_pop(L, 1);  // pop __varname
-    // STACK: node, newarray
-  }
-
-  // Append __name to cachearray
-  // STACK: node, newarray
   array->depth = depth;
-  element = &array->subs[depth-1];  // -1 converts from Lua index to C index
-  if (lua_getfield(L, -2, "__name") != LUA_TSTRING)
-    luaL_error(L, "Cannot generate cachearray: node has invalid __name (got %s expected string)", lua_typename(L, lua_type(L, -1)));
-  element->buf_addr = lua_tolstring(L, -1, &len);
-  element->len_used = element->len_alloc = len;
-  // STACK: node, array, __name
-  lua_pop(L, 1);
-
-apply_cachearray:  // STACK: node, cachearray
-  if (apply) {
-    lua_pushstring(L, "__cachearray");
-    lua_pushvalue(L, -2);
-    // STACK: node, cachearray, "__cachearray", cachearray
-    lua_rawset(L, -4);
-  }
-  // Must clean up the stack since this function is recursive in C
-  lua_remove(L, -2);
+  // STACK: cachearray[, ...]
+  lua_pop(L, additions);
   return 1;
+}
+
+// Make a cachearray mutable
+// This is done by removing empty depth slots which makes it
+// so it cannot be extended without being copied.
+void _cachearray_tomutable(cachearray_t *array) {
+  int size_removed = (array->depth_alloc - array->depth) * sizeof(ydb_buffer_t);
+  // Now move subsdata down to be just above the array slots
+  char *subsdata = get_subsdata(array);
+  int subslen = array->subs[array->depth-1].buf_addr + array->subs[array->depth-1].len_used - subsdata;
+  array->depth_alloc = array->depth;
+  memcpy(subsdata-size_removed, subsdata, subslen);
+  // We might as well extend subsdata by that amount since it's already allocated anyway
+  array->subsdata_alloc += size_removed;
+  _cachearray_updateaddr(array, subsdata-size_removed);
 }
 
 // Create a mutable cachearray with changable subscripts -- intended for iteration.
@@ -309,33 +243,25 @@ apply_cachearray:  // STACK: node, cachearray
 // on any node that has a mutable cachearray.
 // @usage _yottadb.cachearray_createmutable(...)
 // @param ... parameters are passed directly into `cachearray_create()`
+// @return cachearray, subsdata_string
+// @see cachearray_create
 int cachearray_createmutable(lua_State *L) {
-  // determine number of subscripts supplied
-  int args = lua_gettop(L);
-  int depth = args - 1;
-  if (lua_type(L, 2) == LUA_TTABLE)
-    depth = luaL_len(L, 2) + args - 2;
-
-  cachearray_t *array = lua_newuserdata(L, sizeof(cachearray_t) + depth*sizeof(ydb_buffer_t));
-  // pop cachearray so we can call _cachearray_create() with the stack it expects of cachearray_create()
-  int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-  _cachearray_create(L, array);
-  // STACK: cachearray(light_userdata), subsdata_string
-  lua_rawgeti(L, LUA_REGISTRYINDEX, ref);  // restore full_userdata back onto stack
-  lua_replace(L, -3);  // replace light_userdata with full_userdata
-  luaL_unref(L, LUA_REGISTRYINDEX, ref);
-  return 2;
+  _cachearray_create(L, NULL);
+  cachearray_t *array = lua_touserdata(L, -1);
+  _cachearray_tomutable(array);
+  return 1;
 }
 
-// Substitute final subscript of cachearray with `string`.
+// Substitute final subscript of given mutable cachearray with `string`.
+// The supplied cachearray must be created with cachearray_createmutable().
 // This is used only by node:subscripts() to efficiently iterate subscripts
 // without creating a new cachearray for every single iteration.
-// The __mutable field should be set to true by the iterator as a warning to the user
-// on any node that has a mutable cachearray.
+// The __mutable field is set by the node.subscripts() iterator as a warning to the
+// user on any node that has a mutable cachearray.
 // @usage _yottadb.cachearray_subst(cachearray, string)
 // @param cachearray userdata
 // @param string to store in array index
-// @return new subsdata_string
+// @return cachearray (which could be a new mutable one if it could not hold the new subscript size)
 int cachearray_subst(lua_State *L) {
   cachearray_t *array = lua_touserdata(L, 1);
   if (!array)
@@ -343,24 +269,21 @@ int cachearray_subst(lua_State *L) {
   int depth = array->depth;
   if (!depth)
     luaL_error(L, "Parameter #1 to cachearray_subst must be a cachearray with at least one subscript");
-  int s1_len = array->subs[depth-1].buf_addr - array->varname.buf_addr;
-  size_t s2_len;
-  char * s2 = luaL_checklstring(L, 2, &s2_len);
-
-  luaL_Buffer b;
-  luaL_buffinit(L, &b);
-  luaL_addlstring(&b, array->varname.buf_addr, s1_len);
-  luaL_addlstring(&b, s2, s2_len);
-  luaL_pushresult(&b);
-
-  // Update cachearray with final address of string
-  // STACK: cachearray, subscript_string, subsdata_string
-  char *addr = lua_tostring(L, -1);
-  array->subs[depth-1].len_used = array->subs[depth-1].len_alloc = s2_len;
-  _cachearray_updateaddr(array, addr);
-  // No need to tidy up stack as Lua does it
-  //lua_replace(L, 1);
-  //lua_pop(L, 1);
+  if (array->depth_alloc > depth)
+    luaL_error(L, "Cachearray must be mutable to run cachearray_subst() on it");
+  char *subsdata = get_subsdata(array);
+  int subslen = array->subs[depth-1].buf_addr - subsdata;
+  size_t len;
+  char *string = luaL_checklstring(L, 2, &len);
+  if (subslen+(int)len > array->subsdata_alloc) {
+    array = _cachearray_realloc(L, 1, depth, subslen+len, &subsdata);
+    // set depth_alloc low to lack space so it remains a mutable cachearray that
+    // cannot grow subscripts (i.e. must be copied to have more subscripts)
+    _cachearray_tomutable(array);
+  }
+  memcpy(array->subs[depth-1].buf_addr, string, len);
+  array->subs[depth-1].len_used = array->subs[depth-1].len_alloc = len;
+  lua_pop(L, 1);  // pop string
   return 1;
 }
 
