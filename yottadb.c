@@ -40,15 +40,33 @@ int _memory_error(size_t size, int line, char *file) {
 }
 
 
-// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray, depth)
+// Fetch subscripts into supplied variables; assume Lua stack contains:
+//  (varname[, {subs}, ...]),  or:
+//  (cachearray, depth),  or:
+//  (node)
 // Any new cachearray is allocated on the C stack to be faster than lua_newuserdata(),
 // but be aware that this will expire as soon as the function returns.
+// Note: the stack looks different on exit, depending on inputs. If this needs to be fixed
+// it would be possible to always make the output stack be: (cachearray, depth)
+// But since this is not currently necessary for any caller, it would simply slow things down.
 #define getsubs(L,_subs_used,_varname,_subsarray) \
-  cachearray_t *___cachearray = lua_touserdata(L, 1); \
   cachearray_t_maxsize ___cachearray_; \
-  if (___cachearray) \
+  cachearray_t *___cachearray; \
+  int ___type = lua_type(L, 1); \
+  if (___type == LUA_TTABLE) { \
+    if (lua_rawgetfield(L, 1, "__cachearray") == LUA_TUSERDATA && lua_getfield(L, 1, "__depth") == LUA_TNUMBER) { \
+      ___cachearray = lua_touserdata(L, -2); \
+      _subs_used = luaL_checkinteger(L, -1); \
+    } else { \
+      lua_pop(L, 2); \
+      _cachearray_create(L, &___cachearray_); \
+      ___cachearray = lua_touserdata(L, -1); \
+      _subs_used = ___cachearray->depth; \
+    } \
+  } else if (___type == LUA_TUSERDATA) { \
+    ___cachearray = lua_touserdata(L, 1); \
     _subs_used = luaL_checkinteger(L, 2); \
-  else { \
+  } else { \
     _cachearray_create(L, &___cachearray_); \
     ___cachearray = lua_touserdata(L, -1); \
     _subs_used = ___cachearray->depth; \
@@ -699,6 +717,8 @@ static const luaL_Reg yottadb_functions[] = {
   {"cachearray_subst", cachearray_subst},
   {"cachearray_append", cachearray_append},
   {"cachearray_tostring", cachearray_tostring},
+  {"cachearray_depth", cachearray_depth},
+  {"cachearray_subscript", cachearray_subscript},
   #if LUA_VERSION_NUM < 502
     {"string_format", str_format},
     {"table_unpack", unpack},
