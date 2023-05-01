@@ -5,7 +5,12 @@
 
 /* Version History
 v2.0 Major efficiency rewrite
- - Removed obsolete ydb.nodes() in favour of the more lua_esque gettree()
+ - 1100% faster node creation
+ - 350% faster node iteration or 600% for large 10-subscript nodes; 
+ - 500% faster node tree traversal
+ - For more specific gains from each different type of tweak, see individual commits on the efficiency PR
+ - Removed obsolete ydb.nodes() in favour of the more Lua-esque gettree()
+ - Improved docs and added generated docs for C files in docs/yottadb_c.html
 v1.2 Version number bump purely because MLua benchmark now requires this version of gettree()
  - Enhance node:gettree() so that you can easily use it as a generic tree iterator.
 v1.1 Signal safety and robustness improvements
@@ -20,7 +25,7 @@ v0.1 Initial release by Mitchel:
 */
 
 // Define version: Maj,Min
-#define LUA_YOTTADB_VERSION 1,2
+#define LUA_YOTTADB_VERSION 2,0
 #define LUA_YOTTADB_VERSION_STRING   WRAP_PARAMETER(CREATE_VERSION_STRING, LUA_YOTTADB_VERSION)   /* "X.Y" format */
 #define LUA_YOTTADB_VERSION_NUMBER   WRAP_PARAMETER(CREATE_VERSION_NUMBER, LUA_YOTTADB_VERSION)   /* XXYY integer format */
 // Version creation helper macros
