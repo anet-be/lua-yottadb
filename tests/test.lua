@@ -175,15 +175,11 @@ function test_get()
   -- Error handling.
   local gvns = {{'^testerror'}, {'^testerror', {'sub1'}}}
   for i = 1, #gvns do
-    local ok, e = pcall(_yottadb.get, table.unpack(gvns[i]))
-    assert(not ok)
-    asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF)
+    asserteq(_yottadb.get(table.unpack(gvns[i])), nil)
   end
   local lvns = {{'testerror'}, {'testerror', {'sub1'}}}
   for i = 1, #lvns do
-    local ok, e = pcall(_yottadb.get, table.unpack(lvns[i]))
-    assert(not ok)
-    asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+    asserteq(_yottadb.get(table.unpack(lvns[i])), nil)
   end
 
   -- Handling of large values.
@@ -232,38 +228,28 @@ function test_delete()
   _yottadb.set('test8', 'test8value')
   asserteq(_yottadb.get('test8'), 'test8value')
   _yottadb.delete('test8')
-  local ok, e = pcall(_yottadb.get, 'test8')
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test8'), nil)
 
   _yottadb.set('test10', {'sub1'}, 'test10value')
   asserteq(_yottadb.get('test10', {'sub1'}), 'test10value')
   _yottadb.delete('test10', {'sub1'})
-  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test10', {'sub1'}), nil)
 
   -- test deleting a root node value by setting it to nil
   _yottadb.set('test10', 'test10value')
   asserteq(_yottadb.get('test10'), 'test10value')
   yottadb.set('test10', nil)
-  ok, e = pcall(_yottadb.get, 'test10')
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test10'), nil)
   -- test deleting subnode value by setting it to nil
   _yottadb.set('test10', {'sub1'}, 'test10value')
   asserteq(_yottadb.get('test10', {'sub1'}), 'test10value')
   yottadb.set('test10', {'sub1'}, nil)  -- Note: testing delete functionality of yottadb.set(), not _yottadb.set()
-  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test10', {'sub1'}), nil)
   -- test deleting subnode-list value by setting it to nil
   _yottadb.set('test10', {'sub1'}, 'test10value')
   asserteq(_yottadb.get('test10', {'sub1'}), 'test10value')
   yottadb.set('test10', 'sub1', nil)
-  ok, e = pcall(_yottadb.get, 'test10', {'sub1'})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test10', {'sub1'}), nil)
 
   -- Delete tree.
   _yottadb.set('test12', 'test12 node value')
@@ -271,27 +257,19 @@ function test_delete()
   asserteq(_yottadb.get('test12'), 'test12 node value')
   asserteq(_yottadb.get('test12', {'sub1'}), 'test12 subnode value')
   _yottadb.delete('test12', _yottadb.YDB_DEL_TREE)
-  ok, e = pcall(_yottadb.get, 'test12')
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
-  ok, e = pcall(_yottadb.get, 'test12', {'sub1'})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test12'), nil)
+  asserteq(_yottadb.get('test12', {'sub1'}), nil)
 
   _yottadb.set('test11', {'sub1'}, 'test11value')
   asserteq(_yottadb.get('test11', {'sub1'}), 'test11value')
   _yottadb.delete('test11', {'sub1'}, _yottadb.YDB_DEL_NODE)
-  ok, e = pcall(_yottadb.get, 'test11', {'sub1'})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('test11', {'sub1'}), nil)
 
   -- Validate inputs.
   validate_varname_inputs(_yottadb.delete)
   validate_subsarray_inputs(_yottadb.delete)
 
-  ok, e = pcall(_yottadb.delete, 'test', {'b'}, nil)
-  assert(not ok)
-  assert(e:find('expected'))
+  _yottadb.delete('test', {'b'}, nil)
 end
 
 function test_delete_excl()
@@ -361,20 +339,25 @@ function test_lock_incr()
   assert(t2 - t1 < 0.1)
 
   -- Test blocking other.
-  local keys = {
+  local nodes_text = {
     {'^test1'},
     {'^test2', {'sub1'}},
     {'^test2', {'sub1', 'sub2'}}
   }
-  _yottadb.lock(keys)
-  for i = 1, #keys do
-    local cmd = string.format('%s tests/lock.lua "%s" %s', lua_exec, keys[i][1], table.concat(keys[i][2] or {}, ' '))
+  local nodes = {
+    {_yottadb.cachearray_create('^test1')},
+    {_yottadb.cachearray_create('^test2', {'sub1'})},
+    {_yottadb.cachearray_create('^test2', {'sub1', 'sub2'})}
+  }
+  _yottadb.lock(nodes)
+  for i = 1, #nodes do
+    local cmd = string.format('%s tests/lock.lua "%s" %s', lua_exec, nodes_text[i][1], table.concat(nodes_text[i][2] or {}, ' '))
     local _1, _2, status = env_execute(cmd)
     asserteq(status, 1)
   end
   _yottadb.lock() -- release all locks
-  for i = 1, #keys do
-    local cmd = string.format('%s tests/lock.lua "%s" %s', lua_exec, keys[i][1], table.concat(keys[i][2] or {}, ' '))
+  for i = 1, #nodes do
+    local cmd = string.format('%s tests/lock.lua "%s" %s', lua_exec, nodes_text[i][1], table.concat(nodes_text[i][2] or {}, ' '))
     local _, _, status = env_execute(cmd)
     asserteq(status, 0)
   end
@@ -382,7 +365,7 @@ function test_lock_incr()
   -- Test lock being blocked.
   background_execute(lua_exec .. ' tests/lock.lua "^test1"')
   os.execute('sleep 0.1')
-  local ok, e = pcall(_yottadb.lock, {{"^test1"}})
+  local ok, e = pcall(_yottadb.lock, {{_yottadb.cachearray_create("^test1")}})
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_LOCK_TIMEOUT)
 
@@ -398,72 +381,48 @@ end
 
 function test_lock()
   -- Validate inputs.
-  local ok, e = pcall(_yottadb.lock, {{'\128'}})
+  local ok, e = pcall(_yottadb.lock, {{_yottadb.cachearray_create('\128')}})
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_INVVARNAME)
-
   ok, e = pcall(_yottadb.lock, true)
   assert(not ok)
-  assert(e:find('table of keys expected'))
-
-  --local keys = {}
-  --for i = 1, _yottadb.YDB_LOCK_MAX_KEYS do keys[i] = {'test' .. i} end
-  --ok, e = pcall(_yottadb.lock, keys)
-  --assert(ok)
-
-  --keys[#keys + 1] = {'test' .. (#keys + 1)}
-  --ok, e = pcall(_yottadb.lock, keys)
-  --assert(not ok)
-  --asserteq(yottadb.get_error_code(e), 0)
+  assert(e:find('table of') and e:find('node specifiers expected'))
 
   ok, e = pcall(_yottadb.lock, {true})
   assert(not ok)
-  assert(e:find('table of keys expected'))
+  assert(e:find('table of') and e:find('node specifiers expected'))
 
-  ok, e = pcall(_yottadb.lock, {{}})
-  assert(not ok)
-  assert(e:find('varnames must be strings'))
-
-  --ok, e = pcall(_yottadb.lock, {{'varname', {'subscript'}, 'extra'}})
-  --assert(not ok)
-  --assert(e:find('too many'))
-
-  ok, e = pcall(_yottadb.lock, {{string.rep('a', _yottadb.YDB_MAX_IDENT)}})
+  ok, e = pcall(_yottadb.lock, {{_yottadb.cachearray_create(string.rep('a', _yottadb.YDB_MAX_IDENT))}})
   assert(ok)
 
-  ok, e = pcall(_yottadb.lock, {{string.rep('a', _yottadb.YDB_MAX_IDENT + 1)}})
+  ok, e = pcall(_yottadb.lock, {{_yottadb.cachearray_create(string.rep('a', _yottadb.YDB_MAX_IDENT + 1))}})
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_VARNAME2LONG)
 
-  ok, e = pcall(_yottadb.lock, {{'test', true}})
+  ok, e = pcall(_yottadb.lock, {{_yottadb.cachearray_create('test'), true}})
   assert(not ok)
-  assert(e:find('subs must be tables'))
+  assert(e:find('element 2 must be an integer'))
 
   local subsarray = {}
   for i = 1, _yottadb.YDB_MAX_SUBS do subsarray[i] = 'test' .. i end
-  ok, e = pcall(_yottadb.lock, {{'test', subsarray}})
+  ok, e = pcall(_yottadb.lock, {{_yottadb.cachearray_create('test', subsarray)}})
   assert(ok)
-
-  subsarray[#subsarray + 1] = 'test' .. (#subsarray + 1)
-  ok, e = pcall(_yottadb.lock, {{'test', subsarray}})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_MAXNRSUBSCRIPTS)
-
-  ok, e = pcall(_yottadb.lock, {{'test', {true}}})
-  assert(not ok)
-  assert(e:find('subs must be strings'))
-
-  ok, e = pcall(_yottadb.lock, {{'test', {string.rep('a', _yottadb.YDB_MAX_STR)}}})
-  assert(not ok)
-
-  ok, e = pcall(_yottadb.lock, {{'test', {string.rep('a', _yottadb.YDB_MAX_STR + 1)}}})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_INVSTRLEN)
 end
 
 local function test_lock_decr()
   validate_varname_inputs(_yottadb.lock_decr)
   validate_subsarray_inputs(_yottadb.lock_decr)
+end
+
+-- This function simulates the operation of an obsolete version of _yottadb.get()
+-- which raised an error if the variable was not found instead of returning nil.
+-- Its purpose is to use in the transaction tests below, which were designed for
+-- the old version
+local function test_get(...)
+  local retval = _yottadb.get(...)
+  if retval == nil then
+    error(_yottadb.message(_yottadb.YDB_ERR_GVUNDEF))
+  end
 end
 
 local function tp_set(varname, subs, value, retval)
@@ -552,7 +511,7 @@ function test_tp_return_YDB_TP_RESTART()
 
   _yottadb.tp(tp_conditional_set, key1, key2, value, tracker)
 
-  local ok, e = pcall(_yottadb.get, table.unpack(key1))
+  local ok, e = pcall(test_get, table.unpack(key1))
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF)
   asserteq(_yottadb.get(table.unpack(key2)), value)
@@ -582,11 +541,11 @@ function test_tp_nested_return_YDB_TP_RESTART()
     return status -- TODO: _yottadb.tp_restart() to throw error that can be caught and bubbled up?
   end)
 
-  local ok, e = pcall(_yottadb.get, table.unpack(key1_1))
+  local ok, e = pcall(test_get, table.unpack(key1_1))
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF)
   asserteq(tonumber(_yottadb.get(table.unpack(tracker1))), 1)
-  ok, e = pcall(_yottadb.get, table.unpack(key2_1))
+  ok, e = pcall(test_get, table.unpack(key2_1))
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF)
   asserteq(_yottadb.get(table.unpack(key2_2)), value2)
@@ -614,9 +573,9 @@ function test_tp_return_YDB_TP_RESTART_reset_all()
   end)
 
   asserteq(_yottadb.get(table.unpack(key)), '1')
-  local ok, e = pcall(_yottadb.get, table.unpack(tracker))
+  local ok, e = pcall(test_get, table.unpack(tracker))
   assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF) -- GVUNDEF instead of LVUNDEF used here: a kludge for test_get()
   _yottadb.delete(key[1], _yottadb.YDB_DEL_TREE)
 end
 
@@ -657,7 +616,7 @@ function test_tp_raise_error()
   local key = {'^tptests', 'test_tp_raise_error'}
   asserteq(_yottadb.data(table.unpack(key)), _yottadb.YDB_DATA_UNDEF)
 
-  local ok, e = pcall(_yottadb.tp, _yottadb.get, key[1], key[2])
+  local ok, e = pcall(_yottadb.tp, test_get, key[1], key[2])
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF)
   _yottadb.delete(key[1], _yottadb.YDB_DEL_TREE)
@@ -668,7 +627,7 @@ function test_tp_nested_raise_error()
   asserteq(_yottadb.data(table.unpack(key)), _yottadb.YDB_DATA_UNDEF)
 
   local ok, e = pcall(_yottadb.tp, function()
-    _yottadb.tp(_yottadb.get, key[1], key[2])
+    _yottadb.tp(test_get, key[1], key[2])
   end)
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_GVUNDEF)
@@ -936,12 +895,8 @@ function test_delete_excl()
   _yottadb.set('testdeleteexcl2', {'sub1'}, '2')
   _yottadb.set('testdeleteexclexception', {'sub1'}, '3')
   _yottadb.delete_excl({'testdeleteexclexception'})
-  local ok, e = pcall(_yottadb.get, 'testdeleteexcl1')
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
-  ok, e = pcall(_yottadb.get, 'testdeleteexcl2', {'sub1'})
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), _yottadb.YDB_ERR_LVUNDEF)
+  asserteq(_yottadb.get('testdeleteexcl1'), nil)
+  asserteq(_yottadb.get('testdeleteexcl2', {'sub1'}), nil)
   asserteq(_yottadb.get('testdeleteexclexception', {'sub1'}), '3')
 
   -- Validate inputs.
@@ -1216,72 +1171,6 @@ function test_module_node_previous()
   end
 end
 
-function test_module_nodes()
-  simple_data()
-  local nodes = {
-    {},
-    {'sub1'},
-    {'sub1', 'subsub1'},
-    {'sub1', 'subsub2'},
-    {'sub1', 'subsub3'},
-    {'sub2'},
-    {'sub2', 'subsub1'},
-    {'sub2', 'subsub2'},
-    {'sub2', 'subsub3'},
-    {'sub3'},
-    {'sub3', 'subsub1'},
-    {'sub3', 'subsub2'},
-    {'sub3', 'subsub3'},
-  }
-
-  local i = 1
-  for node in yottadb.nodes('^test4') do
-    asserteq(table.concat(node), table.concat(nodes[i]))
-    i = i + 1
-  end
-
-  i = 7
-  for node in yottadb.nodes('^test4', {'sub2'}) do
-    asserteq(table.concat(node), table.concat(nodes[i]))
-    i = i + 1
-  end
-
-  i = 8
-  for node in yottadb.nodes('^test4', {'sub2', 'subsub1'}) do
-    asserteq(table.concat(node), table.concat(nodes[i]))
-    i = i + 1
-  end
-
-  local rnodes = {}
-  for i = 1, #nodes do rnodes[i] = nodes[#nodes + 1 - i] end
-
-  i = 1
-  for node in yottadb.nodes('^test4', true) do
-    asserteq(table.concat(node), table.concat(rnodes[i]))
-    i = i + 1
-  end
-
-  i = 5
-  for node in yottadb.nodes('^test4', {'sub2'}, true) do
-    asserteq(table.concat(node), table.concat(rnodes[i]))
-    i = i + 1
-  end
-
-  i = 5
-  for node in yottadb.nodes('^test4', {'sub2', 'subsub3'}, true) do
-    asserteq(table.concat(node), table.concat(rnodes[i]))
-    i = i + 1
-  end
-
-  local ok, e = pcall(yottadb.nodes(string.rep('a', yottadb.YDB_MAX_IDENT + 1)))
-  assert(not ok)
-  assert(e:find("name length exceeds"))
-
-  ok, e = pcall(yottadb.nodes('\128'))
-  assert(not ok)
-  asserteq(yottadb.get_error_code(e), yottadb.YDB_ERR_INVVARNAME)
-end
-
 function test_module_subscript_next()
   simple_data()
   asserteq(yottadb.subscript_next('^test1'), '^test2')
@@ -1399,76 +1288,6 @@ function test_module_subscripts()
   asserteq(yottadb.get_error_code(e), yottadb.YDB_ERR_INVVARNAME)
 end
 
-function test_module_all_nodes()
-  simple_data()
-  local all_nodes = {}
-  for gblname in yottadb.subscripts('^%') do
-    for node_subs in yottadb.nodes(gblname) do
-      all_nodes[#all_nodes + 1] = {gblname, node_subs, yottadb.get(gblname, node_subs)}
-    end
-  end
-  for i, expected in ipairs(SIMPLE_DATA) do
-    asserteq(all_nodes[i][1], expected[1][1])
-    asserteq(table.concat(all_nodes[i][2]), table.concat(expected[1][2]))
-    asserteq(all_nodes[i][3], expected[2])
-  end
-
-  -- Reverse subscripts.
-  local sdata = {
-    {{"^test7", {"sub1\128",}}, "test7value"},
-    {{"^test7", {"sub2\128", "sub7"}}, "test7sub2value"},
-    {{"^test7", {"sub3\128", "sub7"}}, "test7sub3value"},
-    {{"^test7", {"sub4\128", "sub7"}}, "test7sub4value"},
-    {{"^test6", {"sub6", "subsub6"}}, "test6value"},
-    {{"^test4", {}}, "test4"},
-    {{"^test4", {"sub1",}}, "test4sub1"},
-    {{"^test4", {"sub1", "subsub1"}}, "test4sub1subsub1"},
-    {{"^test4", {"sub1", "subsub2"}}, "test4sub1subsub2"},
-    {{"^test4", {"sub1", "subsub3"}}, "test4sub1subsub3"},
-    {{"^test4", {"sub2",}}, "test4sub2"},
-    {{"^test4", {"sub2", "subsub1"}}, "test4sub2subsub1"},
-    {{"^test4", {"sub2", "subsub2"}}, "test4sub2subsub2"},
-    {{"^test4", {"sub2", "subsub3"}}, "test4sub2subsub3"},
-    {{"^test4", {"sub3",}}, "test4sub3"},
-    {{"^test4", {"sub3", "subsub1"}}, "test4sub3subsub1"},
-    {{"^test4", {"sub3", "subsub2"}}, "test4sub3subsub2"},
-    {{"^test4", {"sub3", "subsub3"}}, "test4sub3subsub3"},
-    {{"^test3", {}}, "test3value1"},
-    {{"^test3", {"sub1",}}, "test3value2"},
-    {{"^test3", {"sub1", "sub2"}}, "test3value3"},
-    {{"^test2", {"sub1",}}, "test2value"},
-    {{"^test1", {}}, "test1value"},
-    {{"^Test5", {}}, "test5value"},
-  }
-  all_nodes = {}
-  for gblname in yottadb.subscripts('^zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz', true) do
-    for node_subs in yottadb.nodes(gblname) do
-      all_nodes[#all_nodes + 1] = {gblname, node_subs, yottadb.get(gblname, node_subs)}
-    end
-  end
-  for i, expected in ipairs(sdata) do
-    asserteq(all_nodes[i][1], expected[1][1])
-    asserteq(table.concat(all_nodes[i][2]), table.concat(expected[1][2]))
-    asserteq(all_nodes[i][3], expected[2])
-  end
-
-  -- Reverse subscripts and nodes.
-  local reversed_data = {}
-  for i = 1, #SIMPLE_DATA do reversed_data[i] = SIMPLE_DATA[#SIMPLE_DATA + 1 - i] end
-
-  all_nodes = {}
-  for gblname in yottadb.subscripts('^zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz', true) do
-    for node_subs in yottadb.nodes(gblname, true) do
-      all_nodes[#all_nodes + 1] = {gblname, node_subs, yottadb.get(gblname, node_subs)}
-    end
-  end
-  for i, expected in ipairs(reversed_data) do
-    asserteq(all_nodes[i][1], expected[1][1])
-    asserteq(table.concat(all_nodes[i][2]), table.concat(expected[1][2]))
-    asserteq(all_nodes[i][3], expected[2])
-  end
-end
-
 function test_module_lock()
   -- Validate inputs.
   local ok, e = pcall(yottadb.lock, true)
@@ -1481,11 +1300,12 @@ function test_module_lock()
 end
 
 function test_key()
+  local tostr = _yottadb.cachearray_tostring
   simple_data()
 
   local key = yottadb.key('^test1')
   asserteq(key.__varname, '^test1')
-  asserteq(#key.__subsarray, 0)
+  asserteq(key.__depth, 0)
   asserteq(key.name, '^test1')
   asserteq(key.value, 'test1value')
 
@@ -1501,10 +1321,6 @@ function test_key()
   key.value = 'smoketest3local'
   asserteq(rawget(key, 'value'), nil)
   asserteq(key.value, 'smoketest3local')
-
-  --key = yottadb.key('^myglobal')('sub1')('sub2')
-  --key = yottadb.key('sub3', key)
-  --asserteq(tostring(key), '^myglobal("sub1","sub2","sub3")')
 
   key = yottadb.key('^nonexistent')
   asserteq(key.value, nil)
@@ -1727,16 +1543,16 @@ function test_node()
   simple_data()
 
   local node = yottadb.node('^test1')
-  asserteq(node.__varname, '^test1')
-  asserteq(#node.__subsarray, 0)
+  asserteq(node:__varname(), '^test1')
+  asserteq(#node:__subsarray(), 0)
   asserteq(node:name(), '^test1')
   asserteq(node:get(), 'test1value')
   asserteq(node:__get(), 'test1value')
 
   node = yottadb.node('^test2', 'sub1')
-  asserteq(node.__varname, '^test2')
-  asserteq(#node.__subsarray, 1)
-  asserteq(node.__subsarray[1], 'sub1')
+  asserteq(node:__varname(), '^test2')
+  asserteq(#node:__subsarray(), 1)
+  asserteq(node:__subsarray()[1], 'sub1')
   asserteq(node:name(), 'sub1')
   asserteq(node:get(), 'test2value')
   asserteq(node, yottadb.node('^test2')('sub1'))
@@ -1818,19 +1634,19 @@ function test_node()
   asserteq(yottadb.node('^test3', 'sub1', 'sub2').__, 'test3value3')
 
   -- Subsarray.
-  asserteq(#yottadb.node('^test3').__subsarray, 0)
-  local subsarray = yottadb.node('^test3').sub1.__subsarray
+  asserteq(#yottadb.node('^test3'):__subsarray(), 0)
+  local subsarray = yottadb.node('^test3').sub1:__subsarray()
   asserteq(#subsarray, 1)
   asserteq(subsarray[1], 'sub1')
-  local subsarray = yottadb.node('^test3', 'sub1', 'sub2').__subsarray
+  local subsarray = yottadb.node('^test3', 'sub1', 'sub2'):__subsarray()
   asserteq(#subsarray, 2)
   asserteq(subsarray[1], 'sub1')
   asserteq(subsarray[2], 'sub2')
 
   -- Varname.
-  asserteq(yottadb.node('^test3').__varname, '^test3')
-  asserteq(yottadb.node('^test3', 'sub1').__varname, '^test3')
-  asserteq(yottadb.node('^test3', 'sub1', 'sub2').__varname, '^test3')
+  asserteq(yottadb.node('^test3'):varname(), '^test3')
+  asserteq(yottadb.node('^test3', 'sub1'):__varname(), '^test3')
+  asserteq(yottadb.node('^test3', 'sub1', 'sub2'):__varname(), '^test3')
 
   -- Data.
   asserteq(yottadb.node('nodata'):data(), yottadb.YDB_DATA_UNDEF)
@@ -2252,10 +2068,10 @@ function test_signals()
 end
 
 function test_cachearray()
-  local ok, e, node, cachearray, newarray, expected, varname, subs
+  local ok, e, node, cachearray, depth, newarray, expected, varname, subs
 
   local cache_create = _yottadb.cachearray_create
-  local cache_createmutable = _yottadb.cachearray_createmutable
+  local cache_tomutable = _yottadb.cachearray_tomutable
   local cache_subst = _yottadb.cachearray_subst
   local cache_append = _yottadb.cachearray_append
   local cache_tostring = _yottadb.cachearray_tostring
@@ -2285,11 +2101,22 @@ function test_cachearray()
   -- Assume that ARRAY_OVERALLOC is 5 in array.c
   -- This means that if you append more than 5 subscripts, it will have to allocate a new cachearray
   cachearray = cache_create('var', {'person','3'}, 'male')
-  newarray = cache_append(cachearray,1,2,3,4,5)
+  newarray, depth = cache_append(cachearray,3,1,2,3,4,5)
+  asserteq(depth, 8)
   assert(cachearray == newarray)  -- should be same cachearray until ARRAY_OVERALLOC exceded
-  newarray = cache_append(cachearray,6)
+  newarray, depth = cache_append(cachearray,8,6)
+  asserteq(depth, 9)
   assert(cachearray ~= newarray)
   asserteq(cache_tostring(newarray), '"person",3,"male",1,2,3,4,5,6')
+  -- Make sure we can append to a node shallower than the cachearray's depth
+  cachearray, depth = cache_append(newarray,2,'male',1,2)
+  asserteq(depth, 5)
+  asserteq(cachearray, newarray)  -- should be the same since we used identical subscripts
+  asserteq(cache_tostring(cachearray), '"person",3,"male",1,2')
+  cachearray, depth = cache_append(newarray,2,'female',1)
+  asserteq(depth, 4)
+  asserteq(cache_tostring(cachearray), '"person",3,"female",1')
+  assert(newarray ~= cachearray)  -- should be different since we change a subscript
 
   subs = {'person','3','male','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19', '20'}
   cachearray = cache_create('var', subs)
@@ -2298,22 +2125,23 @@ function test_cachearray()
   asserteq(cache_tostring(cachearray), expected)
 
   subs = {'person', 'male'}
-  cachearray = cache_createmutable('var', subs)
+  cachearray = cache_tomutable(cache_create('var', subs))
   asserteq(cache_tostring(cachearray), '"person","male"')
   local cachearray2 = cache_subst(cachearray, 'female')
   asserteq(cache_tostring(cachearray2), '"person","female"')
   assert(cachearray == cachearray2)
-  local bigsub = string.rep('b', 1000)
-  cachearray2 = cache_subst(cachearray, bigsub) -- make new subscript big enough to force reallocation of cachearray
+  local bigsub = string.rep('b', 1000)  -- make new subscript big enough to force reallocation of cachearray
+  cachearray2 = cache_subst(cachearray, bigsub)
   asserteq(cache_tostring(cachearray2), '"person","' .. bigsub .. '"')
   assert(cachearray ~= cachearray2)
-  local cachearray3 = cache_append(cachearray2, 'sub3')
+  local cachearray3
+  cachearray3, depth = cache_append(cachearray2, 2, 'sub3')
+  asserteq(depth, 3)
   asserteq(cache_tostring(cachearray3), '"person","' .. bigsub .. '","sub3"')
   assert(cachearray2 ~= cachearray3)  -- make sure child of a *reallocated* mutable cachearray is still non-extendable
 
   -- Validate inputs.
   validate_subsarray_inputs(_yottadb.cachearray_create, true)
-  validate_subsarray_inputs(_yottadb.cachearray_createmutable, true)
 end
 
 -- Run tests.

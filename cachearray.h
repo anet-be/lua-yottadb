@@ -12,6 +12,8 @@
 #define YDB_LARGE_SUBSLEN (YDB_TYPICAL_SUBLEN*YDB_MAX_SUBS)
 
 #define get_subsdata(array) (char *)&(array)->subs[(array)->depth_alloc];
+#define get_subslen(array, depth, subsdata) (&(array)->varname+(depth))->buf_addr + (&(array)->varname+(depth))->len_used - (subsdata);
+
 #define member_size(type, member) sizeof( ((type *)0)->member )
 #define member_len(type, member) ( member_size(type, member) / sizeof(((type *)0)->member[0]) )
 
@@ -37,11 +39,13 @@ typedef struct cachearray_t_maxsize {
   char _subsdata[YDB_LARGE_SUBSLEN];
 } cachearray_t_maxsize;
 
-int _cachearray_create(lua_State *L, cachearray_t_maxsize *array_prealloc);
+cachearray_t *_cachearray_create(lua_State *L, cachearray_t_maxsize *array_prealloc);
 int cachearray_create(lua_State *L);
-int cachearray_createmutable(lua_State *L);
+int cachearray_tomutable(lua_State *L);
 int cachearray_subst(lua_State *L);
 int cachearray_append(lua_State *L);
 int cachearray_tostring(lua_State *L);
+int cachearray_depth(lua_State *L);
+int cachearray_subscript(lua_State *L);
 
 #endif // CACHEARRAY_H

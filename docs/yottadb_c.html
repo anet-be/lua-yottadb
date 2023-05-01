@@ -37,8 +37,8 @@
 <br/>
 <li><a href="#Functions"><b>Functions</b></a></li>
     <li><a href="#get">get (varname, subs, ...)</a></li>
-    <li><a href="#set">set (varname, subs, ..., value)</a></li>
     <li><a href="#delete">delete (varname, subs, ..., type)</a></li>
+    <li><a href="#set">set (varname, subs, ..., value)</a></li>
     <li><a href="#data">data (varname, subs, ..., ...)</a></li>
     <li><a href="#lock_incr">lock_incr (varname, subs, ..., timeout)</a></li>
     <li><a href="#lock_decr">lock_decr (varname, subs, ...)</a></li>
@@ -48,7 +48,7 @@
     <li><a href="#subscript_previous">subscript_previous (varname, subs, ...)</a></li>
     <li><a href="#node_next">node_next (varname, subs, ...)</a></li>
     <li><a href="#node_previous">node_previous (varname, subs)</a></li>
-    <li><a href="#lock">lock (keys, timeout)</a></li>
+    <li><a href="#lock">lock (node_specifiers, timeout)</a></li>
     <li><a href="#delete_excl">delete_excl (varnames)</a></li>
     <li><a href="#incr">incr (varname, subs, increment)</a></li>
     <li><a href="#str2zwr">str2zwr (s)</a></li>
@@ -64,8 +64,10 @@
 <li><a href="#Cachearray_functions"><b>Cachearray functions </b></a></li>
     <li><a href="#array_prealloc">array_prealloc</a></li>
     <li><a href="#cachearray">cachearray (varname[, t1[, ...]])</a></li>
-    <li><a href="#cachearray_append">cachearray_append (cachearray[, ...])</a></li>
+    <li><a href="#cachearray_append">cachearray_append (cachearray, depth[, ...])</a></li>
     <li><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></li>
+    <li><a href="#cachearray_depth">cachearray_depth (cachearray)</a></li>
+    <li><a href="#cachearray_subscript">cachearray_subscript (depth)</a></li>
 
 
 </ul>
@@ -86,15 +88,15 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#get">get (varname, subs, ...)</a></td>
-	<td class="summary">Gets the value of a variable/node.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#set">set (varname, subs, ..., value)</a></td>
-	<td class="summary">Sets the value of a variable/node.</td>
+	<td class="summary">Gets the value of a variable/node or nil if it has no data.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#delete">delete (varname, subs, ..., type)</a></td>
 	<td class="summary">Deletes a node or tree of nodes.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set">set (varname, subs, ..., value)</a></td>
+	<td class="summary">Sets the value of a variable/node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#data">data (varname, subs, ..., ...)</a></td>
@@ -133,7 +135,7 @@
 	<td class="summary">Returns the full subscript table of the node prior to a variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#lock">lock (keys, timeout)</a></td>
+	<td class="name" nowrap><a href="#lock">lock (node_specifiers, timeout)</a></td>
 	<td class="summary">Releases all locks held and attempts to acquire all requested locks, waiting if requested.</td>
 	</tr>
 	<tr>
@@ -187,12 +189,20 @@
 	<td class="summary">Generate and return a C-style array of subscripts as a userdata.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#cachearray_append">cachearray_append (cachearray[, ...])</a></td>
+	<td class="name" nowrap><a href="#cachearray_append">cachearray_append (cachearray, depth[, ...])</a></td>
 	<td class="summary">Append subscripts to an existing cachearray, creating a copy if it is full at this depth.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></td>
 	<td class="summary">Return string of cachearray subscripts or empty string if no subscripts.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cachearray_depth">cachearray_depth (cachearray)</a></td>
+	<td class="summary">Return the depth of the cachearray.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#cachearray_subscript">cachearray_subscript (depth)</a></td>
+	<td class="summary">Return the cachearray subscript at the specified depth.</td>
 	</tr>
 </table>
 
@@ -208,8 +218,7 @@
     <strong>get (varname, subs, ...)</strong>
     </dt>
     <dd>
-    Gets the value of a variable/node.
- Raises an error if variable/node does not exist.
+    Gets the value of a variable/node or nil if it has no data.
 
 
     <h3>Parameters:</h3>
@@ -228,7 +237,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        string
+        string or nil if node has no data
     </ol>
 
 
@@ -241,41 +250,6 @@
 
 </dd>
     <dt>
-    <a name = "set"></a>
-    <strong>set (varname, subs, ..., value)</strong>
-    </dt>
-    <dd>
-    Sets the value of a variable/node.
- Raises an error of no such intrinsic variable exists.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">varname</span>
-         string
-        </li>
-        <li><span class="parameter">subs</span>
-        [opt] table of subscripts
-        </li>
-        <li><span class="parameter">...</span>
-        [opt] is a list of subscripts
-        </li>
-        <li><span class="parameter">value</span>
-         string or number convertible to string
-        </li>
-    </ul>
-
-
-
-
-    <h3>Usage:</h3>
-    <ul>
-        <li><pre class="example">_yottadb.set(varname[, {subs} | ...], value),  <span class="keyword">or</span></pre></li>
-        <li><pre class="example">_yottadb.set(cachearray, depth, value)</pre></li>
-    </ul>
-
-</dd>
-    <dt>
     <a name = "delete"></a>
     <strong>delete (varname, subs, ..., type)</strong>
     </dt>
@@ -284,6 +258,7 @@
  <code>_yottadb.YDB_DEL_xxxx</code> are boolean constants and must be supplied as actual boolean
  (not merely convertable to boolean), so that delete() can distinguish them from subscripts.
  Note: <code>_yottadb.YDB_DEL_xxxx</code> values differ from the values in <code>libyottadb.h</code>, but they work the same.
+ Specifying type=nil or not supplied is the same as <em>yottadb.YDB</em>DEL_NODE
 
 
     <h3>Parameters:</h3>
@@ -309,6 +284,47 @@
     <ul>
         <li><pre class="example">_yottadb.delete(varname[, {subs} | ...][, <span class="global">type</span>=_yottadb.YDB_DEL_xxxx])</pre></li>
         <li><pre class="example">_yottadb.delete(cachearray, depth[, <span class="global">type</span>=_yottadb.YDB_DEL_xxxx])</pre></li>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "set"></a>
+    <strong>set (varname, subs, ..., value)</strong>
+    </dt>
+    <dd>
+    Sets the value of a variable/node.
+ Raises an error of no such intrinsic variable exists.
+ if value = nil then perform delete(node) instead
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         string
+        </li>
+        <li><span class="parameter">subs</span>
+        [opt] table of subscripts
+        </li>
+        <li><span class="parameter">...</span>
+        [opt] is a list of subscripts
+        </li>
+        <li><span class="parameter">value</span>
+         string or number convertible to string
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        value
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <li><pre class="example">_yottadb.set(varname[, {subs} | ...], value),  <span class="keyword">or</span></pre></li>
+        <li><pre class="example">_yottadb.set(cachearray, depth, value)</pre></li>
     </ul>
 
 </dd>
@@ -624,7 +640,7 @@
 </dd>
     <dt>
     <a name = "lock"></a>
-    <strong>lock (keys, timeout)</strong>
+    <strong>lock (node_specifiers, timeout)</strong>
     </dt>
     <dd>
     Releases all locks held and attempts to acquire all requested locks, waiting if requested.
@@ -633,8 +649,8 @@
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">keys</span>
-        }[opt] table of {varname[, {subs}]} variable/nodes to lock
+        <li><span class="parameter">node_specifiers</span>
+        }[opt] table of {cachearray, depth} variable/nodes to lock
         </li>
         <li><span class="parameter">timeout</span>
         [opt] timeout in seconds to wait for lock
@@ -646,7 +662,7 @@
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">_yottadb.lock([{keys}[, timeout=<span class="number">0</span>]])</pre>
+        <pre class="example">_yottadb.lock([{node_specifiers}[, timeout=<span class="number">0</span>]])</pre>
     </ul>
 
 </dd>
@@ -682,7 +698,7 @@
     Increments the numeric value of a variable/node.
  Raises an error on overflow.
  Caution: increment is <em>not</em> optional if <code>...</code> list of subscript is provided.
- Otherwise incr cannot tell whether it is a subscript or an increment.
+ Otherwise incr cannot tell whether last parameter is a subscript or an increment.
 
 
     <h3>Parameters:</h3>
@@ -1043,7 +1059,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     <h3>Returns:</h3>
     <ol>
 
-        cachearray
+        cachearray, depth
     </ol>
 
 
@@ -1056,17 +1072,23 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 </dd>
     <dt>
     <a name = "cachearray_append"></a>
-    <strong>cachearray_append (cachearray[, ...])</strong>
+    <strong>cachearray_append (cachearray, depth[, ...])</strong>
     </dt>
     <dd>
     Append subscripts to an existing cachearray, creating a copy if it is full at this depth.
- Function may be called by C as it tidies up its Lua stack itself
+ Append string list '...' to cachearray at given depth which may be less than the existing
+ depth of the cachearray. If a string is append at a depth that already has a <em>different</em>
+ value then a copy of the cachearray will be made so we can append at <code>append_depth</code>.
+ Note: Function may be called by C as it tidies up its Lua stack itself.
 
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">cachearray</span>
          is an existing cachearray created by cachearray_create()
+        </li>
+        <li><span class="parameter">depth</span>
+         is the existing cachearray depth after which to start appending
         </li>
         <li><span class="parameter">...</span>
          a list of strings to be appended
@@ -1077,14 +1099,14 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     <h3>Returns:</h3>
     <ol>
 
-        cachearray (the same or new)
+        cachearray (the same or new), new_depth
     </ol>
 
 
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">_yottadb.cachearray_append(cachearray[, ...])</pre>
+        <pre class="example">_yottadb.cachearray_append(cachearray, depth[, ...])</pre>
     </ul>
 
 </dd>
@@ -1100,7 +1122,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">cachearray</span>
-         userdata created by _yottadb.cachearray()
+         userdata created by <em>yottadb.cachearray</em>create()
         </li>
         <li><span class="parameter">depth</span>
          of subscripts to show (limits cachearray's inherent length)
@@ -1118,7 +1140,67 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">_yottadb.cachedump(cachearray[, depth])</pre>
+        <pre class="example">_yottadb.cachearray_tostring(cachearray[, depth])</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "cachearray_depth"></a>
+    <strong>cachearray_depth (cachearray)</strong>
+    </dt>
+    <dd>
+    Return the depth of the cachearray.
+ Bear in mind that a lua-yottadb <code>node</code> object associated using this cachearray may specify a lesser
+ depth in its <code>__depth</code> field . This lets multiple parent and child nodes use the same cachearray.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">cachearray</span>
+         userdata created by <em>yottadb.cachearray</em>create()
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        depth of cachearray
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.cachearray_depth(cachearray)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "cachearray_subscript"></a>
+    <strong>cachearray_subscript (depth)</strong>
+    </dt>
+    <dd>
+    Return the cachearray subscript at the specified depth.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">depth</span>
+         integer of subscript to return (0 returns the varname)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        subscript string
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">_yottadb.cachearray_subscript(cachearray, depth)</pre>
     </ul>
 
 </dd>
@@ -1129,7 +1211,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-04-27 23:28:15 </i>
+<i style="float:right;">Last updated 2023-05-02 01:35:51 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

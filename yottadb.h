@@ -4,14 +4,16 @@
 #define LUA_YOTTADB_H
 
 /* Version History
-v1.2 Version number bump purely MLua benchmark requires this version
+v2.0 Major efficiency rewrite
+ - Removed obsolete ydb.nodes() in favour of the more lua_esque gettree()
+v1.2 Version number bump purely because MLua benchmark now requires this version of gettree()
  - Enhance node:gettree() so that you can easily use it as a generic tree iterator.
 v1.1 Signal safety and robustness improvements
 v1.0 First release by Berwyn Hoyt:
- - Syntax changes documented [here](v1.0-syntax-upgrade.md).
+ - Syntax changes documented at: https://github.com/anet-be/lua-yottadb/blob/master/docs/v1.0-syntax-upgrade.md
  - Ability to call M routines
  - Add new 'node' object. Deprecate 'key' object but retain it for backward compatibility
- - Overhauled [README](../README.md) and [reference documentation](yottadb.html)
+ - Overhauled README.md and reference documentation: https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html
  - Bugs fixed, including some that were critical
 v0.1 Initial release by Mitchel:
  - Supports direct database access and access via Lua 'key' object.
@@ -64,6 +66,12 @@ static __inline__ void *_realloc_safe(void *buf, size_t size, int line, char *fi
   YDB_FREE_BUFFER(BUFFERP); \
   YDB_MALLOC_BUFFER_SAFE((BUFFERP), len_used); \
 }
+
+// Raw version of lua_getfield() -- almost negligibly (<1%) slower than lua_getfield(), but much faster if field not found
+#define lua_rawgetfield(L, index, fieldstr) \
+  ( lua_pushstring(L, fieldstr), lua_rawget(L, ((index)<0)? ((index)-1): (index)) )
+#define lua_rawgetfieldbyindex(L, index, fieldindex) \
+  ( lua_pushvalue(L, (fieldindex)), lua_rawget(L, ((index)<0)? ((index)-1): (index)) )
 
 // Debug macro to dump the Lua stack
 inline static void dumpStack (lua_State *L) {
