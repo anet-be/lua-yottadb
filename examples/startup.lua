@@ -39,7 +39,8 @@ function M.dump(tbl, maxlines, maxdepth, as_table, _indent, _seen, _output)
       local line = (funcinfo.linedefined == -1) and '' or (' line ' .. funcinfo.linedefined)
       table.insert(_output, formatting .. ': <function ' .. tostring(funcinfo.name) .. ' from ' .. funcinfo.source .. line .. '>')
     else
-      table.insert(_output, formatting .. ': ' .. string.format('%q', v))
+      local format = type(v)=='string' and '%q' or '%s'
+      table.insert(_output, formatting .. ': ' .. string.format(format, v))
     end
   end
   if _indent==0 then
