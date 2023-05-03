@@ -606,12 +606,13 @@ end
 --- Creates and returns a new YottaDB node object.
 -- This node has all of the class methods defined below.
 -- Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
+-- Calling this on an existing node `yottadb.node(node)` creates an (immutable) copy of node.
 -- @param varname String variable name.
 -- @param[opt] subsarray table of {subscripts}
 -- @param[opt] ... list of subscripts to append after any elements in optional subsarray table
 -- @param node|key is an existing node or key to copy into a new object (you can turn a `key` type into a `node` type this way)
 -- @usage yottadb.node('varname'[, {subsarray}][, ...]) or:
--- @usage yottadb.node(node|key, ...)
+-- @usage yottadb.node(node|key[, {}][, ...])
 -- @usage yottadb.node('varname')('sub1', 'sub2')
 -- @usage yottadb.node('varname', 'sub1', 'sub2')
 -- @usage yottadb.node('varname', {'sub1', 'sub2'})
@@ -625,6 +626,22 @@ function M.node(varname, ...)
   else
     cachearray, depth = varname.__cachearray, varname.__depth
     assert(cachearray, "Parameter 1 must be varname string or a key/node object to create new node object from")
+    local mutable = rawget(varname, '__mutable')  -- rawget is faster when __mutable isn't present
+    if mutable  then
+      cachearray, depth = _yottadb.cachearray_create(cachearray, depth, ...)
+    else
+      local subs = select('#', ...)
+      if subs>0 and type(...)=='table' then
+        cachearray, depth = _yottadb.cachearray_append(cachearray, depth, table.unpack(...))
+        if subs > 1 then
+          subsarray = {...}
+          table.remove(subsarray, 1)
+          cachearray, depth = _yottadb.cachearray_append(cachearray, depth, table.unpack(subsarray))
+        end
+      else
+        cachearray, depth = _yottadb.cachearray_append(cachearray, depth, ...)
+      end
+    end
   end
   return _new_node(cachearray, depth)
 end
@@ -699,11 +716,10 @@ function node:subscripts(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   local cachearray, depth = _yottadb.cachearray_append(self.__cachearray, self.__depth, '')
   cachearray = _yottadb.cachearray_tomutable(cachearray, depth)
-  rawset(self, '__mutable', true)
   local function iterator()
-    local next_or_prev = actuator(cachearray, depth)
-    cachearray = _yottadb.cachearray_subst(cachearray, next_or_prev or '')
-    return next_or_prev
+    local subscript = actuator(cachearray, depth)
+    cachearray = _yottadb.cachearray_subst(cachearray, subscript or '')
+    return subscript
   end
   return iterator, nil, ''  -- iterate using child from ''
 end
@@ -823,28 +839,38 @@ end
 -- You can use either `pairs(node)` or `node:pairs()`.
 -- If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).
 --
+-- *Caution:* for the sake of speed, the iterator supplies a *mutable* node. This means it can
+-- re-use the same node for each iteration by changing its last subscript, making it faster.
+-- But if your loop needs to retain a reference to the node after loop iteration, it should create
+-- an immutable copy of that node using `ydb.node(node)`.
+--
 -- Notes:
 --
 -- * pairs() order is guaranteed to equal the M collation sequence order
 -- (even though pairs() order is not normally guaranteed for Lua tables).
 -- This means that pairs() is a reasonable substitute for ipairs which is not implemented.
 -- * this is very slightly slower than node:subscripts() which only iterates subscript names without
--- creating nodes.
+-- fetching the node value.
 -- @function node:__pairs
 -- @param[opt] reverse Boolean flag iterates in reverse if true
--- @usage for subscript,subnode in pairs(node) do ...
---     where subnode is a node/key object. If you need its value use node._
--- @return subnode, subnode subnode_value_or_nil, subscript
+-- @usage for subnode,value[,subscript] in pairs(node) do ...
+--     where subnode is a node/key object.
+-- @return subnode, subnode_value_or_nil, subscript
 -- @see node:subscripts
-function node:__pairs(...)
-  local sub_iter, state, start = node.subscripts(self, ...)
+function node:__pairs(reverse)
+  local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
+  local cachearray, depth = _yottadb.cachearray_append(self.__cachearray, self.__depth, '')
+  cachearray = _yottadb.cachearray_tomutable(cachearray, depth)
+  local mutable_subnode = self.___new( cachearray, depth )
+  rawset(mutable_subnode, '__mutable', true)
   local function iterator()
-    local subscript=sub_iter()
+    local subscript = actuator(cachearray, depth)
+    cachearray = _yottadb.cachearray_subst(cachearray, subscript or '')
     if subscript==nil then return  nil  end
-    local subnode = self(subscript)
-    return subnode, node.get(subnode), subscript
+    local value = M.get(cachearray, depth)
+    return mutable_subnode, value, subscript
   end
-  return iterator, state, start
+  return iterator, nil, ''  -- iterate using child from ''
 end
 node.pairs = node.__pairs
 
@@ -870,7 +896,8 @@ node.pairs = node.__pairs
 -- @param ... string list of subscripts
 function node:__call(...)
   if getmetatable(...)==node then
-    local method = node[node.name(self)]
+    local name = _yottadb.cachearray_subscript(self.__cachearray, self.__depth) -- faster than node.name(self)
+    local method = node[name]
     assert(method, string.format("could not find node method '%s()' on node %s", node.name(self), ...))
     return method(...) -- first parameter of '...' is parent, as the method call will expect
   end
@@ -1111,12 +1138,12 @@ end
 -- * it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts
 -- @param[opt] reverse boolean
 -- @see subscripts
-function key:subscripts(reverse)
+function key:subscripts(...)
   if self.__depth > 0 then
-    return M.subscripts(self.__cachearray, self.__depth, reverse)
+    return M.subscripts(self.__cachearray, self.__depth, ...)
   else
     local cachearray, depth = _yottadb.cachearray_append(self.__cachearray, 0, '')
-    return M.subscripts(cachearray, depth, reverse)
+    return M.subscripts(cachearray, depth, ...)
   end
 end
 
@@ -1136,10 +1163,10 @@ end
 function M.dump(node, ...)
   -- check whether maxlines was supplied as last parameter
   local subs, maxlines
-  if select('#',...)>0 and type(...)=='table' then subs, maxlines = ...
+  if select('#',...)>0 and type(...)=='table' then  subs, maxlines = ...
   else  subs, maxlines = {...}, nil  end
   maxlines = maxlines or 30
-  node = M.node(node, subs)  -- ensure it's a node object, not a varname
+  node = M.node(node, subs)  -- make sure it's a node object, not a varname
 
   local too_many_lines_error = "Too many lines"
   local output = {}
