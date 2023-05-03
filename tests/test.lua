@@ -1557,6 +1557,16 @@ function test_node()
   asserteq(node:get(), 'test2value')
   asserteq(node, yottadb.node('^test2')('sub1'))
 
+  node = yottadb.node(node, 'sub2') -- append subscript to existing node
+  asserteq(#node:__subsarray(), 2)
+  asserteq(tostring(node), '^test2("sub1","sub2")')
+  local newnode = yottadb.node(node)  -- make sure new node re-uses the same cachearray
+  assert(node.__cachearray == newnode.__cachearray)
+  rawset(node, '__mutable', true)
+  local newnode = yottadb.node(node)
+  assert(node == newnode)  -- varname/subscripts should be the same
+  assert(node.__cachearray ~= newnode.__cachearray)  -- make sure we get new immutable copy of cachearray
+
   -- Ensure node does not respond to the old key properties
   node = yottadb.node('^test2', 'sub1')
   asserteq(node.varname, node('varname'))

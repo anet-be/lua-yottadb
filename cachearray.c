@@ -33,7 +33,7 @@ static void _cachearray_updateaddr(cachearray_t *array, char *subsdata) {
   } while (depth--);
 }
 
-// Reallocate (expand) cachearray at stack location `index` and replace it with a new one in the same stack index
+// Reallocate (expand space of) cachearray at stack location `index` and replace it with a new one in the same stack index.
 // @param index of Lua stack where cachearray resides
 // @param new_depth is the required depth in the new cachearray (ARRAY_OVERALLOC will be added to this)
 // @param new_subslen is the required subsdata_string length (ARRAY_OVERALLOC*YDB_TYPICAL_SUBLEN will be added)
@@ -67,6 +67,7 @@ static cachearray_t *_cachearray_realloc(lua_State *L, int index, int new_depth,
 }
 
 /// Underlying core of `cachearray_create()`, designed to call from C.
+// Create cachearray from varname and subscripts on the Lua stack: varname[, t1][, ...]
 // This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups).
 // For the sake of speed, the caller can pre-allocate `cachearray_t_maxsize` on its stack
 // (in which case the returned cachearray will only be valid while inside that C function).
@@ -160,13 +161,28 @@ cachearray_t *_cachearray_create(lua_State *L, cachearray_t_maxsize *array_preal
 // to raw `_yottadb()` functions as a speedy subsarray.
 // @function cachearray
 // @usage _yottadb.cachearray(varname[, t1][, ...])
-// @param varname is a string: the M glvn. (Note: If t1 is a cachearray, varname is ignored in favour of the one contained in t1)
-// @param[opt] t1 is a subsarray table or cachearray to be copied
-// @param[opt] ... a list of strings to be appended after t2.
+// @usage _yottadb.cachearray(cachearray, depth[, ...])
+// @param varname String or Cachearray: the M glvn (if its a cachearray, t1 must be depth)
+// @param[opt] t1 Table of subscripts (or Integer depth of cachearray to be copied)
+// @param[opt] ... a list of strings to be appended to the cachearray after t1.
 // @return cachearray, depth
 int cachearray_create(lua_State *L) {
-  cachearray_t *array = _cachearray_create(L, NULL);
-  lua_pushinteger(L, array->depth);
+  cachearray_t *array = lua_touserdata(L, 1);
+  if (array) {
+    // if it's already a cachearray, create an immutable copy of it
+    int depth = luaL_checkinteger(L, 2);
+    if (depth < 0 || depth > array->depth)
+      luaL_error(L, "Cannot copy cachearray: specified depth (%d) must be between 0 and cachearray array end (%d)", depth, array->depth);
+    // Reallocate (i.e. copy) array using same depth and subsdata
+    char *subsdata = get_subsdata(array);
+    int subslen = get_subslen(array, depth, subsdata);
+    array = _cachearray_realloc(L, 1, depth, subslen, &subsdata);
+    if (lua_gettop(L) > 2)  // see whether there are args to append
+      cachearray_append(L);
+  } else {
+    cachearray_t *array = _cachearray_create(L, NULL);
+    lua_pushinteger(L, array->depth);
+  }
   return 2;
 }
 
