@@ -13,6 +13,8 @@ local _yottadb = require('_yottadb')
 for k, v in pairs(_yottadb) do if k:find('^YDB_') then M[k] = v end end
 M._VERSION = _yottadb._VERSION
 
+local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]+ r([0-9]+[.][0-9]+)") )
+
 
 -- The following 5 lines at the start of this file makes this the first-documented
 -- section after 'Functions', but the blank lines in between are necessary
@@ -568,6 +570,15 @@ function M.require(Mprototypes)
   Mprototypes = Mprototypes:gsub('ydb_double_t%s*%*?', 'ydb_double_t*')
   Mprototypes = Mprototypes:gsub('ydb_float_t%s*%*?', 'ydb_float_t*')
   Mprototypes = Mprototypes:gsub('ydb_int_t%s*%*?', 'ydb_int_t*')
+  if ydb_release < 1.36 then  Mprototypes = Mprototypes:gsub('ydb_buffer_t%s*%*', 'ydb_string_t*')  end
+  if ydb_release >= 1.36 then
+    -- Convert between buffer/string types for efficiency (lets user just use ydb_string_t* all the time without thinking about it
+    Mprototypes = Mprototypes:gsub('IO:ydb_string_t%s*%*', 'IO:ydb_buffer_t*')
+    Mprototypes = Mprototypes:gsub('(%f[IO][IO]):ydb_buffer_t%s*%*', '%1:ydb_string_t*')
+    -- Also replace buffer with string in the retval (first typespec in the line)
+    -- (note: %f[^\n\0] below, captures beginning of line or string)
+    Mprototypes = Mprototypes:gsub('%f[^\n\0](%s*[A-Za-z0-9_]+%s*:%s*)ydb_buffer_t%s*%*', '%1ydb_string_t*')
+  end
   -- remove preallocation specs for ydb which (as of r1.34) can only process them in call-out tables
   local ydb_prototypes = Mprototypes:gsub('%b[]', '')
   -- write call-in file and load into ydb

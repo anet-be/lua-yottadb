@@ -19,7 +19,7 @@ export LUA_PATH:=./?.lua;$(LUA_PATH)
 export LUA_CPATH:=./?.so;$(LUA_CPATH)
 export LUA_INIT:=
 
-ydb_dist=$(shell pkg-config --variable=prefix yottadb --silence-errors)
+ydb_dist?=$(shell pkg-config --variable=prefix yottadb --silence-errors)
 ifeq (, $(ydb_dist))
 ydb_dist=$(shell pwd)/YDB/install
 endif

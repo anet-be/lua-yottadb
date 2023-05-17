@@ -159,7 +159,7 @@ Sum is: 5
 
 Lua parameter types are converted to ydb types automatically according to the call-in table arithmetic.ci. If you need speed, avoid returning or outputting strings from M as they require the speed hit of memory allocation.
 
-Note that the filename passed to ydb.require() may be either a call-in table filename or (if the string contains a `:`) a string specifying actual call-in routines. Review file `arithmetic.ci` and the [ydb manual](https://docs.yottadb.com/ProgrammersGuide/extrout.html#call-in-table). for details about call-in table specification.
+Note that the filename passed to ydb.require() may be either a call-in table filename or (if the string contains a `:`) a string specifying actual call-in routines. Review file [examples/arithmetic.ci](examples/arithmetic.ci) and the [ydb manual](https://docs.yottadb.com/ProgrammersGuide/extrout.html#call-in-table) for details about call-in table specification.
 
 ### Development aids
 

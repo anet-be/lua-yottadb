@@ -1,14 +1,16 @@
 -- Copyright 2021-2022 Mitchell. See LICENSE.
 
 require('tests.strict')
+
 local table_dump = require('examples.startup')
+local _yottadb = require('_yottadb')
+local yottadb = require('yottadb')
 local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
+local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]+ r([0-9]+[.][0-9]+)") )
 
 local lua_exec = 'lua'
 local i=0  while arg[i] do lua_exec = arg[i]  i=i-1  end
 
-local _yottadb = require('_yottadb')
-local yottadb = require('yottadb')
 local cwd = arg[0]:match('^.+/') or '.'
 local gbldir_prefix = (os.getenv('TMPDIR') or '/tmp') .. '/lua-yottadb-'
 
@@ -1969,6 +1971,7 @@ ci_table1 = [=[
   concat1: ydb_string_t* concat^unittest(I:ydb_char_t*, I:ydb_string_t*, IO:ydb_char_t*, O:ydb_char_t*)
   concat2: ydb_string_t* concat^unittest(I:ydb_char_t*, I:ydb_string_t*, IO:ydb_char_t*, O:ydb_string_t*)
   concat3: ydb_string_t* concat^unittest(I:ydb_char_t*, I:ydb_string_t*, IO:ydb_string_t*, O:ydb_string_t*)
+  concat4: ydb_buffer_t* concat^unittest(I:ydb_char_t*, I:ydb_buffer_t*, IO:ydb_buffer_t*, O:ydb_buffer_t*)
 ]=]
 
 function test_callin()
@@ -1983,12 +1986,21 @@ function test_callin()
   local out1, out2 = table1.ret_float(1,2,3,4,5,6,7.6,8.6)
   asserteq(out1,1+2+3+4+5+6+7.6+8.6)  asserteq(out2, 8.6)
 
+  local alphabet = 'abcdefghijklmnopqrstuvwxyz'
+  local concat = 'a\0b\0c'
   local out1, out2, out3 = table1.concat1('a','b','c', '')
-  asserteq(out1, 'a\0b\0c')  asserteq(out2, 'abcdefghijklmnopqrstuvwxyz')  asserteq(out3, 'a')
+  asserteq(out1, concat)  asserteq(out2, alphabet)  asserteq(out3, 'a')
   out1, out2, out3 = table1.concat2('a','b','c', '')
-  asserteq(out1, 'a\0b\0c')  asserteq(out2, 'abcdefghijklmnopqrstuvwxyz')  asserteq(out3, 'a\0b\0c')
-  out1, out2, out3 = pcall(table1.concat3, 'a','b','c', '')
-  assert(not out1)  asserteq(out2, _yottadb.message(_yottadb.YDB_ERR_INVSTRLEN))
+  asserteq(out1, concat)  asserteq(out2, alphabet)  asserteq(out3, concat)
+
+  local expected = {true, concat, alphabet, concat}
+  -- Quirk of these versions is that IO ydb_string_t* can only return max of the length of IO input.
+  if ydb_release >= 1.26 and ydb_release < 1.36 then  expected = {false, _yottadb.message(_yottadb.YDB_ERR_INVSTRLEN)}  end
+
+  local results = {pcall(table1.concat3, 'a','b','c', '')}
+  asserteq(results[1], expected[1])  asserteq(results[2], expected[2])  asserteq(results[3], expected[3])  asserteq(results[4], expected[4])
+  local results = {pcall(table1.concat4, 'a','b','c', '')}
+  asserteq(results[1], expected[1])  asserteq(results[2], expected[2])  asserteq(results[3], expected[3])  asserteq(results[4], expected[4])
 end
 
 function test_deprecated_readme()
