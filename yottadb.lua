@@ -574,10 +574,11 @@ function M.require(Mprototypes)
   if ydb_release >= 1.36 then
     -- Convert between buffer/string types for efficiency (lets user just use ydb_string_t* all the time without thinking about it
     Mprototypes = Mprototypes:gsub('IO:ydb_string_t%s*%*', 'IO:ydb_buffer_t*')
-    Mprototypes = Mprototypes:gsub('(%f[IO][IO]):ydb_buffer_t%s*%*', '%1:ydb_string_t*')
+    Mprototypes = Mprototypes:gsub('([^IO][IO]):ydb_buffer_t%s*%*', '%1:ydb_string_t*')
     -- Also replace buffer with string in the retval (first typespec in the line)
     -- (note: %f[^\n\0] below, captures beginning of line or string)
-    Mprototypes = Mprototypes:gsub('%f[^\n\0](%s*[A-Za-z0-9_]+%s*:%s*)ydb_buffer_t%s*%*', '%1ydb_string_t*')
+    Mprototypes = Mprototypes:gsub('(\n%s*[A-Za-z0-9_]+%s*:%s*)ydb_buffer_t%s*%*', '%1ydb_string_t*')
+    Mprototypes = Mprototypes:gsub('^(%s*[A-Za-z0-9_]+%s*:%s*)ydb_buffer_t%s*%*', '%1ydb_string_t*')
   end
   -- remove preallocation specs for ydb which (as of r1.34) can only process them in call-out tables
   local ydb_prototypes = Mprototypes:gsub('%b[]', '')

@@ -125,7 +125,7 @@ cachearray_t *_cachearray_create(lua_State *L, cachearray_t_maxsize *array_preal
       lua_pushvalue(L, arg);
     // Fetch string from top of stack
     string = lua_tolstring(L, -1, &len);
-    if (luai_unlikely(!string))
+    if (!string)
       luaL_error(L, "Cannot generate cachearray: string/number expected in parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, -1)));
     // Reallocate array if necessary
     if (subslen+(int)len > array->subsdata_alloc)
@@ -218,7 +218,7 @@ int cachearray_append(lua_State *L) {
   for (int arg=3; arg <= args; arg++) {
     size_t len;
     char *string = lua_tolstring(L, arg, &len);
-    if (luai_unlikely(!string))
+    if (!string)
       luaL_error(L, "Cannot append subscript to cachearray: string/number expected at parameter #%d (got %s)", arg, lua_typename(L, lua_type(L, arg)));
     // if appending will overfill or clobber or an existing array element, allocate a new cachearray
     if (subslen+(int)len > array->subsdata_alloc

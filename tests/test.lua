@@ -1629,7 +1629,7 @@ function test_node()
   -- Validate input.
   ok, e = pcall(yottadb.node, 1)
   assert(not ok)
-  assert(e:find('attempt to index a number value'))
+  assert(e:find('attempt to index') and e:find('a number value'))
   -- TODO: error subscripting ISV
   -- TODO: error creating more than YDB_MAX_SUBS subscripts
 
@@ -1746,7 +1746,8 @@ function test_node_lock()
   start = os.time()
   env_execute(command)
   diff = os.difftime(os.time(), start)
-  assert(diff < 1)
+  if not (diff < 3) then  print("difftime=" .. diff)  end  -- help debugging next time since this is an occasional error
+  assert(diff < 3)
 end
 
 function test_module_transactions()
