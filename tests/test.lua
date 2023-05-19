@@ -51,11 +51,14 @@ end
 local Zgbldir   -- our current database file
 local function env_execute(command)
   local env = string.format('ydb_gbldir="%s"', Zgbldir)
+  command = 'env '..env..' '..command
   if lua_version <= 5.1 then
     -- simulate behaviour of os.execute in later Lua versions
-    return true, 'exit', os.execute('env '..env..' '..command)/256
+    return true, 'exit', os.execute(command)/256
   end
-  return os.execute('env '..env..' '..command)
+  local ok, typ, result = os.execute(command)
+  assert(typ ~= 'signal', string.format("Signal %s interrupted process: %s", result, command))
+  return ok, typ, result
 end
 
 -- Run shell command in the background (using bash &)
