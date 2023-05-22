@@ -2101,6 +2101,7 @@ function test_cachearray()
   local cache_subst = _yottadb.cachearray_subst
   local cache_append = _yottadb.cachearray_append
   local cache_tostring = _yottadb.cachearray_tostring
+  local cache_depth = _yottadb.cachearray_depth
 
   cachearray = cache_create('var')
   subs, varname = cache_tostring(cachearray)
@@ -2129,15 +2130,17 @@ function test_cachearray()
   cachearray = cache_create('var', {'person','3'}, 'male')
   newarray, depth = cache_append(cachearray,3,1,2,3,4,5)
   asserteq(depth, 8)
-  assert(cachearray == newarray)  -- should be same cachearray until ARRAY_OVERALLOC exceded
+  asserteq(cache_depth(cachearray), 3)  -- depth should remain the same even though beneath the covers it has re-used cachearray for newarray
   newarray, depth = cache_append(cachearray,8,6)
   asserteq(depth, 9)
   assert(cachearray ~= newarray)
   asserteq(cache_tostring(newarray), '"person",3,"male",1,2,3,4,5,6')
-  -- Make sure we can append to a node shallower than the cachearray's depth
+
+  -- Make sure we can append to a node shallower than the cachearray's depth_used
   cachearray, depth = cache_append(newarray,2,'male',1,2)
   asserteq(depth, 5)
-  asserteq(cachearray, newarray)  -- should be the same since we used identical subscripts
+  asserteq(cache_depth(cachearray), 5)
+  asserteq(cache_depth(newarray), 9)  -- newarray depth should remain the same
   asserteq(cache_tostring(cachearray), '"person",3,"male",1,2')
   cachearray, depth = cache_append(newarray,2,'female',1)
   asserteq(depth, 4)
@@ -2166,8 +2169,13 @@ function test_cachearray()
   asserteq(cache_tostring(cachearray3), '"person","' .. bigsub .. '","sub3"')
   assert(cachearray2 ~= cachearray3)  -- make sure child of a *reallocated* mutable cachearray is still non-extendable
 
+  for i=1, 10000 do
+    node = ydb.node('a').b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z
+  end
+
   -- Validate inputs.
   validate_subsarray_inputs(_yottadb.cachearray_create, true)
+  collectgarbage()  -- catch allocation problems such as the one fixed in commit 4bed5e6
 end
 
 -- Run tests.

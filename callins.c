@@ -392,7 +392,8 @@ int ydb_ci_stub(char *name, ...) { //ydb_string_t *retval, ydb_string_t *n, long
 #endif
 
 
-static char *_name_struct_id = "Mroutine";  // any random 8-byte ID so we can double-check this is our own struct type
+// any 'random' 4-byte ID "Mrtn" so we can double-check this is our own struct type
+#define TYPEID ((int)'M'<<24 | (int)'r'<<16 | (int)'t'<<8 | 'n')
 typedef struct {
   int typeid;
   char *entrypoint;
@@ -431,7 +432,7 @@ int cip(lua_State *L) {
   if (!lua_isuserdata(L, 2))
     luaL_error(L, "parameter #2 must be userdata returned by register_routine()");
   ci_name_userdata *u = lua_touserdata(L, 2);
-  if (!u || u->typeid != *(int *)_name_struct_id)
+  if (!u || u->typeid != TYPEID)
     luaL_error(L, "parameter #2 must be userdata returned by register_routine()");
 
   size_t type_list_len;
@@ -516,7 +517,7 @@ int cip(lua_State *L) {
 int register_routine(lua_State *L) {
   ci_name_userdata *u;
   u = lua_newuserdata(L, sizeof(ci_name_userdata));
-  u->typeid = *(int *)_name_struct_id;
+  u->typeid = TYPEID;
   u->ci_info.rtn_name.address = luaL_checklstring(L, 1, &u->ci_info.rtn_name.length);
   u->ci_info.handle = NULL;  // have to sete ci_info.handle to NULL before first call to that M routine
   u->entrypoint = luaL_checkstring(L, 2);
