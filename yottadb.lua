@@ -170,7 +170,8 @@ function M.get_error_code(message)
 end
 
 -- Object that represents a YDB node.
-local node = {}
+local cachearray = _yottadb.cachearray_create('var')
+local node = getmetatable(cachearray)
 
 -- Deprecated object that represents a YDB node.
 -- old name of YDB node object -- retains the deprecated syntax for backward compatibility
@@ -967,9 +968,10 @@ function node:__index(k)
   if k == '__' then  return M.get(self.__cachearray, self.__depth)  end
   local __end = '__\xff'
   if type(k)=='string' and k < __end and k >= '__' then  -- fastest way to check if k:startswith('__') -- with majority case (lowercase key values) falling through fastest
-    return node[k:sub(3)]  -- remove leading '__' to return node:method
+    return node[string.sub(k, 3)]  -- remove leading '__' to return node:method
   end
-  return self(k)
+  return self.___new( _yottadb.cachearray_append(self.__cachearray, self.__depth, k) )
+--return _yottadb.cachearray_append(self, _yottadb.cachearray_depth(self)+1, k)
 end
 
 -- Sets node's value if k='__'
