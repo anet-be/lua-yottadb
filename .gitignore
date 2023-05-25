@@ -4,6 +4,7 @@ t
 t.c
 t.lua
 t?.lua
+*.lst
 
 docs/styles
 docs/topics

@@ -44,8 +44,11 @@ docs/yottadb.html: *.lua *.c *.ld docs/config/* Makefile
 	@echo "Making yottadb_private.html"
 	ldoc . -c config_private_docs.ld
 
+listing: _yottadb.so
+	objdump -Mintel -rRwS _yottadb.so >_yottadb.lst
+
 clean:
-	rm -f *.so *.o
+	rm -f *.so *.o *.lst
 
 PREFIX=/usr/local
 share_dir=$(PREFIX)/share/lua/$(lua_version)
@@ -61,3 +64,5 @@ benchmarks:
 
 test: _yottadb.so
 	source $(ydb_dist)/ydb_env_set && $(lua) tests/test.lua $(TESTS)
+
+.PHONY: all docs listing clean install benchmark benchmarks test
