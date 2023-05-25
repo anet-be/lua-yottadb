@@ -40,18 +40,16 @@ int _memory_error(size_t size, int line, char *file) {
 }
 
 
-// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray, depth)
+// Fetch subscripts into supplied variables; assume Lua stack contains: (varname[, {subs}, ...]) or: (cachearray)
 // Any new cachearray is allocated on the C stack to be faster than lua_newuserdata(),
 // but be aware that this will expire as soon as the function returns.
 #define getsubs(L,_subs_used,_varname,_subsarray) \
   cachearray_t *___cachearray = lua_touserdata(L, 1); \
   cachearray_t_maxsize ___cachearray_; \
-  if (___cachearray) \
-    _subs_used = luaL_checkinteger(L, 2); \
-  else { \
+  if (!___cachearray) \
     ___cachearray = _cachearray_create(L, &___cachearray_); \
-    _subs_used = ___cachearray->depth; \
-  } \
+  _subs_used = ___cachearray->depth; \
+  ___cachearray = ___cachearray->dereference; \
   _varname = &___cachearray->varname; \
   _subsarray = &___cachearray->subs[0];
 
@@ -110,7 +108,7 @@ static int _ydb_eintr_handler(lua_State *L) {
 /// Gets the value of a variable/node or nil if it has no data.
 // @function get
 // @usage _yottadb.get(varname[, {subs} | ...]),  or:
-// @usage _yottadb.get(cachearray, depth)
+// @usage _yottadb.get(cachearray)
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] is a list of subscripts
@@ -143,7 +141,7 @@ static int get(lua_State *L) {
 // Specifying type=nil or not supplied is the same as _yottadb.YDB_DEL_NODE
 // @function delete
 // @usage _yottadb.delete(varname[, {subs} | ...][, type=_yottadb.YDB_DEL_xxxx])
-// @usage _yottadb.delete(cachearray, depth[, type=_yottadb.YDB_DEL_xxxx])
+// @usage _yottadb.delete(cachearray[, type=_yottadb.YDB_DEL_xxxx])
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] list of subscripts
@@ -169,7 +167,7 @@ static int delete(lua_State *L) {
 // if value = nil then perform delete(node) instead
 // @function set
 // @usage _yottadb.set(varname[, {subs} | ...], value),  or
-// @usage _yottadb.set(cachearray, depth, value)
+// @usage _yottadb.set(cachearray, value)
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] is a list of subscripts
@@ -177,7 +175,7 @@ static int delete(lua_State *L) {
 // @return value
 static int set(lua_State *L) {
   if (lua_gettop(L) && lua_type(L, -1) == LUA_TNIL)
-    return delete(L), 1;
+    return delete(L), lua_pushnil(L), 1;
   // pop `value` off stack before calling getsubs
   ydb_buffer_t value;
   size_t length;
@@ -200,7 +198,7 @@ static int set(lua_State *L) {
 /// Returns information about a variable/node (except intrinsic variables).
 // @function data
 // @usage _yottadb.data(varname[, {subs | ...}]),  or:
-// @usage _yottadb.data(cachearray, depth)
+// @usage _yottadb.data(cachearray)
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] list of subscripts
@@ -227,17 +225,17 @@ static int data(lua_State *L) {
 // @function lock_incr
 // @usage _yottadb.lock_incr(varname[, {subs}][, timeout=0])
 // @usage _yottadb.lock_incr(varname[, ...], timeout)
-// @usage _yottadb.lock_incr(cachearray, depth[, timeout=0])
+// @usage _yottadb.lock_incr(cachearray[, timeout=0])
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] list of subscripts
 // @param timeout[opt] timeout in seconds to wait for lock
 static int lock_incr(lua_State *L) {
   int argpos=-1;
-  if (lua_gettop(L) < 2)
+  if (lua_gettop(L) < 2 || lua_type(L, 1)==LUA_TUSERDATA)
     argpos = 2;
   else
-    if (lua_type(L, 1)==LUA_TUSERDATA || lua_type(L, 2)==LUA_TTABLE)
+    if (lua_type(L, 2)==LUA_TTABLE)
       argpos = 3;
   unsigned long long timeout_nsec = luaL_optnumber(L, argpos, 0) * 1000000000;
   lua_settop(L, argpos-1);  // pop timeout if it was supplied
@@ -253,7 +251,7 @@ static int lock_incr(lua_State *L) {
 /// Decrements a lock on a variable/node, releasing it if possible.
 // @function lock_decr
 // @usage _yottadb.lock_decr(varname[, {subs} | ...]),  or:
-// @usage _yottadb.lock_decr(cachearray, depth)
+// @usage _yottadb.lock_decr(cachearray)
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] list of subscripts
@@ -394,7 +392,7 @@ static int subscript_nexter(lua_State *L, subscript_actuator_t actuator) {
 /// Returns the next subscript for a variable/node.
 // @function subscript_next
 // @usage _yottadb.subscript_next(varname[, {subs} | ...]),  or:
-// @usage _yottadb.subscript_next(cachearray, depth)
+// @usage _yottadb.subscript_next(cachearray)
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] is a list of subscripts
@@ -406,7 +404,7 @@ static int subscript_next(lua_State *L) {
 /// Returns the previous subscript for a variable/node.
 // @function subscript_previous
 // @usage _yottadb.subscript_previous(varname[, {subs} | ...]),  or:
-// @usage _yottadb.subscript_previous(cachearray, depth)
+// @usage _yottadb.subscript_previous(cachearray)
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param ...[opt] is a list of subscripts
@@ -483,20 +481,17 @@ static int node_previous(lua_State *L) {
 // Raises an error if a lock could not be acquired.
 // @function lock
 // @usage _yottadb.lock([{node_specifiers}[, timeout=0]])
-// @param {node_specifiers}[opt] table of {cachearray, depth} variable/nodes to lock
+// @param[opt] {node_specifiers} table of cachearrays of variables/nodes to lock
 // @param timeout[opt] timeout in seconds to wait for lock
 static int lock(lua_State *L) {
   int num_nodes = 0;
   int istable = lua_istable(L, 1);
-  if (lua_gettop(L) > 0) luaL_argcheck(L, istable, 1, "table of {{cachearray, depth}, ...} node specifiers expected in parameter #1");
+  if (lua_gettop(L) > 0) luaL_argcheck(L, istable, 1, "table of {cachearray, cachearray, ...} node specifiers expected in parameter #1");
   if (istable) {
     num_nodes = luaL_len(L, 1);
     for (int i = 1; i <= num_nodes; i++) {
-      luaL_argcheck(L, lua_geti(L, 1, i) == LUA_TTABLE, 1, "table of {{cachearray, depth}, ...} node specifiers expected in parameter #1");
-      luaL_argcheck(L, lua_geti(L, -1, 1) == LUA_TUSERDATA, 1, "node specifier {cachearray, depth} element 1 must be cachearray");
-      int isnum;
-      luaL_argcheck(L, (lua_geti(L, -2, 2), lua_tointegerx(L, -1, &isnum), isnum), 1, "node specifier {cachearray, depth} element 2 must be an integer");
-      lua_pop(L, 3); // pop node, cachearray, depth
+      luaL_argcheck(L, lua_geti(L, 1, i) == LUA_TUSERDATA, 1, "node specifiers in parameter #1 must all be cachearrays");
+      lua_pop(L, 1); // pop cachearray
     }
   }
   unsigned long long timeout = luaL_optnumber(L, 2, 0) * 1000000000;
@@ -508,11 +503,10 @@ static int lock(lua_State *L) {
   params.arg[arg_i++] = (void *)(uintptr_t)num_nodes;
   for (int i = 0; i < num_nodes && i < MAX_ACTUALS; i++) {
     lua_geti(L, 1, i + 1);
-    lua_geti(L, -1, 1);
     cachearray_t *array = lua_touserdata(L, -1);
-    lua_geti(L, -2, 2);
-    int depth = lua_tointeger(L, -1);
-    lua_pop(L, 3);  // pop node, cachearray, depth
+    int depth = array->depth;
+    lua_pop(L, 1);  // pop cachearray
+    array = array->dereference;
     params.arg[arg_i++] = (void *)&array->varname;
     params.arg[arg_i++] = (void *)(uintptr_t)depth;
     params.arg[arg_i++] = (void *)array->subs;
@@ -550,17 +544,17 @@ static int delete_excl(lua_State *L) {
 // @function incr
 // @usage _yottadb.incr(varname[, {subs}][, increment=1])
 // @usage _yottadb.incr(varname[, ...], increment=n)
-// @usage _yottadb.incr(cachearray, depth[, increment=1])
+// @usage _yottadb.incr(cachearray[, increment=1])
 // @param varname string
 // @param subs[opt] table of subscripts
 // @param increment[opt] amount to increment by = number, or string-of-a-canonical-number, default=1
 static int incr(lua_State *L) {
   int args = lua_gettop(L);
   int argpos=-1;
-  if (args < 2)
+  if (args < 2 || lua_type(L, 1)==LUA_TUSERDATA)
     argpos = 2;
   else
-    if (lua_type(L, 1)==LUA_TUSERDATA || lua_type(L, 2)==LUA_TTABLE)
+    if (lua_type(L, 2)==LUA_TTABLE)
       argpos = 3;
   ydb_buffer_t increment;
   YDB_STRING_TO_BUFFER(luaL_optstring(L, argpos, ""), &increment);
@@ -670,6 +664,7 @@ static const luaL_Reg yottadb_functions[] = {
   {"cachearray_create", cachearray_create},
   {"cachearray_tomutable", cachearray_tomutable},
   {"cachearray_subst", cachearray_subst},
+  {"cachearray_flags", cachearray_flags},
   {"cachearray_append", cachearray_append},
   {"cachearray_tostring", cachearray_tostring},
   {"cachearray_depth", cachearray_depth},

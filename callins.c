@@ -328,13 +328,11 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, cip_metad
     if (YDB_TYPE_ISPTR(type)) {
       // If it's a pointer type, store the actual data in the next metadata slot, then make param point to it
       byref_slot *slot = get_slot(meta->M);
-      // TODO: confirm in assembler output that the next line is an efficient 64-bit value copy
       slot->param = param;
       param.any_ptr = &slot->param;
     }
   }
 
-  // TODO: confirm in assembler output that compiler returns an efficient single 64-bit value for param
   return param;
 }
 

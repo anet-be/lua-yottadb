@@ -170,8 +170,7 @@ function M.get_error_code(message)
 end
 
 -- Object that represents a YDB node.
-local cachearray = _yottadb.cachearray_create('var')
-local node = getmetatable(cachearray)
+local node = {}
 
 -- Deprecated object that represents a YDB node.
 -- old name of YDB node object -- retains the deprecated syntax for backward compatibility
@@ -180,8 +179,8 @@ local key = {}
 --- Return whether a node has a value or subtree.
 -- @function data
 -- @usage yottadb.data('varname'[, {subsarray}][, ...])
--- @usage yottadb.data(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.data(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0: (node has neither value nor subtree)
@@ -193,8 +192,8 @@ M.data = _yottadb.data
 --- Deletes the value of a single database variable/node.
 -- @function delete_node
 -- @usage yottadb.delete_node('varname'[, {subsarray}][, ...])
--- @usage yottadb.delete_node(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.delete_node(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 M.delete_node = _yottadb.delete
@@ -202,8 +201,8 @@ M.delete_node = _yottadb.delete
 --- Deletes a database variable/node tree/subtree.
 -- @function delete_tree
 -- @usage yottadb.delete_tree('varname'[, {subsarray}][, ...])
--- @usage yottadb.delete_tree(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.delete_tree(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 function M.delete_tree(varname, ...)
@@ -213,8 +212,8 @@ end
 --- Gets and returns the value of a database variable/node, or `nil` if the variable/node does not exist.
 -- @function get
 -- @usage yottadb.get('varname'[, {subsarray}][, ...])
--- @usage yottadb.get(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.get(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string value or `nil`
@@ -226,9 +225,9 @@ M.get = _yottadb.get
 -- Otherwise incr() cannot tell whether last parameter is a subscript or an increment.
 -- @function incr
 -- @usage yottadb.incr(varname[, {subs}][, increment=1])
--- @usage yottadb.incr(varname[, {subs}], ..., increment=n)
--- @usage yottadb.incr(cachearray, depth[, increment=1])
--- @param varname of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.incr(varname[, {subs}], ..., increment=1)
+-- @usage yottadb.incr(cachearray[, increment=1])
+-- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @param increment Number or string amount to increment by (default=1)
@@ -251,9 +250,9 @@ function M.lock(nodes, timeout)
   if type(nodes) == 'table' then
     for i, v in ipairs(nodes) do
       assert_type(v, 'table', 1)
-      local cachearray, depth = v.__cachearray, v.__depth
-      if not cachearray then  cachearray, depth = cachearray_create(table.unpack(v))  end
-      nodes_copy[i] = {cachearray, depth}
+      local node = v
+      if type(node) ~= 'userdata' then  node = cachearray_create(table.unpack(v))  end
+      nodes_copy[i] = node
     end
   end
   _yottadb.lock(nodes_copy, timeout)
@@ -266,8 +265,8 @@ end
 -- @function lock_incr
 -- @usage yottadb.lock_incr(varname[, {subs}][, ...][, timeout=0])
 -- @usage yottadb.lock_incr(varname[, {subs}], ..., timeout=0)
--- @usage yottadb.lock_incr(cachearray, depth[, timeout=0])
--- @param varname of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.lock_incr(cachearray[, timeout=0])
+-- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @param[opt] timeout Integer timeout in seconds to wait for the lock.
@@ -279,8 +278,8 @@ M.lock_incr = _yottadb.lock_incr
 -- Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 -- @function lock_decr
 -- @usage yottadb.lock_decr('varname'[, {subsarray}][, ...])
--- @usage yottadb.lock_decr(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.lock_decr(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0 (always)
@@ -292,8 +291,8 @@ M.lock_decr = _yottadb.lock_decr
 -- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
 -- @function node_next
 -- @usage yottadb.node_next('varname'[, {subsarray}][, ...])
--- @usage yottadb.node_next(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.node_next(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0 (always)
@@ -306,8 +305,8 @@ M.node_next = _yottadb.node_next
 -- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
 -- @function node_previous
 -- @usage yottadb.node_previous('varname'[, {subsarray}][, ...])
--- @usage yottadb.node_previous(cachearray, depth)
--- @param varname String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.node_previous(cachearray)
+-- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0 (always)
@@ -317,8 +316,8 @@ M.node_previous = _yottadb.node_previous
 --- Sets the value of a database variable/node.
 -- @function set
 -- @usage yottadb.set(varname[, {subs}][, ...], value)
--- @usage yottadb.set(cachearray, depth, value)
--- @param varname of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.set(cachearray, value)
+-- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @param value String/number/nil value to set node to. If this is a number, it is converted to a string. If it is nil, the value is deleted.
@@ -328,8 +327,8 @@ M.set = _yottadb.set
 --- Returns the next subscript for a database variable/node, or `nil` if there isn't one.
 -- @function subscript_next
 -- @usage yottadb.subscript_next(varname[, {subsarray}][, ...])
--- @usage yottadb.subscript_next(cachearray, depth)
--- @param varname of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.subscript_next(cachearray)
+-- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string subscript name, or nil if there are no more subscripts
@@ -338,8 +337,8 @@ M.subscript_next = _yottadb.subscript_next
 --- Returns the previous subscript for a database variable/node, or `nil` if there isn't one.
 -- @function subscript_previous
 -- @usage yottadb.subscript_previous(varname[, {subsarray}][, ...])
--- @usage yottadb.subscript_previous(cachearray, depth)
--- @param varname of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage yottadb.subscript_previous(cachearray)
+-- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string subscript name, or nil if there are no previous subscripts
@@ -348,9 +347,9 @@ M.subscript_previous = _yottadb.subscript_previous
 --- Returns an iterator for iterating over database *sibling* subscripts starting from given varname(subs).
 -- Note: this starts from the given location and gives the next *sibling* subscript in the M collation sequence.
 -- It operates differently than `node:subscipts()` which yields all subscripts that are *children* of the given node.
--- @usage for name in yottadb.subscripts(varname[, {subsarray}][, ...]) do ... end
--- @usage for name in yottadb.subscripts(cachearray, depth) do ... end
--- @param varname of database node (this can also be replaced by 2 parameters (cachearray, depth)
+-- @usage for name in yottadb.subscripts(varname[, {subsarray}][, ...][, reverse]) do ... end
+-- @usage for name in yottadb.subscripts(cachearray[, ...][, reverse]) do ... end
+-- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @param[opt] reverse Flag that indicates whether to iterate backwards.  Not optional when '...' is provided
@@ -358,27 +357,26 @@ M.subscript_previous = _yottadb.subscript_previous
 function M.subscripts(varname, ...)
   local subsarray, reverse
   -- First do parameter checking
-  if type(varname)=='userdata' or ... and type(...)=='table' then
-    subsarray, reverse = ...
+  if ... then
+    if type(...)=='table' then
+      subsarray, reverse = ...
+    else
+      -- Check & error if last parameter is nil (before turning into a table, which loses the last element)
+      assert_type(select(-1, ...), _number_boolean, '<last>')
+      subsarray = {...}
+      reverse = table.remove(subsarray) -- pop
+    end
   else
-    -- Additional check last param is not nil before turning into a table, which loses the last element
-    if ... then  assert_type(select(-1, ...), _number_boolean, '<last>')  end
-    subsarray = {...}
-    reverse = table.remove(subsarray) -- pop
+      subsarray = {}
   end
 
-  -- Convert to cachearray if necessary
-  local cachearray, depth
-  if type(varname)=='userdata' then
-    cachearray, depth = varname, ...
-  else
-    cachearray, depth = _yottadb.cachearray_create(varname, subsarray)
-  end
-
+  -- Convert to mutable cachearray
+  local cachearray = _yottadb.cachearray_create(varname, table.unpack(subsarray))  -- works even if varname is already a cachearray
+  debug.setmetatable(cachearray, node)  -- make it a node type. Not strictly necessary since code below doesn't call node methods, but in case it does in future ...
+  cachearray = _yottadb.cachearray_tomutable(cachearray)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
-  cachearray = _yottadb.cachearray_tomutable(cachearray, depth)
   local function iterator()
-    local next_or_prev = actuator(cachearray, depth)
+    local next_or_prev = actuator(cachearray)
     cachearray = _yottadb.cachearray_subst(cachearray, next_or_prev or '')
     return next_or_prev
   end
@@ -608,14 +606,6 @@ end
 --- Class node
 -- @section
 
--- raw node creation
-local function _new_node(cachearray, depth)
-  return setmetatable({
-    __cachearray = cachearray,
-    __depth = depth
-  }, node)
-end
-
 --- Creates and returns a new YottaDB node object.
 -- This node has all of the class methods defined below.
 -- Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
@@ -633,36 +623,30 @@ end
 -- @usage yottadb.node('varname')['sub1']['sub2']
 -- @return node object with metatable yottadb.node
 function M.node(varname, ...)
-  local cachearray, depth
+  local self
   if type(varname) == 'string' then
-    cachearray, depth = _yottadb.cachearray_create(varname, ...)
+    self = _yottadb.cachearray_create(varname, ...)
+    debug.setmetatable(self, node)  -- change to node type
   else
-    cachearray, depth = varname.__cachearray, varname.__depth
-    assert(cachearray, "Parameter 1 must be varname string or a key/node object to create new node object from")
-    local mutable = rawget(varname, '__mutable')  -- rawget is faster when __mutable isn't present
-    if mutable  then
-      cachearray, depth = _yottadb.cachearray_create(cachearray, depth, ...)
-    else
-      local subs = select('#', ...)
-      if subs>0 and type(...)=='table' then
-        cachearray, depth = _yottadb.cachearray_append(cachearray, depth, table.unpack(...))
-        if subs > 1 then
-          subsarray = {...}
-          table.remove(subsarray, 1)
-          cachearray, depth = _yottadb.cachearray_append(cachearray, depth, table.unpack(subsarray))
-        end
-      else
-        cachearray, depth = _yottadb.cachearray_append(cachearray, depth, ...)
+    assert(type(varname)=='userdata', "Parameter 1 must be varname (string) or a key/node object to create new node object from")
+    self = _yottadb.cachearray_create(varname)  -- also makes it non-mutable
+    debug.setmetatable(self, node)  -- change to node type
+    local subs = select('#', ...)
+    if subs>0 and type(...)=='table' then
+      self = _yottadb.cachearray_append(self, table.unpack(...))
+      if subs > 1 then
+        subsarray = {...}
+        table.remove(subsarray, 1)
+        self = _yottadb.cachearray_append(self, table.unpack(subsarray))
       end
+    else
+      self = _yottadb.cachearray_append(self, ...)
     end
   end
-  return _new_node(cachearray, depth)
+  return self
 end
 
 --- @section end
-
--- Define this to tell __call() whether to create new subnode using _new_node() or _new_key()
-node._new = _new_node
 
 -- Note: the following doc must be here instead of up at the definition of node to retain its position in the html doc
 
@@ -688,23 +672,23 @@ node._new = _new_node
 -- @param[opt] default return value if the node has no data; if not supplied, nil is the default
 -- @return value of the node
 -- @see get
-function node:get(default)  return M.get(self.__cachearray, self.__depth) or default  end
+function node:get(default)  return M.get(self) or default  end
 
 --- Set node's value.
 -- Equivalent to (but 4x slower than) `node.__ = x`
 -- @param value New value or nil to delete node
 -- @see set
-function node:set(value)  assert_type(value, _string_number_nil, 1)  return M.set(self.__cachearray, self.__depth, value)  end
+function node:set(value)  assert_type(value, _string_number_nil, 1)  return M.set(self, value)  end
 
 --- Delete database tree pointed to by node object
 -- @see delete_tree
-function node:delete_tree()  return M.delete_tree(self.__cachearray, self.__depth)  end
+function node:delete_tree()  return M.delete_tree(self)  end
 
 --- Increment node's value
 -- @param[opt=1] increment Amount to increment by (negative to decrement)
 -- @return the new value
 -- @see incr
-function node:incr(...)  assert_type(..., _string_number_nil, 1, ":incr")  return M.incr(self.__cachearray, self.__depth, ...)  end
+function node:incr(...)  assert_type(..., _string_number_nil, 1, ":incr")  return M.incr(self, ...)  end
 
 --- Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.
 -- @see lock
@@ -712,14 +696,15 @@ function node:lock(...)  assert_type(..., _number_nil, 1, ":lock")  return M.loc
 
 --- Attempts to acquire or increment a lock matching this node, waiting if requested.
 -- @see lock_incr
-function node:lock_incr(...)  assert_type(..., _string_number_nil, 1, ":lock_incr")  return M.lock_incr(self.__cachearray, self.__depth, ...)  end
+function node:lock_incr(...)  assert_type(..., _string_number_nil, 1, ":lock_incr")  return M.lock_incr(self, ...)  end
 
 --- Decrements a lock matching this node, releasing it if possible.
 -- @see lock_decr
-function node:lock_decr()  return M.lock_decr(self.__cachearray, self.__depth)  end
+function node:lock_decr()  return M.lock_decr(self)  end
 
 --- Return iterator over the *child* subscript names of a node (in M terms, collate from "" to "").
--- Unlike `yottadb.subscripts()`, `node:subscripts()` returns all *child* subscripts, not subsequent *sibling* subscripts in the same level.
+-- Unlike `yottadb.subscripts()`, `node:subscripts()` returns all *child* subscripts, not subsequent *sibling* subscripts in the same level. <br>
+-- Very slightly faster than node:__pairs() because it iterates subscript names without fetching the node value. <br>
 -- Note that subscripts() order is guaranteed to equal the M collation sequence.
 -- @param[opt] reverse set to true to iterate in reverse order
 -- @usage for subscript in node:subscripts() do ...
@@ -727,11 +712,11 @@ function node:lock_decr()  return M.lock_decr(self.__cachearray, self.__depth)  
 -- @see node:__pairs
 function node:subscripts(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
-  local cachearray, depth = _yottadb.cachearray_append(self.__cachearray, self.__depth, '')
-  cachearray = _yottadb.cachearray_tomutable(cachearray, depth)
+  local subnode = _yottadb.cachearray_append(self, '')
+  subnode = _yottadb.cachearray_tomutable(subnode)
   local function iterator()
-    local subscript = actuator(cachearray, depth)
-    cachearray = _yottadb.cachearray_subst(cachearray, subscript or '')
+    local subscript = actuator(subnode)
+    subnode = _yottadb.cachearray_subst(subnode, subscript or '')
     return subscript
   end
   return iterator, nil, ''  -- iterate using child from ''
@@ -856,6 +841,7 @@ end
 -- re-use the same node for each iteration by changing its last subscript, making it faster.
 -- But if your loop needs to retain a reference to the node after loop iteration, it should create
 -- an immutable copy of that node using `ydb.node(node)`.
+-- Mutability can be tested for using node:ismutable()
 --
 -- Notes:
 --
@@ -872,16 +858,14 @@ end
 -- @see node:subscripts
 function node:__pairs(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
-  local cachearray, depth = _yottadb.cachearray_append(self.__cachearray, self.__depth, '')
-  cachearray = _yottadb.cachearray_tomutable(cachearray, depth)
-  local mutable_subnode = self.___new( cachearray, depth )
-  rawset(mutable_subnode, '__mutable', true)
+  local subnode = _yottadb.cachearray_append(self, '')
+  subnode = _yottadb.cachearray_tomutable(subnode)
   local function iterator()
-    local subscript = actuator(cachearray, depth)
-    cachearray = _yottadb.cachearray_subst(cachearray, subscript or '')
+    local subscript = actuator(subnode)
+    subnode = _yottadb.cachearray_subst(subnode, subscript or '')
     if subscript==nil then return  nil  end
-    local value = M.get(cachearray, depth)
-    return mutable_subnode, value, subscript
+    local value = M.get(subnode)
+    return subnode, value, subscript
   end
   return iterator, nil, ''  -- iterate using child from ''
 end
@@ -909,12 +893,12 @@ node.pairs = node.__pairs
 -- @param ... string list of subscripts
 function node:__call(...)
   if getmetatable(...)==node then
-    local name = _yottadb.cachearray_subscript(self.__cachearray, self.__depth) -- faster than node.name(self)
+    local name = _yottadb.cachearray_subscript(self, -1)
     local method = node[name]
     assert(method, string.format("could not find node method '%s()' on node %s", node.name(self), ...))
     return method(...) -- first parameter of '...' is parent, as the method call will expect
   end
-  return self.___new( _yottadb.cachearray_append(self.__cachearray, self.__depth, ...) )
+  return _yottadb.cachearray_append(self, ...)
 end
 
 -- Returns whether this node is equal to the given object.
@@ -922,9 +906,11 @@ end
 --   equivalent to tostring(self)==tostring(other) but faster.
 -- @param other Alternate node to compare self against
 function node:__eq(other)
-  if type(other) ~= 'table' or self.__depth ~= other.__depth then  return false  end
-  for i=0, self.__depth do
-    if _yottadb.cachearray_subscript(self.__cachearray, i) ~= _yottadb.cachearray_subscript(other.__cachearray, i) then
+  if type(other) ~= 'userdata' then  return false  end
+  local depth = _yottadb.cachearray_depth(self)
+  if depth ~= _yottadb.cachearray_depth(other) then  return false  end
+  for i=0, depth do
+    if _yottadb.cachearray_subscript(self, i) ~= _yottadb.cachearray_subscript(other, i) then
       return false
     end
   end
@@ -947,14 +933,13 @@ end
 
 -- Returns the string representation of this node.
 function node:__tostring()
-  local subscripts, varname = _yottadb.cachearray_tostring(self.__cachearray, self.__depth)
-  if self.__depth == 0 then  return varname  end
+  local subscripts, varname = _yottadb.cachearray_tostring(self)
+  if subscripts == "" then  return varname  end
   return varname .. '(' .. subscripts .. ')'
 end
 
 -- Returns indexes into the node
 -- Search order for node attribute k:
---   self[k] (implemented by Lua -- finds self.__cachearray, self.__depth)
 --   node value, if k=='__' (node property, not a method -- does not require invoking with ()
 --   node method, if k starts with '__' (k:__method() is the same as k:method() but 15x faster at ~200ns)
 --   if nothing found, returns a new dbase subnode with subscript k
@@ -965,13 +950,12 @@ end
 --      and if so, invokes the method itself if it is a member of metatable 'node'
 -- @param k Node attribute to look up
 function node:__index(k)
-  if k == '__' then  return M.get(self.__cachearray, self.__depth)  end
+  if k == '__' then  return M.get(self)  end
   local __end = '__\xff'
   if type(k)=='string' and k < __end and k >= '__' then  -- fastest way to check if k:startswith('__') -- with majority case (lowercase key values) falling through fastest
     return node[string.sub(k, 3)]  -- remove leading '__' to return node:method
   end
-  return self.___new( _yottadb.cachearray_append(self.__cachearray, self.__depth, k) )
---return _yottadb.cachearray_append(self, _yottadb.cachearray_depth(self)+1, k)
+  return _yottadb.cachearray_append(self, k)
 end
 
 -- Sets node's value if k='__'
@@ -979,9 +963,9 @@ end
 -- but that would not work consistently, e.g. node = 3 would set Lua local
 function node:__newindex(k, v)
   if k == '__' then
-    M.set(self.__cachearray, self.__depth, v)
+    M.set(self, v)
   else
-    error(string.format("Tried to set node object %s. Did you mean to set %s.__ instead?", self(k), self(k)), 2)
+    error(string.format("Tried to set node object %s. Did you mean to set %s.__ instead?", self[k], self[k]), 2)
   end
 end
 
@@ -991,19 +975,25 @@ end
 -- @section
 
 --- Fetch the varname of the node, i.e. the leftmost subscript
-function node:varname()  return _yottadb.cachearray_subscript(self.__cachearray, 0)  end
+function node:varname()  return _yottadb.cachearray_subscript(self, 0)  end
 --- Fetch the name of the node, i.e. the rightmost subscript
-function node:name()  return _yottadb.cachearray_subscript(self.__cachearray, self.__depth)  end
+function node:name()  return _yottadb.cachearray_subscript(self, -1)  end
+--- Fetch the depth of the node, i.e. how many subscripts it has
+-- @function node:depth
+node.depth = _yottadb.cachearray_depth
 --- Fetch the 'data' flags of the node @see data
-function node:data()  return M.data(self.__cachearray, self.__depth)  end
+-- @function node:data
+node.data = M.data
 --- Return true if the node has a value; otherwise false
 function node:has_value()  return node.data(self)%2 == 1  end
 --- Return true if the node has a tree; otherwise false
 function node:has_tree()  return node.data(self)   >= 10  end
+--- Return true if the node is mutable; otherwise false
+function node:ismutable()  return (_yottadb.cachearray_flags(self)&1) == 1  end
 --- Return node's subsarray of subscript strings as a table
 function node:subsarray()
   local subsarray = {}
-  for i = 1, self.__depth do  subsarray[i] = _yottadb.cachearray_subscript(self.__cachearray, i)  end
+  for i = 1, self:__depth() do  subsarray[i] = _yottadb.cachearray_subscript(self, i)  end
   return subsarray
 end
 
@@ -1011,14 +1001,6 @@ end
 
 --- Class key
 -- @section
-
--- raw key creation
-local function _new_key(cachearray, depth)
-  return setmetatable({
-    __cachearray = cachearray,
-    __depth = depth
-  }, key)
-end
 
 --- Deprecated object that represents a YDB node.
 -- `key()` is a subclass of `node()` designed to implement deprecated
@@ -1039,7 +1021,9 @@ end
 function M.key(...)
   assert_type(..., 'string', 1, "key")
   assert_type(select(2, ...), _table_nil, 2, "key")
-  return _new_key(_yottadb.cachearray_create(...))
+  local self = _yottadb.cachearray_create(...)
+  debug.setmetatable(self, key)  -- make it a key type
+  return self
 end
 
 --- Deprecated object that represents a YDB node.
@@ -1048,8 +1032,7 @@ end
 -- @type key
 
 -- Inherit node methods/properties
-for k, v in pairs(node) do  key[k]=v  end
-key.___new = _new_key  -- key's new must have 2 extra underscores to match node's method lookup mechanism so __call can find it when inheriting node(key)
+for k, v in pairs(node) do  key[k]=v  if string.sub(k,1,2)~='__' then key['__'..k]=v end  end
 
 --- Properties of key object listed here, accessed with dot, unlike the node object's method of using a colon.
 -- This kind of property access is for backward compatibility.
@@ -1073,14 +1056,21 @@ key_properties = {
   __subsarray = key.subsarray,  -- retained for backward compatibility
 }
 
+local key_values = {}
+
 -- Returns indexes into the key
 -- Search order for key attribute k:
---   self[k] (implemented by Lua -- finds self.__varname, self.varname, etc.)
+--   self[k] (implemented first to simulate Lua's old-style key behaviour  -- finds self.attributes assigned to self such as __next_cachearray)
 --   key_properties[k]
 --   key[k] (i.e. look up in class named 'key' -- finds key.get, key.__call, etc.)
 --   if nothing found, returns nil
 -- @param k Node attribute to look up
 function key:__index(k)
+  local value_table = key_values[self]
+  if value_table then
+    local value = value_table[k]
+    if value then  return value  end
+  end
   local property = key_properties[k]
   if property then  return property(self)  end
   return key[k]
@@ -1093,7 +1083,10 @@ function key:__newindex(k, v)
     key.set(self, v)
   else
     assert(not key_properties[k], 'read-only property')
-    rawset(self, k, v)
+    -- Simulate node attribute storage using another table of tables since userdata can't store values
+    local value_table = key_values[self]
+    if not value_table then  value_table = {}  key_values[self] = value_table  end
+    value_table[k] = v
   end
 end
 
@@ -1101,7 +1094,7 @@ end
 
 --- Deprecated way to delete database node value pointed to by node object. Prefer node:set(nil)
 -- @see delete_node, set
-function key:delete_node() M.delete_node(self.__cachearray, self.__depth) end
+function key:delete_node() M.delete_node(self) end
 
 --- Deprecated way to get next *sibling* subscript.
 -- Note: this starts from the given location and gives the next *sibling* subscript in the M collation sequence.
@@ -1112,17 +1105,19 @@ function key:delete_node() M.delete_node(self.__cachearray, self.__depth) end
 -- * it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()
 -- * if sibling access becomes a common use-case, it should be reimplemented as an iterator.
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
+-- @param[opt] reverse If `true` then get previous instead of next
 --   or subscript_previous()
 -- @see node:__pairs, subscript_previous
-function key:subscript_next(reset)
+function key:subscript_next(reset, reverse)
+  local actuator = reverse and M.subscript_previous or M.subscript_next
   if not self.__next_cachearray then
-    if self.__depth == 0 then  self.__next_cachearray = _yottadb.cachearray_tomutable(_yottadb.cachearray_append(self.__cachearray, 0, ''))
-    else  self.__next_cachearray = _yottadb.cachearray_tomutable(self.__cachearray, self.__depth)  end
+    self.__next_cachearray = self
+    if self:depth()==0 then  self.__next_cachearray = _yottadb.cachearray_append(self, '')  end
+    self.__next_cachearray = _yottadb.cachearray_tomutable(self.__next_cachearray)
     reset = true
   end
-  local depth = self.__depth  if depth==0 then depth=1 end
   if reset then _yottadb.cachearray_subst(self.__next_cachearray, '')  end
-  local next_sub = M.subscript_next(self.__next_cachearray, depth)
+  local next_sub = actuator(self.__next_cachearray)
   if next_sub then  _yottadb.cachearray_subst(self.__next_cachearray, next_sub)  end
   return next_sub
 end
@@ -1133,16 +1128,7 @@ end
 --   or subscript_previous()
 -- @see node:__pairs, subscript_next
 function key:subscript_previous(reset)
-  if not self.__next_cachearray then
-    if self.__depth == 0 then  self.__next_cachearray = _yottadb.cachearray_tomutable(_yottadb.cachearray_append(self.__cachearray, 0, ''))
-    else  self.__next_cachearray = _yottadb.cachearray_tomutable(self.__cachearray, self.__depth)  end
-    reset = true
-  end
-  local depth = self.__depth  if depth==0 then depth=1 end
-  if reset then _yottadb.cachearray_subst(self.__next_cachearray, '')  end
-  local next_sub = M.subscript_previous(self.__next_cachearray, depth)
-  if next_sub then  _yottadb.cachearray_subst(self.__next_cachearray, next_sub)  end
-  return next_sub
+  return self:subscript_next(reset, true)
 end
 
 --- Deprecated way to get same-level subscripts from this node onward.
@@ -1153,12 +1139,11 @@ end
 -- @param[opt] reverse boolean
 -- @see subscripts
 function key:subscripts(...)
-  if self.__depth > 0 then
-    return M.subscripts(self.__cachearray, self.__depth, ...)
-  else
-    local cachearray, depth = _yottadb.cachearray_append(self.__cachearray, 0, '')
-    return M.subscripts(cachearray, depth, ...)
+  local cachearray = self
+  if self:depth() == 0 then
+    cachearray = _yottadb.cachearray_append(self, '')
   end
+  return M.subscripts(cachearray, ...)
 end
 
 --- @section end

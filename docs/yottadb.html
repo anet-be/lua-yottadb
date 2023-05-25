@@ -85,8 +85,10 @@
 <br/>
 <li><a href="#Get_node_properties"><b>Get node properties </b></a></li>
     <li><a href="#node:data">node:data ()</a></li>
+    <li><a href="#node:depth">node:depth ()</a></li>
     <li><a href="#node:has_tree">node:has_tree ()</a></li>
     <li><a href="#node:has_value">node:has_value ()</a></li>
+    <li><a href="#node:ismutable">node:ismutable ()</a></li>
     <li><a href="#node:name">node:name ()</a></li>
     <li><a href="#node:subsarray">node:subsarray ()</a></li>
     <li><a href="#node:varname">node:varname ()</a></li>
@@ -293,12 +295,20 @@
 	<td class="summary">Fetch the 'data' flags of the node @see data</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#node:depth">node:depth ()</a></td>
+	<td class="summary">Fetch the depth of the node, i.e.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#node:has_tree">node:has_tree ()</a></td>
 	<td class="summary">Return true if the node has a tree; otherwise false</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:has_value">node:has_value ()</a></td>
 	<td class="summary">Return true if the node has a value; otherwise false</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:ismutable">node:ismutable ()</a></td>
+	<td class="summary">Return true if the node is mutable; otherwise false</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:name">node:name ()</a></td>
@@ -613,7 +623,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -642,7 +652,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.data(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.data(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.data(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -657,7 +667,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -675,7 +685,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.delete_node(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.delete_node(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.delete_node(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -690,7 +700,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -708,7 +718,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.delete_tree(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.delete_tree(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.delete_tree(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -723,7 +733,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -746,7 +756,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.get(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.get(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.get(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -791,7 +801,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -817,8 +827,8 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.incr(varname[, {subs}][, increment=<span class="number">1</span>])</pre></li>
-        <li><pre class="example">yottadb.incr(varname[, {subs}], ..., increment=n)</pre></li>
-        <li><pre class="example">yottadb.incr(cachearray, depth[, increment=<span class="number">1</span>])</pre></li>
+        <li><pre class="example">yottadb.incr(varname[, {subs}], ..., increment=<span class="number">1</span>)</pre></li>
+        <li><pre class="example">yottadb.incr(cachearray[, increment=<span class="number">1</span>])</pre></li>
     </ul>
 
 </dd>
@@ -903,7 +913,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -926,7 +936,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.lock_decr(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.lock_decr(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.lock_decr(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -944,7 +954,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -973,7 +983,7 @@
     <ul>
         <li><pre class="example">yottadb.lock_incr(varname[, {subs}][, ...][, timeout=<span class="number">0</span>])</pre></li>
         <li><pre class="example">yottadb.lock_incr(varname[, {subs}], ..., timeout=<span class="number">0</span>)</pre></li>
-        <li><pre class="example">yottadb.lock_incr(cachearray, depth[, timeout=<span class="number">0</span>])</pre></li>
+        <li><pre class="example">yottadb.lock_incr(cachearray[, timeout=<span class="number">0</span>])</pre></li>
     </ul>
 
 </dd>
@@ -991,7 +1001,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -1016,7 +1026,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.node_next(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.node_next(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.node_next(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -1034,7 +1044,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         String of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -1059,7 +1069,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.node_previous(<span class="string">'varname'</span>[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.node_previous(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.node_previous(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -1074,7 +1084,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -1100,7 +1110,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.set(varname[, {subs}][, ...], value)</pre></li>
-        <li><pre class="example">yottadb.set(cachearray, depth, value)</pre></li>
+        <li><pre class="example">yottadb.set(cachearray, value)</pre></li>
     </ul>
 
 </dd>
@@ -1140,7 +1150,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -1163,7 +1173,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.subscript_next(varname[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.subscript_next(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.subscript_next(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -1178,7 +1188,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -1201,7 +1211,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.subscript_previous(varname[, {subsarray}][, ...])</pre></li>
-        <li><pre class="example">yottadb.subscript_previous(cachearray, depth)</pre></li>
+        <li><pre class="example">yottadb.subscript_previous(cachearray)</pre></li>
     </ul>
 
 </dd>
@@ -1218,7 +1228,7 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         of database node (this can also be replaced by 2 parameters (cachearray, depth)
+         of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
          Table of {subscripts}
@@ -1245,7 +1255,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(varname[, {subsarray}][, ...]) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
-        <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(cachearray, depth) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
+        <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(cachearray[, ...]) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
     </ul>
 
 </dd>
@@ -1437,6 +1447,7 @@
     Creates and returns a new YottaDB node object.
  This node has all of the class methods defined below.
  Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
+ Calling this on an existing node <code>yottadb.node(node)</code> creates an (immutable) copy of node.
 
 
     <h3>Parameters:</h3>
@@ -1468,7 +1479,7 @@
     <h3>Usage:</h3>
     <ul>
         <li><pre class="example">yottadb.node(<span class="string">'varname'</span>[, {subsarray}][, ...]) <span class="keyword">or</span>:</pre></li>
-        <li><pre class="example">yottadb.node(node|key, ...)</pre></li>
+        <li><pre class="example">yottadb.node(node|key[, {}][, ...])</pre></li>
         <li><pre class="example">yottadb.node(<span class="string">'varname'</span>)(<span class="string">'sub1'</span>, <span class="string">'sub2'</span>)</pre></li>
         <li><pre class="example">yottadb.node(<span class="string">'varname'</span>, <span class="string">'sub1'</span>, <span class="string">'sub2'</span>)</pre></li>
         <li><pre class="example">yottadb.node(<span class="string">'varname'</span>, {<span class="string">'sub1'</span>, <span class="string">'sub2'</span>})</pre></li>
@@ -1520,6 +1531,12 @@
  You can use either <code>pairs(node)</code> or <code>node:pairs()</code>.
  If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).</p>
 
+<p> <em>Caution:</em> for the sake of speed, the iterator supplies a <em>mutable</em> node. This means it can
+ re-use the same node for each iteration by changing its last subscript, making it faster.
+ But if your loop needs to retain a reference to the node after loop iteration, it should create
+ an immutable copy of that node using <code>ydb.node(node)</code>.
+ Mutability can be tested for using node:ismutable()</p>
+
 <p> Notes:</p>
 
 <ul>
@@ -1527,7 +1544,7 @@
     (even though pairs() order is not normally guaranteed for Lua tables).
     This means that pairs() is a reasonable substitute for ipairs which is not implemented.</li>
     <li>this is very slightly slower than node:subscripts() which only iterates subscript names without
-    creating nodes.</li>
+    fetching the node value.</li>
 </ul>
 
 
@@ -1543,7 +1560,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        subnode, subnode subnode<em>value</em>or_nil, subscript
+        subnode, subnode<em>value</em>or_nil, subscript
     </ol>
 
 
@@ -1554,8 +1571,8 @@
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example"><span class="keyword">for</span> subscript,subnode <span class="keyword">in</span> <span class="global">pairs</span>(node) <span class="keyword">do</span> ...
-     where subnode is a node/key object. If you need its value use node._</pre>
+        <pre class="example"><span class="keyword">for</span> subnode,value[,subscript] <span class="keyword">in</span> <span class="global">pairs</span>(node) <span class="keyword">do</span> ...
+     where subnode is a node/key object.</pre>
     </ul>
 
 </dd>
@@ -1739,7 +1756,8 @@
     </dt>
     <dd>
     Return iterator over the <em>child</em> subscript names of a node (in M terms, collate from "" to "").
- Unlike <code>yottadb.subscripts()</code>, <code>node:subscripts()</code> returns all <em>child</em> subscripts, not subsequent <em>sibling</em> subscripts in the same level.
+ Unlike <code>yottadb.subscripts()</code>, <code>node:subscripts()</code> returns all <em>child</em> subscripts, not subsequent <em>sibling</em> subscripts in the same level. <br>
+ Very slightly faster than node:__pairs() because it iterates subscript names without fetching the node value. <br>
  Note that subscripts() order is guaranteed to equal the M collation sequence.
 
 
@@ -1788,6 +1806,20 @@
 
 </dd>
     <dt>
+    <a name = "node:depth"></a>
+    <strong>node:depth ()</strong>
+    </dt>
+    <dd>
+    Fetch the depth of the node, i.e.  how many subscripts it has
+
+
+
+
+
+
+
+</dd>
+    <dt>
     <a name = "node:has_tree"></a>
     <strong>node:has_tree ()</strong>
     </dt>
@@ -1807,6 +1839,20 @@
     </dt>
     <dd>
     Return true if the node has a value; otherwise false
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "node:ismutable"></a>
+    <strong>node:ismutable ()</strong>
+    </dt>
+    <dd>
+    Return true if the node is mutable; otherwise false
 
 
 
@@ -2075,7 +2121,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-05-02 01:35:51 </i>
+<i style="float:right;">Last updated 2023-05-24 22:41:18 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
