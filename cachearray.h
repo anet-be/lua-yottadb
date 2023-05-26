@@ -55,6 +55,7 @@ typedef struct cachearray_t_maxsize {
 
 cachearray_t *_cachearray_create(lua_State *L, cachearray_t_maxsize *array_prealloc);
 int cachearray_create(lua_State *L);
+int cachearray_setmetatable(lua_State *L);
 int cachearray_tomutable(lua_State *L);
 int cachearray_subst(lua_State *L);
 int cachearray_flags(lua_State *L);

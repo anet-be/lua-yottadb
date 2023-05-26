@@ -376,7 +376,7 @@ function M.subscripts(varname, ...)
 
   -- Convert to mutable cachearray
   local cachearray = _yottadb.cachearray_create(varname, table.unpack(subsarray))  -- works even if varname is already a cachearray
-  debug.setmetatable(cachearray, node)  -- make it a node type. Not strictly necessary since code below doesn't call node methods, but in case it does in future ...
+  _yottadb.cachearray_setmetatable(cachearray, node)  -- make it a node type. Not strictly necessary since code below doesn't call node methods, but in case it does in future ...
   cachearray = _yottadb.cachearray_tomutable(cachearray)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next
   local function iterator()
@@ -630,11 +630,11 @@ function M.node(varname, ...)
   local self
   if type(varname) == 'string' then
     self = _yottadb.cachearray_create(varname, ...)
-    debug.setmetatable(self, node)  -- change to node type
+    _yottadb.cachearray_setmetatable(self, node)  -- change to node type
   else
     assert(type(varname)=='userdata', "Parameter 1 must be varname (string) or a key/node object to create new node object from")
     self = _yottadb.cachearray_create(varname)  -- also makes it non-mutable
-    debug.setmetatable(self, node)  -- change to node type
+    _yottadb.cachearray_setmetatable(self, node)  -- change to node type
     local subs = select('#', ...)
     if subs>0 and type(...)=='table' then
       self = _yottadb.cachearray_append(self, table.unpack(...))
@@ -1028,7 +1028,7 @@ function M.key(...)
   assert_type(..., 'string', 1, "key")
   assert_type(select(2, ...), _table_nil, 2, "key")
   local self = _yottadb.cachearray_create(...)
-  debug.setmetatable(self, key)  -- make it a key type
+  _yottadb.cachearray_setmetatable(self, key)  -- make it a key type
   return self
 end
 
