@@ -4,6 +4,8 @@
 #define LUA_YOTTADB_H
 
 /* Version History
+v2.1 Further efficiency tweak
+ - Bugfix: yottadb.set(node, nil) now returns nil like the docs say
 v2.0 Major efficiency rewrite
  - 1100% faster node creation
  - 350% faster node iteration or 600% for large 10-subscript nodes; 
@@ -25,7 +27,7 @@ v0.1 Initial release by Mitchel:
 */
 
 // Define version: Maj,Min
-#define LUA_YOTTADB_VERSION 2,0
+#define LUA_YOTTADB_VERSION 2,1
 #define LUA_YOTTADB_VERSION_STRING   WRAP_PARAMETER(CREATE_VERSION_STRING, LUA_YOTTADB_VERSION)   /* "X.Y" format */
 #define LUA_YOTTADB_VERSION_NUMBER   WRAP_PARAMETER(CREATE_VERSION_NUMBER, LUA_YOTTADB_VERSION)   /* XXYY integer format */
 // Version creation helper macros
