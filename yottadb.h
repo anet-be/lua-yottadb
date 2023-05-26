@@ -4,13 +4,13 @@
 #define LUA_YOTTADB_H
 
 /* Version History
-v2.1 Further efficiency tweak
- - Bugfix: yottadb.set(node, nil) now returns nil like the docs say
+v2.1 Additional 3.6x speed improvement on node creation (now 47x v1.x) - PR #26
+ - Bugfix: yottadb.set(node, nil) now returns nil like its docs say it should
 v2.0 Major efficiency rewrite
- - 1100% faster node creation
- - 350% faster node iteration or 600% for large 10-subscript nodes; 
- - 500% faster node tree traversal
- - For more specific gains from each different type of tweak, see individual commits on the efficiency PR
+ - 13x faster node creation
+ - 4x faster node iteration or 600% for large 10-subscript nodes;
+ - 8x faster node tree traversal
+ - For more specific gains from each different type of tweak, see individual commits on the efficiency PR #23
  - Removed obsolete ydb.nodes() in favour of the more Lua-esque gettree()
  - Improved docs and added generated docs for C files in docs/yottadb_c.html
 v1.2 Version number bump purely because MLua benchmark now requires this version of gettree()
