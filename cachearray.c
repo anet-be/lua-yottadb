@@ -36,6 +36,18 @@ static cachearray_t *cachearray_new(lua_State *L, int size, int parent_index) {
   return array;
 }
 
+/// Set metatable for a cachearray since Lua itself can't set userdata metatables.
+// This is the same as debug.setmetatable(cachearray, mt) but production apps are not supposed to use the debug library.
+// @function cachearray_setmetatable
+// @usage _yottadb.cachearray_setmetatable(cachearray, metatable)
+// @param cachearray to set
+// @param metatable to use
+// @return nothing
+int cachearray_setmetatable(lua_State *L) {
+  lua_setmetatable(L, -2);
+  return 0;
+}
+
 // Update cachearray subscript pointers to match subsdata_string at addr
 static void _cachearray_updateaddr(cachearray_t *array, char *subsdata) {
   ydb_buffer_t *element = &array->varname;  // assumes array->subs[] come straight after array->varname
@@ -181,9 +193,9 @@ cachearray_t *_cachearray_create(lua_State *L, cachearray_t_maxsize *array_preal
 // The resulting full userdata contains a cached C array of varname and subscripts which may be passed
 // to raw `_yottadb()` functions as a speedy subsarray.
 // Returned cachearray is always immutable (copied from a mutable one if necessary)
-// @function cachearray
-// @usage _yottadb.cachearray(varname[, t1][, ...])
-// @usage _yottadb.cachearray(cachearray[, ...])
+// @function cachearray_create
+// @usage _yottadb.cachearray_create(varname[, t1][, ...])
+// @usage _yottadb.cachearray_create(cachearray[, ...])
 // @param varname string (M glvn) or cachearray
 // @param[opt] t1 Table of subscripts (may only be supplied if varname is a string)
 // @param[opt] ... a list of strings to be appended to the cachearray after t1.

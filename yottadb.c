@@ -662,6 +662,7 @@ static const luaL_Reg yottadb_functions[] = {
   {"init", init},
   {"ydb_eintr_handler", _ydb_eintr_handler},
   {"cachearray_create", cachearray_create},
+  {"cachearray_setmetatable", cachearray_setmetatable},
   {"cachearray_tomutable", cachearray_tomutable},
   {"cachearray_subst", cachearray_subst},
   {"cachearray_flags", cachearray_flags},
