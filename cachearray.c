@@ -85,7 +85,7 @@ static cachearray_t *_cachearray_realloc(lua_State *L, int index, int new_depth,
   return newarray;
 }
 
-/// Underlying core of `cachearray_create()`, designed to call from C.
+// Underlying core of `cachearray_create()`, designed to call from C.
 // Create cachearray from varname and subscripts on the Lua stack: varname[, t1][, ...]
 // This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups).
 // For the sake of speed, the caller can pre-allocate `cachearray_t_maxsize` on its stack
@@ -210,7 +210,7 @@ int cachearray_create(lua_State *L) {
   return 1;
 }
 
-/// Push onto the Lua stack a new deferred version of the cachearray at `index`.
+// Push onto the Lua stack a new deferred version of the cachearray at `index`.
 // @return new cachearray
 static cachearray_t *_cachearray_deferred(lua_State *L, int index) {
   cachearray_t *parent = lua_touserdata(L, index);
@@ -293,11 +293,12 @@ int cachearray_append(lua_State *L) {
   return 1;
 }
 
-/// Make copy of cachearray that is mutable (i.e. having changable subscripts) -- intended for iteration.
+/// Make copy of cachearray that is mutable (having changable subscripts) -- intended for iteration.
 // Allows `cachearray_subst()` to be used on the cachearray to efficiently iterate subscripts
 // without creating a new cachearray for every single iteration.
 // Forces `cachearray_append()` to create child nodes that are copies rather than re-using this cachearray.
 // The user can detect whether a node is mutable (could change) using the node's `__mutable()` method.
+// @function cachearray_tomutable
 // @usage _yottadb.cachearray_tomutable(cachearray)
 // @param cachearray userdata created by `cachearray_create()
 // @return new cachearray
@@ -316,6 +317,7 @@ int cachearray_tomutable(lua_State *L) {
 }
 
 /// Return cachearray flags field
+// @function cachearray_flags
 // @usage _yottadb.cachearray_flags(cachearray)
 // @param cachearray userdata
 // @return bitfield `flags` (see cachearray.h for bit defines)
@@ -334,29 +336,29 @@ int cachearray_flags(lua_State *L) {
 // This is used only by node:subscripts() to efficiently iterate subscripts
 // without creating a new cachearray for every single iteration.
 // The user can detect whether a node is mutable using the node's `__mutable()` method.
+// @function cachearray_subs
 // @usage _yottadb.cachearray_subst(cachearray, string)
 // @param cachearray
 // @param string to store in the topmost array index (at depth)
 // @return cachearray (which could be a new mutable one if it could not hold the new subscript size)
 int cachearray_subst(lua_State *L) {
   cachearray_t *array = lua_touserdata(L, 1);
-  if (!array || (array->dereference->flags&MUTABLE_BIT)==0)
-    luaL_error(L, "Parameter #1 to cachearray_subst must be a mutable cachearray");
+  if (!array)
+    luaL_error(L, "Parameter #1 to cachearray_subst must be a cachearray");
   int depth = array->depth;
   array = array->dereference;
-  int depth_used = array->depth_used;
-  if (depth != depth_used)  // should always be the case, but double-check
-    luaL_error(L, "Cachearray must be mutable to run cachearray_subst() on it");
+  if ((array->flags&MUTABLE_BIT) == 0 || depth != array->depth_used)  // depth should always = depth_used in a mutable array, but double-check
+    luaL_error(L, "Parameter #1 to cachearray_subst must be a *mutable* cachearray");
   char *subsdata = get_subsdata(array);
-  int subslen = (&array->varname+depth_used)->buf_addr - subsdata;
+  int subslen = (&array->varname+depth)->buf_addr - subsdata;
   size_t len;
   char *string = luaL_checklstring(L, 2, &len);
   if (subslen+(int)len > array->subsdata_alloc) {
-    array = _cachearray_realloc(L, 1, depth_used, subslen+len, &subsdata);
+    array = _cachearray_realloc(L, 1, depth, subslen+len, &subsdata);
     array->flags |= MUTABLE_BIT;
   }
-  memcpy((&array->varname+depth_used)->buf_addr, string, len);
-  (&array->varname+depth_used)->len_used = (&array->varname+depth_used)->len_alloc = len;
+  memcpy((&array->varname+depth)->buf_addr, string, len);
+  (&array->varname+depth)->len_used = (&array->varname+depth)->len_alloc = len;
   lua_pop(L, 1);  // pop string
   return 1;
 }

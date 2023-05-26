@@ -77,9 +77,9 @@
     <li><a href="#node:delete_tree">node:delete_tree ()</a></li>
     <li><a href="#node:get">node:get ([default])</a></li>
     <li><a href="#node:incr">node:incr ([increment=1])</a></li>
-    <li><a href="#node:lock">node:lock (...)</a></li>
+    <li><a href="#node:lock">node:lock ([timeout])</a></li>
     <li><a href="#node:lock_decr">node:lock_decr ()</a></li>
-    <li><a href="#node:lock_incr">node:lock_incr (...)</a></li>
+    <li><a href="#node:lock_incr">node:lock_incr ([timeout])</a></li>
     <li><a href="#node:set">node:set (value)</a></li>
     <li><a href="#node:subscripts">node:subscripts ([reverse])</a></li>
 <br/>
@@ -95,9 +95,9 @@
 <br/>
 <li><a href="#Class_key"><b>Class key </b></a></li>
     <li><a href="#key">key (varname[, subsarray])</a></li>
-    <li><a href="#key.property">key.property</a></li>
+    <li><a href="#key._property_">key._property_</a></li>
     <li><a href="#key:delete_node">key:delete_node ()</a></li>
-    <li><a href="#key:subscript_next">key:subscript_next ([reset])</a></li>
+    <li><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])</a></li>
     <li><a href="#key:subscript_previous">key:subscript_previous ([reset])</a></li>
     <li><a href="#key:subscripts">key:subscripts ([reverse])</a></li>
 
@@ -268,7 +268,7 @@
 	<td class="summary">Increment node's value</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#node:lock">node:lock (...)</a></td>
+	<td class="name" nowrap><a href="#node:lock">node:lock ([timeout])</a></td>
 	<td class="summary">Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.</td>
 	</tr>
 	<tr>
@@ -276,7 +276,7 @@
 	<td class="summary">Decrements a lock matching this node, releasing it if possible.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#node:lock_incr">node:lock_incr (...)</a></td>
+	<td class="name" nowrap><a href="#node:lock_incr">node:lock_incr ([timeout])</a></td>
 	<td class="summary">Attempts to acquire or increment a lock matching this node, waiting if requested.</td>
 	</tr>
 	<tr>
@@ -327,18 +327,18 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#key">key (varname[, subsarray])</a></td>
-	<td class="summary">Deprecated object that represents a YDB node.</td>
+	<td class="summary">Creates deprecated object that represents a YDB node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key.property">key.property</a></td>
-	<td class="summary">Properties of key object listed here, accessed with dot, unlike the node object's method of using a colon.</td>
+	<td class="name" nowrap><a href="#key._property_">key._property_</a></td>
+	<td class="summary">Properties of key object are listed below, accessed with dot, unlike object methods which use a colon.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#key:delete_node">key:delete_node ()</a></td>
 	<td class="summary">Deprecated way to delete database node value pointed to by node object.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key:subscript_next">key:subscript_next ([reset])</a></td>
+	<td class="name" nowrap><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])</a></td>
 	<td class="summary">Deprecated way to get next <em>sibling</em> subscript.</td>
 	</tr>
 	<tr>
@@ -1223,6 +1223,10 @@
     Returns an iterator for iterating over database <em>sibling</em> subscripts starting from given varname(subs).
  Note: this starts from the given location and gives the next <em>sibling</em> subscript in the M collation sequence.
  It operates differently than <code>node:subscipts()</code> which yields all subscripts that are <em>children</em> of the given node.
+ It has a kludgy implementation due to implementing so many input options as well as handling a
+ cachearray input (which is purely so that key:subscripts can call it).
+ As a result, it's not very efficient. But I don't anticipate it will get much use due to node:subscripts()
+ having a more intuitive outcome, in my opinion.
 
 
     <h3>Parameters:</h3>
@@ -1254,8 +1258,8 @@
 
     <h3>Usage:</h3>
     <ul>
-        <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(varname[, {subsarray}][, ...]) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
-        <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(cachearray[, ...]) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
+        <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(varname[, {subsarray}][, ...][, reverse]) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
+        <li><pre class="example"><span class="keyword">for</span> name <span class="keyword">in</span> yottadb.subscripts(cachearray[, ...][, reverse]) <span class="keyword">do</span> ... <span class="keyword">end</span></pre></li>
     </ul>
 
 </dd>
@@ -1464,7 +1468,7 @@
          (<em>optional</em>)
         </li>
         <li><span class="parameter">node</span>
-        |key is an existing node or key to copy into a new object (you can turn a <a href="yottadb.html#key">key</a> type into a <a href="yottadb.html#node">node</a> type this way)
+         <code>|key:</code> is an existing node or key to copy into a new object (you can turn a <a href="yottadb.html#key">key</a> type into a <a href="yottadb.html#node">node</a> type this way)
         </li>
     </ul>
 
@@ -1657,7 +1661,7 @@
 </dd>
     <dt>
     <a name = "node:lock"></a>
-    <strong>node:lock (...)</strong>
+    <strong>node:lock ([timeout])</strong>
     </dt>
     <dd>
     Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.
@@ -1665,10 +1669,9 @@
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">...</span>
-
-
-
+        <li><span class="parameter">timeout</span>
+         Integer timeout in seconds to wait for the lock.
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -1701,7 +1704,7 @@
 </dd>
     <dt>
     <a name = "node:lock_incr"></a>
-    <strong>node:lock_incr (...)</strong>
+    <strong>node:lock_incr ([timeout])</strong>
     </dt>
     <dd>
     Attempts to acquire or increment a lock matching this node, waiting if requested.
@@ -1709,10 +1712,9 @@
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">...</span>
-
-
-
+        <li><span class="parameter">timeout</span>
+         Integer timeout in seconds to wait for the lock.
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -1913,7 +1915,7 @@
     </dt>
     <dd>
 
-<p>Deprecated object that represents a YDB node.
+<p>Creates deprecated object that represents a YDB node.
  <code>key()</code> is a subclass of <code>node()</code> designed to implement deprecated
  property names for backward compatibility, as follows:</p>
 
@@ -1956,11 +1958,11 @@
 
 </dd>
     <dt>
-    <a name = "key.property"></a>
-    <strong>key.property</strong>
+    <a name = "key._property_"></a>
+    <strong>key._property_</strong>
     </dt>
     <dd>
-    Properties of key object listed here, accessed with dot, unlike the node object's method of using a colon.
+    Properties of key object are listed below, accessed with dot, unlike object methods which use a colon.
  This kind of property access is for backward compatibility.</p>
 
 <p> For example, access data property with: <code>key.data</code>
@@ -2017,7 +2019,7 @@
 </dd>
     <dt>
     <a name = "key:subscript_next"></a>
-    <strong>key:subscript_next ([reset])</strong>
+    <strong>key:subscript_next ([reset[, reverse]])</strong>
     </dt>
     <dd>
 
@@ -2037,8 +2039,12 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">reset</span>
-         If <code>true</code>, resets to the original subscript before any calls to subscript<em>next()
-   or subscript</em>previous()
+         If <code>true</code>, resets to the original subscript before any calls to subscript_next()
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">reverse</span>
+         If <code>true</code> then get previous instead of next
+   or subscript_previous()
          (<em>optional</em>)
         </li>
     </ul>
@@ -2121,7 +2127,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-05-24 22:41:18 </i>
+<i style="float:right;">Last updated 2023-05-26 12:51:39 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

@@ -94,7 +94,7 @@ int init(lua_State *L) {
 /// Block or unblock YDB signals for while M code is running.
 // This function is designed to be passed to yottadb.init() as the `signal_blocker` parameter.
 // Most signals (listed in `BLOCKED_SIGNALS` in callins.c) are blocked using sigprocmask()
-// but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
+// but SIGLARM is not blocked; instead, sigaction() is used to set its `SA_RESTART` flag while
 // in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are 
 // interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
 // handler does actually run, allowing YDB to flush the database or IO as necessary without
@@ -149,7 +149,7 @@ const const_Reg yottadb_types[] = {
 // Allocate metadata structure for 'n' params
 // Metadata is used, to store param data and mallocs (for subsequent freeing)
 // Allocate on the stack for speed (hence need to use a macro)
-// Invoke with: metadata M* = create_metadata(n) -- must use letter M to work
+// Invoke with: metadata M* = `create_metadata(n)` -- must use letter M to work
 #define DEBUG_META_FLAG 0
 #if DEBUG_META_FLAG
   #define DEBUG_META(str, value) printf(str, (value)), fflush(stdout)
@@ -225,8 +225,8 @@ static void typeerror_cleanup(lua_State*L, cip_metadata *meta, int argi, char *e
 //
 // * this is inner loop param processing, so limit cast2ydb() args to 4 to use speedy register params.
 // * gcc passes double/float types in FPU registers instead of in the parameter array
-// which means we cannot pass them in gparam_list. (YDB should have used sseregparm attribute on ydb_ci)
-// * similarly for ydb_int_t in some architectures, although my gcc seems to pass 32-bit params as 64-bits;
+// which means we cannot pass them in `gparam_list`. (YDB should have used sseregparm attribute on `ydb_ci`)
+// * similarly for `ydb_int_t` in some architectures, although my gcc seems to pass 32-bit params as 64-bits;
 // see: https://en.wikipedia.org/wiki/X86_calling_conventions
 //
 // All of this means we must pass float, double, and int as pointers instead of actuals.
@@ -336,7 +336,7 @@ static ydb_param cast2ydb(lua_State *L, int argi, type_spec *ydb_type, cip_metad
   return param;
 }
 
-// Cast retval/output param from ydb_type to a Lua type and push onto the Lua stack as a return value.
+// Cast retval/output param from `ydb_type` to a Lua type and push onto the Lua stack as a return value.
 // Only called for output types
 // There are no errors
 // Note: this is inner loop param processing, so limit cast2lua() args to 4 for speedy register params
@@ -403,8 +403,8 @@ typedef struct {
 // Notes:
 //
 // * This function is intended to be called by a wrapper in yottadb.lua rather than by the user,
-// so validity of type_list array is not checked.
-// * If you change the number of parameters before var_args then you MUST also adjust CIP_ARGS.
+// so validity of `type_list` array is not checked.
+// * If you change the number of parameters before `var_args` then you MUST also adjust `CIP_ARGS`.
 // * You must pass float, double, and int as pointers instead of actuals: see note in cast2ydb().
 // * This is designed for speed, which means all temporary data is allotted on the stack.
 // and it does no mallocs unless it has to return strings (which can be large so need malloc).
@@ -414,16 +414,16 @@ typedef struct {
 // But first check benchmarks first to see if YDB end is slow enough to make optimization meaningless.
 // @function cip
 // @usage _yottadb.cip(ci_handle, routine_name_handle, type_list[, param1][, param2][, ...])
-// @param ci_handle is a call-in table opened by ci_tab_open() that contains routine_name
-// @param routine_name_handle is the handle of an M routine registered by _yottadb.register_routine()
-// @param type_list is a Lua string containing an array of type_spec[] specifying ret_val and each parameter per the call-in table
-//    (so the number of type_spec array elements must equal (1+n) where n is the number of parameters in the call-in file)
-// @param<n> must list the parameters specified specified in the call-in table
-//    each parameter is converted from its Lua type to the correct C type (e.g. ydb_int_t*) before calling the M routine
-//    an error results if the number of parameters does not match the number specified in the call-in table
-//    if too few parameters are supplied, an error results
-//    if too many parameters are supplied, they are ignored (typical Lua behaviour)
-// @return: Function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table.
+// @param ci_handle is a call-in table opened by `ci_tab_open()` that contains `routine_name`
+// @param routine_name_handle is the handle of an M routine registered by `_yottadb.register_routine()`
+// @param type_list is a Lua string containing an array of `type_spec[]` specifying `ret_val` and each parameter per the call-in table
+// (so the number of `type_spec` array elements must equal (1+n) where n is the number of parameters in the call-in file)
+// @param n must list the parameters specified in the call-in table
+// each parameter is converted from its Lua type to the correct C type (e.g. `ydb_int_t*`) before calling the M routine
+// an error results if the number of parameters does not match the number specified in the call-in table
+// if too few parameters are supplied, an error results
+// if too many parameters are supplied, they are ignored (typical Lua behaviour)
+// @return Function's return value (unless `ret_type='void'`) followed by any params listed as outputs (O or IO) in the call-in table.
 // Returned values are all converted from the call-in table type to Lua types
 int cip(lua_State *L) {
   uintptr_t old_handle, ci_handle = luaL_checkinteger(L, 1);
@@ -511,7 +511,7 @@ int cip(lua_State *L) {
 // @usage _yottadb.register_routine(routine_name, entrypoint)
 // @param routine_name is the C name of the M routine (first field in the call-in table)
 // @param entrypoint is the M entrypoint specified in the call-in table
-// @return the handle (a ydb ci_name_descriptor struct in a new Lua userdata object).
+// @return the handle (a ydb `ci_name_descriptor` struct in a new Lua userdata object).
 int register_routine(lua_State *L) {
   ci_name_userdata *u;
   u = lua_newuserdata(L, sizeof(ci_name_userdata));

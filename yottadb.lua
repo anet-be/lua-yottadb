@@ -347,6 +347,10 @@ M.subscript_previous = _yottadb.subscript_previous
 --- Returns an iterator for iterating over database *sibling* subscripts starting from given varname(subs).
 -- Note: this starts from the given location and gives the next *sibling* subscript in the M collation sequence.
 -- It operates differently than `node:subscipts()` which yields all subscripts that are *children* of the given node.
+-- It has a kludgy implementation due to implementing so many input options as well as handling a
+-- cachearray input (which is purely so that key:subscripts can call it).
+-- As a result, it's not very efficient. But I don't anticipate it will get much use due to node:subscripts()
+-- having a more intuitive outcome, in my opinion.
 -- @usage for name in yottadb.subscripts(varname[, {subsarray}][, ...][, reverse]) do ... end
 -- @usage for name in yottadb.subscripts(cachearray[, ...][, reverse]) do ... end
 -- @param varname of database node (this can also be replaced by cachearray)
@@ -613,7 +617,7 @@ end
 -- @param varname String variable name.
 -- @param[opt] subsarray table of {subscripts}
 -- @param[opt] ... list of subscripts to append after any elements in optional subsarray table
--- @param node|key is an existing node or key to copy into a new object (you can turn a `key` type into a `node` type this way)
+-- @param node `|key:` is an existing node or key to copy into a new object (you can turn a `key` type into a `node` type this way)
 -- @usage yottadb.node('varname'[, {subsarray}][, ...]) or:
 -- @usage yottadb.node(node|key[, {}][, ...])
 -- @usage yottadb.node('varname')('sub1', 'sub2')
@@ -691,10 +695,12 @@ function node:delete_tree()  return M.delete_tree(self)  end
 function node:incr(...)  assert_type(..., _string_number_nil, 1, ":incr")  return M.incr(self, ...)  end
 
 --- Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.
+-- @param[opt] timeout Integer timeout in seconds to wait for the lock.
 -- @see lock
 function node:lock(...)  assert_type(..., _number_nil, 1, ":lock")  return M.lock({self}, ...)  end
 
 --- Attempts to acquire or increment a lock matching this node, waiting if requested.
+-- @param[opt] timeout Integer timeout in seconds to wait for the lock.
 -- @see lock_incr
 function node:lock_incr(...)  assert_type(..., _string_number_nil, 1, ":lock_incr")  return M.lock_incr(self, ...)  end
 
@@ -1002,7 +1008,7 @@ end
 --- Class key
 -- @section
 
---- Deprecated object that represents a YDB node.
+--- Creates deprecated object that represents a YDB node.
 -- `key()` is a subclass of `node()` designed to implement deprecated
 -- property names for backward compatibility, as follows:
 --
@@ -1034,11 +1040,11 @@ end
 -- Inherit node methods/properties
 for k, v in pairs(node) do  key[k]=v  if string.sub(k,1,2)~='__' then key['__'..k]=v end  end
 
---- Properties of key object listed here, accessed with dot, unlike the node object's method of using a colon.
+--- Properties of key object are listed below, accessed with dot, unlike object methods which use a colon.
 -- This kind of property access is for backward compatibility.
 --
 -- For example, access data property with: `key.data`
--- @table property
+-- @table _property_
 -- @field name equivalent to `node:name()`
 -- @field data equivalent to `node:data()`
 -- @field has_value equivalent to `node:has_value()`

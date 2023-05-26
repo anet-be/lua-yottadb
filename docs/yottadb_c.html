@@ -36,21 +36,20 @@
 <li><a href=""><b>Summary</b></a></li>
 <br/>
 <li><a href="#Functions"><b>Functions</b></a></li>
-    <li><a href="#get">get (varname, subs, ...)</a></li>
-    <li><a href="#delete">delete (varname, subs, ..., type)</a></li>
-    <li><a href="#set">set (varname, subs, ..., value)</a></li>
-    <li><a href="#data">data (varname, subs, ..., ...)</a></li>
-    <li><a href="#lock_incr">lock_incr (varname, subs, ..., timeout)</a></li>
-    <li><a href="#lock_decr">lock_decr (varname, subs, ...)</a></li>
-    <li><a href="#tpfn">tpfn ()</a></li>
-    <li><a href="#tp">tp (transid, varnames, f, ...)</a></li>
-    <li><a href="#subscript_next">subscript_next (varname, subs, ...)</a></li>
-    <li><a href="#subscript_previous">subscript_previous (varname, subs, ...)</a></li>
-    <li><a href="#node_next">node_next (varname, subs, ...)</a></li>
-    <li><a href="#node_previous">node_previous (varname, subs)</a></li>
-    <li><a href="#lock">lock ([node_specifiers], timeout)</a></li>
+    <li><a href="#get">get (varname[, subs[, ...]])</a></li>
+    <li><a href="#delete">delete (varname[, subs][, ...], type)</a></li>
+    <li><a href="#set">set (varname[, subs][, ...], value)</a></li>
+    <li><a href="#data">data (varname[, subs[, ...[, ...]]])</a></li>
+    <li><a href="#lock_incr">lock_incr (varname[, subs[, ...[, timeout]]])</a></li>
+    <li><a href="#lock_decr">lock_decr (varname[, subs[, ...]])</a></li>
+    <li><a href="#tp">tp ([transid][, varnames], f[, ...])</a></li>
+    <li><a href="#subscript_next">subscript_next (varname[, subs[, ...]])</a></li>
+    <li><a href="#subscript_previous">subscript_previous (varname[, subs[, ...]])</a></li>
+    <li><a href="#node_next">node_next (varname[, subs[, ...]])</a></li>
+    <li><a href="#node_previous">node_previous (varname[, subs])</a></li>
+    <li><a href="#lock">lock ([node_specifiers[, timeout]])</a></li>
     <li><a href="#delete_excl">delete_excl (varnames)</a></li>
-    <li><a href="#incr">incr (varname, subs, increment)</a></li>
+    <li><a href="#incr">incr (varname[, subs[, increment]])</a></li>
     <li><a href="#str2zwr">str2zwr (s)</a></li>
     <li><a href="#zwr2str">zwr2str (s)</a></li>
 <br/>
@@ -62,12 +61,11 @@
     <li><a href="#ci_tab_open">ci_tab_open (ci_table_filename)</a></li>
 <br/>
 <li><a href="#Cachearray_functions"><b>Cachearray functions </b></a></li>
-    <li><a href="#array_prealloc">array_prealloc</a></li>
     <li><a href="#cachearray">cachearray (varname[, t1[, ...]])</a></li>
     <li><a href="#cachearray_append">cachearray_append (cachearray[, ...])</a></li>
-    <li><a href="#cachearray">cachearray</a></li>
-    <li><a href="#cachearray">cachearray</a></li>
-    <li><a href="#cachearray">cachearray</a></li>
+    <li><a href="#cachearray_tomutable">cachearray_tomutable (cachearray)</a></li>
+    <li><a href="#cachearray_flags">cachearray_flags (cachearray)</a></li>
+    <li><a href="#cachearray_subs">cachearray_subs (cachearray, string)</a></li>
     <li><a href="#cachearray_tostring">cachearray_tostring (cachearray[, depth])</a></li>
     <li><a href="#cachearray_depth">cachearray_depth (cachearray)</a></li>
     <li><a href="#cachearray_subscript">cachearray_subscript (depth)</a></li>
@@ -90,55 +88,51 @@
 <h2><a href="#Functions">Functions</a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#get">get (varname, subs, ...)</a></td>
+	<td class="name" nowrap><a href="#get">get (varname[, subs[, ...]])</a></td>
 	<td class="summary">Gets the value of a variable/node or nil if it has no data.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#delete">delete (varname, subs, ..., type)</a></td>
+	<td class="name" nowrap><a href="#delete">delete (varname[, subs][, ...], type)</a></td>
 	<td class="summary">Deletes a node or tree of nodes.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#set">set (varname, subs, ..., value)</a></td>
+	<td class="name" nowrap><a href="#set">set (varname[, subs][, ...], value)</a></td>
 	<td class="summary">Sets the value of a variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#data">data (varname, subs, ..., ...)</a></td>
+	<td class="name" nowrap><a href="#data">data (varname[, subs[, ...[, ...]]])</a></td>
 	<td class="summary">Returns information about a variable/node (except intrinsic variables).</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#lock_incr">lock_incr (varname, subs, ..., timeout)</a></td>
+	<td class="name" nowrap><a href="#lock_incr">lock_incr (varname[, subs[, ...[, timeout]]])</a></td>
 	<td class="summary">Attempts to acquire or increment a lock on a variable/node, waiting if requested.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#lock_decr">lock_decr (varname, subs, ...)</a></td>
+	<td class="name" nowrap><a href="#lock_decr">lock_decr (varname[, subs[, ...]])</a></td>
 	<td class="summary">Decrements a lock on a variable/node, releasing it if possible.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#tpfn">tpfn ()</a></td>
-	<td class="summary">Invokes the Lua transaction function passed to <code>_yottadb.tp()</code>.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#tp">tp (transid, varnames, f, ...)</a></td>
+	<td class="name" nowrap><a href="#tp">tp ([transid][, varnames], f[, ...])</a></td>
 	<td class="summary">Initiates a transaction.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#subscript_next">subscript_next (varname, subs, ...)</a></td>
+	<td class="name" nowrap><a href="#subscript_next">subscript_next (varname[, subs[, ...]])</a></td>
 	<td class="summary">Returns the next subscript for a variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#subscript_previous">subscript_previous (varname, subs, ...)</a></td>
+	<td class="name" nowrap><a href="#subscript_previous">subscript_previous (varname[, subs[, ...]])</a></td>
 	<td class="summary">Returns the previous subscript for a variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#node_next">node_next (varname, subs, ...)</a></td>
+	<td class="name" nowrap><a href="#node_next">node_next (varname[, subs[, ...]])</a></td>
 	<td class="summary">Returns the full subscript table of the next node after a variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#node_previous">node_previous (varname, subs)</a></td>
+	<td class="name" nowrap><a href="#node_previous">node_previous (varname[, subs])</a></td>
 	<td class="summary">Returns the full subscript table of the node prior to a variable/node.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#lock">lock ([node_specifiers], timeout)</a></td>
+	<td class="name" nowrap><a href="#lock">lock ([node_specifiers[, timeout]])</a></td>
 	<td class="summary">Releases all locks held and attempts to acquire all requested locks, waiting if requested.</td>
 	</tr>
 	<tr>
@@ -146,7 +140,7 @@
 	<td class="summary">Deletes trees of all local variables except the given ones.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#incr">incr (varname, subs, increment)</a></td>
+	<td class="name" nowrap><a href="#incr">incr (varname[, subs[, increment]])</a></td>
 	<td class="summary">Increments the numeric value of a variable/node.</td>
 	</tr>
 	<tr>
@@ -184,10 +178,6 @@
 <h2><a href="#Cachearray_functions">Cachearray functions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#array_prealloc">array_prealloc</a></td>
-	<td class="summary">Underlying core of <code>cachearray_create()</code>, designed to call from C.</td>
-	</tr>
-	<tr>
 	<td class="name" nowrap><a href="#cachearray">cachearray (varname[, t1[, ...]])</a></td>
 	<td class="summary">Generate and return a C-style array of subscripts as a userdata.</td>
 	</tr>
@@ -196,15 +186,15 @@
 	<td class="summary">Append subscripts to an existing cachearray, creating a copy if it is full at this depth.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#cachearray">cachearray</a></td>
-	<td class="summary">Make copy of cachearray that is mutable (i.e.</td>
+	<td class="name" nowrap><a href="#cachearray_tomutable">cachearray_tomutable (cachearray)</a></td>
+	<td class="summary">Make copy of cachearray that is mutable (having changable subscripts) -- intended for iteration.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#cachearray">cachearray</a></td>
+	<td class="name" nowrap><a href="#cachearray_flags">cachearray_flags (cachearray)</a></td>
 	<td class="summary">Return cachearray flags field</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#cachearray">cachearray</a></td>
+	<td class="name" nowrap><a href="#cachearray_subs">cachearray_subs (cachearray, string)</a></td>
 	<td class="summary">Substitute final subscript of given mutable cachearray with <a href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a>.</td>
 	</tr>
 	<tr>
@@ -230,7 +220,7 @@
     <dl class="function">
     <dt>
     <a name = "get"></a>
-    <strong>get (varname, subs, ...)</strong>
+    <strong>get (varname[, subs[, ...]])</strong>
     </dt>
     <dd>
     Gets the value of a variable/node or nil if it has no data.
@@ -242,10 +232,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] is a list of subscripts
+         is a list of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -266,7 +258,7 @@
 </dd>
     <dt>
     <a name = "delete"></a>
-    <strong>delete (varname, subs, ..., type)</strong>
+    <strong>delete (varname[, subs][, ...], type)</strong>
     </dt>
     <dd>
     Deletes a node or tree of nodes.
@@ -282,10 +274,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] list of subscripts
+         list of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">type</span>
          <code>_yottadb.YDB_DEL_NODE</code> or <code>_yottadb.YDB_DEL_TREE</code>
@@ -304,7 +298,7 @@
 </dd>
     <dt>
     <a name = "set"></a>
-    <strong>set (varname, subs, ..., value)</strong>
+    <strong>set (varname[, subs][, ...], value)</strong>
     </dt>
     <dd>
     Sets the value of a variable/node.
@@ -318,10 +312,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] is a list of subscripts
+         is a list of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">value</span>
          string or number convertible to string
@@ -338,14 +334,14 @@
 
     <h3>Usage:</h3>
     <ul>
-        <li><pre class="example">_yottadb.set(varname[, {subs} | ...], value),  <span class="keyword">or</span></pre></li>
+        <li><pre class="example">_yottadb.set(varname[, {subs} | ...], value),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.set(cachearray, value)</pre></li>
     </ul>
 
 </dd>
     <dt>
     <a name = "data"></a>
-    <strong>data (varname, subs, ..., ...)</strong>
+    <strong>data (varname[, subs[, ...[, ...]]])</strong>
     </dt>
     <dd>
     Returns information about a variable/node (except intrinsic variables).
@@ -357,13 +353,16 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] list of subscripts
+         list of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] list of subscripts
+         list of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -387,7 +386,7 @@
 </dd>
     <dt>
     <a name = "lock_incr"></a>
-    <strong>lock_incr (varname, subs, ..., timeout)</strong>
+    <strong>lock_incr (varname[, subs[, ...[, timeout]]])</strong>
     </dt>
     <dd>
     Attempts to acquire or increment a lock on a variable/node, waiting if requested.
@@ -402,13 +401,16 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] list of subscripts
+         list of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">timeout</span>
-        [opt] timeout in seconds to wait for lock
+         timeout in seconds to wait for lock
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -425,7 +427,7 @@
 </dd>
     <dt>
     <a name = "lock_decr"></a>
-    <strong>lock_decr (varname, subs, ...)</strong>
+    <strong>lock_decr (varname[, subs[, ...]])</strong>
     </dt>
     <dd>
     Decrements a lock on a variable/node, releasing it if possible.
@@ -437,10 +439,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] list of subscripts
+         list of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -455,22 +459,8 @@
 
 </dd>
     <dt>
-    <a name = "tpfn"></a>
-    <strong>tpfn ()</strong>
-    </dt>
-    <dd>
-    Invokes the Lua transaction function passed to <code>_yottadb.tp()</code>.
-
-
-
-
-
-
-
-</dd>
-    <dt>
     <a name = "tp"></a>
-    <strong>tp (transid, varnames, f, ...)</strong>
+    <strong>tp ([transid][, varnames], f[, ...])</strong>
     </dt>
     <dd>
     Initiates a transaction.
@@ -480,11 +470,13 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">transid</span>
-        [opt] string transaction id
+         string transaction id
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">varnames</span>
-        [opt] table of local M varnames to restore on transaction restart
+         table of local M varnames to restore on transaction restart
    (or {'*'} for all locals) -- restoration does apply to rollback
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">f</span>
 
@@ -499,7 +491,8 @@
 
         </li>
         <li><span class="parameter">...</span>
-        [opt] arguments to pass to f
+         arguments to pass to f
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -514,7 +507,7 @@
 </dd>
     <dt>
     <a name = "subscript_next"></a>
-    <strong>subscript_next (varname, subs, ...)</strong>
+    <strong>subscript_next (varname[, subs[, ...]])</strong>
     </dt>
     <dd>
     Returns the next subscript for a variable/node.
@@ -526,10 +519,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] is a list of subscripts
+         is a list of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -550,7 +545,7 @@
 </dd>
     <dt>
     <a name = "subscript_previous"></a>
-    <strong>subscript_previous (varname, subs, ...)</strong>
+    <strong>subscript_previous (varname[, subs[, ...]])</strong>
     </dt>
     <dd>
     Returns the previous subscript for a variable/node.
@@ -562,10 +557,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] is a list of subscripts
+         is a list of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -586,7 +583,7 @@
 </dd>
     <dt>
     <a name = "node_next"></a>
-    <strong>node_next (varname, subs, ...)</strong>
+    <strong>node_next (varname[, subs[, ...]])</strong>
     </dt>
     <dd>
     Returns the full subscript table of the next node after a variable/node.
@@ -599,10 +596,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-        [opt] is a list of subscripts
+         is a list of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -622,7 +621,7 @@
 </dd>
     <dt>
     <a name = "node_previous"></a>
-    <strong>node_previous (varname, subs)</strong>
+    <strong>node_previous (varname[, subs])</strong>
     </dt>
     <dd>
     Returns the full subscript table of the node prior to a variable/node.
@@ -635,7 +634,8 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -655,7 +655,7 @@
 </dd>
     <dt>
     <a name = "lock"></a>
-    <strong>lock ([node_specifiers], timeout)</strong>
+    <strong>lock ([node_specifiers[, timeout]])</strong>
     </dt>
     <dd>
     Releases all locks held and attempts to acquire all requested locks, waiting if requested.
@@ -669,7 +669,8 @@
          (<em>optional</em>)
         </li>
         <li><span class="parameter">timeout</span>
-        [opt] timeout in seconds to wait for lock
+         timeout in seconds to wait for lock
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -708,7 +709,7 @@
 </dd>
     <dt>
     <a name = "incr"></a>
-    <strong>incr (varname, subs, increment)</strong>
+    <strong>incr (varname[, subs[, increment]])</strong>
     </dt>
     <dd>
     Increments the numeric value of a variable/node.
@@ -723,10 +724,12 @@
          string
         </li>
         <li><span class="parameter">subs</span>
-        [opt] table of subscripts
+         table of subscripts
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">increment</span>
-        [opt] amount to increment by = number, or string-of-a-canonical-number, default=1
+         amount to increment by = number, or string-of-a-canonical-number, default=1
+         (<em>optional</em>)
         </li>
     </ul>
 
@@ -854,7 +857,7 @@
     Block or unblock YDB signals for while M code is running.
  This function is designed to be passed to yottadb.init() as the <code>signal_blocker</code> parameter.
  Most signals (listed in <code>BLOCKED_SIGNALS</code> in callins.c) are blocked using sigprocmask()
- but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
+ but SIGLARM is not blocked; instead, sigaction() is used to set its <code>SA_RESTART</code> flag while
  in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are
  interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
  handler does actually run, allowing YDB to flush the database or IO as necessary without
@@ -901,8 +904,8 @@
 
 <ul>
     <li>This function is intended to be called by a wrapper in yottadb.lua rather than by the user,
-    so validity of type_list array is not checked.</li>
-    <li>If you change the number of parameters before var<em>args then you MUST also adjust CIP</em>ARGS.</li>
+    so validity of <code>type_list</code> array is not checked.</li>
+    <li>If you change the number of parameters before <code>var_args</code> then you MUST also adjust <code>CIP_ARGS</code>.</li>
     <li>You must pass float, double, and int as pointers instead of actuals: see note in cast2ydb().</li>
     <li>This is designed for speed, which means all temporary data is allotted on the stack.
     and it does no mallocs unless it has to return strings (which can be large so need malloc).
@@ -917,36 +920,28 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">ci_handle</span>
-         is a call-in table opened by ci<em>tab</em>open() that contains routine_name
+         is a call-in table opened by <code>ci_tab_open()</code> that contains <code>routine_name</code>
         </li>
         <li><span class="parameter">routine_name_handle</span>
-         is the handle of an M routine registered by <em>yottadb.register</em>routine()
+         is the handle of an M routine registered by <code>_yottadb.register_routine()</code>
         </li>
         <li><span class="parameter">type_list</span>
-
-<p> is a Lua string containing an array of type<em>spec[] specifying ret</em>val and each parameter per the call-in table</p>
-<pre><code>(so the number of type_spec array elements must equal (1+n) where n is the number of parameters in the call-in file)
-</code></pre>
-
+         is a Lua string containing an array of <code>type_spec[]</code> specifying <code>ret_val</code> and each parameter per the call-in table
+ (so the number of <code>type_spec</code> array elements must equal (1+n) where n is the number of parameters in the call-in file)
         </li>
         <li><span class="parameter">n</span>
-
-<blockquote>
-    <p>must list the parameters specified specified in the call-in table</p>
-</blockquote>
-<pre><code>each parameter is converted from its Lua type to the correct C type (e.g. ydb_int_t*) before calling the M routine
-an error results if the number of parameters does not match the number specified in the call-in table
-if too few parameters are supplied, an error results
-if too many parameters are supplied, they are ignored (typical Lua behaviour)
-</code></pre>
-
+         must list the parameters specified in the call-in table
+ each parameter is converted from its Lua type to the correct C type (e.g. <code>ydb_int_t*</code>) before calling the M routine
+ an error results if the number of parameters does not match the number specified in the call-in table
+ if too few parameters are supplied, an error results
+ if too many parameters are supplied, they are ignored (typical Lua behaviour)
         </li>
     </ul>
 
     <h3>Returns:</h3>
     <ol>
 
-        : Function's return value (unless ret_type='void') followed by any params listed as outputs (O or IO) in the call-in table.
+        Function's return value (unless <code>ret_type=&apos;void&apos;</code>) followed by any params listed as outputs (O or IO) in the call-in table.
  Returned values are all converted from the call-in table type to Lua types
     </ol>
 
@@ -979,7 +974,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     <h3>Returns:</h3>
     <ol>
 
-        the handle (a ydb ci<em>name</em>descriptor struct in a new Lua userdata object).
+        the handle (a ydb <code>ci_name_descriptor</code> struct in a new Lua userdata object).
     </ol>
 
 
@@ -1023,31 +1018,6 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
     <h2 class="section-header "><a name="Cachearray_functions"></a>Cachearray functions </h2>
 
     <dl class="function">
-    <dt>
-    <a name = "array_prealloc"></a>
-    <strong>array_prealloc</strong>
-    </dt>
-    <dd>
-    Underlying core of <code>cachearray_create()</code>, designed to call from C.
- Create cachearray from varname and subscripts on the Lua stack: varname[, t1][, ...]
- This function may be called by C -- the stack is correct at the end (doesn't depend on Lua's stack fixups).
- For the sake of speed, the caller can pre-allocate <code>cachearray_t_maxsize</code> on its stack
- (in which case the returned cachearray will only be valid while inside that C function).
- For example, pre-allocating it on the C stack is 20% (400ns) faster than <code>lua_newuserdata()</code>
-
-
-    <ul>
-        <li><span class="parameter">array_prealloc</span>
-         is a pointer to allocated memory that fits a maximum sized cachearray.
- If it is NULL, the function will allocate cachearray itself, using <code>lua_newuserdata()</code>.
-        </li>
-    </ul>
-
-
-
-
-
-</dd>
     <dt>
     <a name = "cachearray"></a>
     <strong>cachearray (varname[, t1[, ...]])</strong>
@@ -1126,23 +1096,29 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 
 </dd>
     <dt>
-    <a name = "cachearray"></a>
-    <strong>cachearray</strong>
+    <a name = "cachearray_tomutable"></a>
+    <strong>cachearray_tomutable (cachearray)</strong>
     </dt>
     <dd>
-    Make copy of cachearray that is mutable (i.e.  having changable subscripts) -- intended for iteration.
+    Make copy of cachearray that is mutable (having changable subscripts) -- intended for iteration.
  Allows <code>cachearray_subst()</code> to be used on the cachearray to efficiently iterate subscripts
  without creating a new cachearray for every single iteration.
  Forces <code>cachearray_append()</code> to create child nodes that are copies rather than re-using this cachearray.
  The user can detect whether a node is mutable (could change) using the node's <code>__mutable()</code> method.
 
 
+    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">cachearray</span>
          userdata created by `cachearray_create()
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        new cachearray
+    </ol>
 
 
 
@@ -1153,19 +1129,25 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 
 </dd>
     <dt>
-    <a name = "cachearray"></a>
-    <strong>cachearray</strong>
+    <a name = "cachearray_flags"></a>
+    <strong>cachearray_flags (cachearray)</strong>
     </dt>
     <dd>
     Return cachearray flags field
 
 
+    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">cachearray</span>
          userdata
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        bitfield <code>flags</code> (see cachearray.h for bit defines)
+    </ol>
 
 
 
@@ -1176,8 +1158,8 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 
 </dd>
     <dt>
-    <a name = "cachearray"></a>
-    <strong>cachearray</strong>
+    <a name = "cachearray_subs"></a>
+    <strong>cachearray_subs (cachearray, string)</strong>
     </dt>
     <dd>
     Substitute final subscript of given mutable cachearray with <a href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a>.
@@ -1187,6 +1169,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
  The user can detect whether a node is mutable using the node's <code>__mutable()</code> method.
 
 
+    <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">cachearray</span>
 
@@ -1198,6 +1181,11 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        cachearray (which could be a new mutable one if it could not hold the new subscript size)
+    </ol>
 
 
 
@@ -1306,7 +1294,7 @@ if too many parameters are supplied, they are ignored (typical Lua behaviour)
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-05-24 22:41:19 </i>
+<i style="float:right;">Last updated 2023-05-26 12:51:40 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
