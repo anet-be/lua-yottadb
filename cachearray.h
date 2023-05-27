@@ -63,5 +63,6 @@ int cachearray_append(lua_State *L);
 int cachearray_tostring(lua_State *L);
 int cachearray_depth(lua_State *L);
 int cachearray_subscript(lua_State *L);
+int cachearray_gc(lua_State *L);
 
 #endif // CACHEARRAY_H

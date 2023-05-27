@@ -42,10 +42,12 @@ static cachearray_t *cachearray_new(lua_State *L, int size, int parent_index) {
 // @usage _yottadb.cachearray_setmetatable(cachearray, metatable)
 // @param cachearray to set
 // @param metatable to use
-// @return nothing
+// @return cachearray
 int cachearray_setmetatable(lua_State *L) {
+  if (lua_type(L, 1) != LUA_TUSERDATA)
+    luaL_error(L, "parameter #1 must be a cachearray (got %s)", lua_typename(L, lua_type(L, 1)));
   lua_setmetatable(L, -2);
-  return 0;
+  return 1;
 }
 
 // Update cachearray subscript pointers to match subsdata_string at addr
@@ -93,6 +95,7 @@ static cachearray_t *_cachearray_realloc(lua_State *L, int index, int new_depth,
   newarray->depth_alloc = depth_alloc2;
   _cachearray_updateaddr(newarray, new_subsdata);
   *subsdata = new_subsdata;
+  // STACK: <original_stack, ...>, new_cachearray
   lua_replace(L, index-(index<0)); // sub this cachearray onto the stack instead of the original one.
   return newarray;
 }
@@ -222,6 +225,66 @@ int cachearray_create(lua_State *L) {
   return 1;
 }
 
+#if LUA_VERSION_NUM >= 503
+  #define my_setuservalue(L, index) lua_setuservalue((L), (index))
+  #define my_getuservalue(L, index) lua_getuservalue((L), (index))
+#else
+  static int UVtable_ref = LUA_NOREF;
+
+  // Version of `lua_setuservalue()`, implemented to work with any value type even on much older Lua versions
+  // Pops a value from the stack and sets it as the new value associated to the userdata at the given index.
+  // Value can be any Lua type.
+  // Works on almost any Lua version, but tested on Lua >= 5.1
+  static void my_setuservalue(lua_State *L, int index) {
+    if (UVtable_ref == LUA_NOREF) {
+      lua_createtable(L, 0, 1);
+      UVtable_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+    // STACK: uservalue
+    lua_rawgeti(L, LUA_REGISTRYINDEX, UVtable_ref);
+    // STACK: uservalue, uvtable
+    lua_pushvalue(L, index-(index<0));
+    // STACK: uservalue, uvtable, userdata
+    lua_pushvalue(L, -3);
+    // STACK: uservalue, uvtable, userdata, uservalue
+    lua_rawset(L, -3);  // sets: uvtable[userdata] = uservalue
+    // STACK: uservalue, uvtable
+    lua_pop(L, 2);
+  }
+
+  // Version of `lua_getuservalue()`, implemented to work with any value type even on much older Lua versions
+  // Pushes onto the stack the Lua value associated with the userdata at the given index. Value can be any Lua type.
+  // Works on almost any Lua version, but tested on Lua >= 5.1
+  static int my_getuservalue(lua_State *L, int index) {
+    if (UVtable_ref == LUA_NOREF) {
+      lua_pushnil(L);
+      return LUA_TNIL;
+    }
+    lua_rawgeti(L, LUA_REGISTRYINDEX, UVtable_ref);
+    // STACK: uvtable
+    lua_pushvalue(L, index-(index<0));
+    // STACK: uvtable, userdata
+    lua_rawget(L, -2);
+    // STACK: uvtable, uservalue
+    lua_replace(L, -2);
+    return lua_type(L, -1);
+  }
+
+  // Garbage-collect cachearray -- only for use in Lua < 5.3 as later Luas collect their own userdata uservalues.
+  // @function cachearray_gc
+  // @usage node.__gc = _yottadb.cachearray_gc
+  // @param cachearray is an existing cachearray created by cachearray_create()
+  int cachearray_gc(lua_State *L) {
+    cachearray_t *array = lua_touserdata(L, 1);
+    if (!array || array == array->dereference)  // only dereferenced arrays have uservalues
+      return 0;
+    lua_pushnil(L);
+    my_setuservalue(L, -2);
+    lua_pop(L, 1);
+    return 0;
+  }
+#endif
+
 // Push onto the Lua stack a new deferred version of the cachearray at `index`.
 // @return new cachearray
 static cachearray_t *_cachearray_deferred(lua_State *L, int index) {
@@ -233,11 +296,14 @@ static cachearray_t *_cachearray_deferred(lua_State *L, int index) {
   array->depth = parent->depth;
   array->flags = parent->flags;
   // Make sure new cachearray Lua-references the parent to prevent its premature garbage collection
+  // STACK: <original_stack, ...>, new_cachearray
   if (parent == parent->dereference)
-    lua_pushvalue(L, index);
+    lua_pushvalue(L, index-(index<0));
   else
-    lua_getuservalue(L, index); // point Lua to the actual original to avoid garbage collection chain buildup
-  lua_setuservalue(L, -2);
+    my_getuservalue(L, index-(index<0)); // point Lua to the actual original to avoid garbage collection chain buildup
+  // STACK: <original_stack, ...>, new_cachearray, original_cachearray
+  my_setuservalue(L, -2);
+  // STACK: <original_stack, ...>, new_cachearray
   lua_replace(L, index-(index<0));
   return array;
 }

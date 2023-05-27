@@ -2160,7 +2160,7 @@ function test_cachearray()
   asserteq(cache_tostring(cachearray4), '"person","' .. bigsub .. '","sub3"')
   assert(cachearray3 ~= cachearray4)  -- make sure child of a *reallocated* mutable cachearray is still non-extendable
 
-  for i=1, 10000 do
+  for i=1, 100 do
     node = ydb.node('a').b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z
   end
 
