@@ -975,6 +975,11 @@ function node:__newindex(k, v)
   end
 end
 
+-- Set up garbage collector for cachearrays when we're using our own implementation of lua_setuservalue()
+if lua_version < 5.3 then
+  node.__gc = _yottadb.cachearray_gc
+end
+
 --- @section end
 
 --- Get node properties
@@ -995,7 +1000,7 @@ function node:has_value()  return node.data(self)%2 == 1  end
 --- Return true if the node has a tree; otherwise false
 function node:has_tree()  return node.data(self)   >= 10  end
 --- Return true if the node is mutable; otherwise false
-function node:ismutable()  return (_yottadb.cachearray_flags(self)&1) == 1  end
+function node:ismutable()  return (_yottadb.cachearray_flags(self)%2) == 1  end
 --- Return node's subsarray of subscript strings as a table
 function node:subsarray()
   local subsarray = {}
@@ -1027,9 +1032,7 @@ end
 function M.key(...)
   assert_type(..., 'string', 1, "key")
   assert_type(select(2, ...), _table_nil, 2, "key")
-  local self = _yottadb.cachearray_create(...)
-  _yottadb.cachearray_setmetatable(self, key)  -- make it a key type
-  return self
+  return _yottadb.cachearray_setmetatable(_yottadb.cachearray_create(...), key)  -- make it a key type
 end
 
 --- Deprecated object that represents a YDB node.

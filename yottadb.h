@@ -101,7 +101,7 @@ inline static void dumpStack (lua_State *L) {
         break;
       }
       default: { /* other values */
-        printf("%s", lua_typename(L, t));
+        printf("%s:%p", lua_typename(L, t), lua_topointer(L, i));
         break;
       }
     }
