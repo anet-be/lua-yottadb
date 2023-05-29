@@ -100,6 +100,10 @@ inline static void dumpStack (lua_State *L) {
         printf("%g", lua_tonumber(L, i));
         break;
       }
+      case LUA_TNIL: { /* nil */
+        printf("nil");
+        break;
+      }
       default: { /* other values */
         printf("%s:%p", lua_typename(L, t), lua_topointer(L, i));
         break;

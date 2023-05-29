@@ -225,19 +225,29 @@ int cachearray_create(lua_State *L) {
   return 1;
 }
 
-#if LUA_VERSION_NUM >= 503
+#if LUA_VERSION_NUM > 501
   #define my_setuservalue(L, index) lua_setuservalue((L), (index))
   #define my_getuservalue(L, index) lua_getuservalue((L), (index))
 #else
   static int UVtable_ref = LUA_NOREF;
 
-  // Version of `lua_setuservalue()`, implemented to work with any value type even on much older Lua versions
+  // Version of `lua_setuservalue()`, implemented to work with any value type even on Lua versions <= 5.1
   // Pops a value from the stack and sets it as the new value associated to the userdata at the given index.
   // Value can be any Lua type.
-  // Works on almost any Lua version, but tested on Lua >= 5.1
+  // Should work on any Lua version, but tested on Lua 5.1
   static void my_setuservalue(lua_State *L, int index) {
+    // Create a uservalue table (with a metatable whose __mode="k" for weak keys)
     if (UVtable_ref == LUA_NOREF) {
+      // create UVtable
       lua_createtable(L, 0, 1);
+      // create metatable for UVtable
+      lua_createtable(L, 0, 1);
+      // set t.__mode = "k"
+      lua_pushstring(L, "k");
+      lua_setfield(L, -2, "__mode");
+      // STACK: UVtable, metatable
+      // set metatable of UVtable
+      lua_setmetatable(L, -2);
       UVtable_ref = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     // STACK: uservalue
@@ -252,9 +262,9 @@ int cachearray_create(lua_State *L) {
     lua_pop(L, 2);
   }
 
-  // Version of `lua_getuservalue()`, implemented to work with any value type even on much older Lua versions
+  // Version of `lua_getuservalue()`, implemented to work with any value type even on Lua versions <= 5.1
   // Pushes onto the stack the Lua value associated with the userdata at the given index. Value can be any Lua type.
-  // Works on almost any Lua version, but tested on Lua >= 5.1
+  // Should work on any Lua version, but tested on Lua 5.1
   static int my_getuservalue(lua_State *L, int index) {
     if (UVtable_ref == LUA_NOREF) {
       lua_pushnil(L);
@@ -270,14 +280,15 @@ int cachearray_create(lua_State *L) {
     return lua_type(L, -1);
   }
 
-  // Garbage-collect cachearray -- only for use in Lua < 5.3 as later Luas collect their own userdata uservalues.
+  // Garbage-collect cachearray -- only for use in Lua <= 5.1 as later Luas allow uservalues to be userdata, so we don't need this
   // @function cachearray_gc
   // @usage node.__gc = _yottadb.cachearray_gc
   // @param cachearray is an existing cachearray created by cachearray_create()
   int cachearray_gc(lua_State *L) {
     cachearray_t *array = lua_touserdata(L, 1);
     if (!array || array == array->dereference)  // only dereferenced arrays have uservalues
-      return 0;
+      // This return of UVtable is for debugging garbage collection:
+      return lua_rawgeti(L, LUA_REGISTRYINDEX, UVtable_ref), 1;
     lua_pushnil(L);
     my_setuservalue(L, -2);
     lua_pop(L, 1);
@@ -285,7 +296,7 @@ int cachearray_create(lua_State *L) {
   }
 #endif
 
-// Push onto the Lua stack a new deferred version of the cachearray at `index`.
+// Create a new deferred version of the cachearray at `index` and replace the one at index with the new one.
 // @return new cachearray
 static cachearray_t *_cachearray_deferred(lua_State *L, int index) {
   cachearray_t *parent = lua_touserdata(L, index);
@@ -298,7 +309,7 @@ static cachearray_t *_cachearray_deferred(lua_State *L, int index) {
   // Make sure new cachearray Lua-references the parent to prevent its premature garbage collection
   // STACK: <original_stack, ...>, new_cachearray
   if (parent == parent->dereference)
-    lua_pushvalue(L, index-(index<0));
+    lua_pushvalue(L, index-(index<0));  // copy parent to top of stack
   else
     my_getuservalue(L, index-(index<0)); // point Lua to the actual original to avoid garbage collection chain buildup
   // STACK: <original_stack, ...>, new_cachearray, original_cachearray

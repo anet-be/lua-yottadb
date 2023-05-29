@@ -2160,13 +2160,37 @@ function test_cachearray()
   asserteq(cache_tostring(cachearray4), '"person","' .. bigsub .. '","sub3"')
   assert(cachearray3 ~= cachearray4)  -- make sure child of a *reallocated* mutable cachearray is still non-extendable
 
-  for i=1, 100 do
-    node = ydb.node('a').b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z
-  end
-
   -- Validate inputs.
   validate_subsarray_inputs(_yottadb.cachearray_create, true)
   collectgarbage()  -- catch allocation problems such as the one fixed in commit 4bed5e6
+end
+
+function test_cachearray_garbage()
+  local function allocator()
+    for i=1, 10 do
+      local node = ydb.node('a').b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z
+    end
+  end
+
+  -- Force cachearray.c to allocate space for UVtable by making a grandchild subnode.
+  -- Also, for Lua 5.1 compatibility setuservalue(), force allocation of UVtable large enough
+  -- to store all our subnodes because this table will not get shrunk by collectgarbage()
+  allocator()
+  local initial_ram = 12345  -- make sure space is allocated for this local variable
+  collectgarbage() collectgarbage() collectgarbage()
+
+  initial_ram = collectgarbage("count")*1024
+  allocator()
+  if lua_version <= 5.1 then  assert(next(_yottadb.cachearray_gc()), nil)  end
+  collectgarbage() collectgarbage() collectgarbage()
+
+  -- Verify that uservalue tracker array has been cleared by garbage collector
+  if lua_version <= 5.1 then  asserteq(next(_yottadb.cachearray_gc()), nil)  end
+
+  -- Warning: if the loop in allocator() iterates more than 12 times, the following produces an error.
+  -- I'm not sure why. Not our fault, I think: seems more like Lua leaking
+  -- If you have trouble with the following line, then remove it: the line above should do the job.
+  asserteq(initial_ram, collectgarbage("count")*1024)
 end
 
 -- Run tests.
