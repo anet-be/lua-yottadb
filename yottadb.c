@@ -672,9 +672,9 @@ static const luaL_Reg yottadb_functions[] = {
   {"cachearray_subscript", cachearray_subscript},
   #if LUA_VERSION_NUM < 503
     {"string_pack", str_pack},
-    {"cachearray_gc", cachearray_gc},
   #endif
   #if LUA_VERSION_NUM < 502
+    {"cachearray_gc", cachearray_gc},
     {"string_format", str_format},
     {"table_unpack", unpack},
   #endif
