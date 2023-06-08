@@ -33,7 +33,7 @@ typedef struct cachearray_t {
 } cachearray_t;
 
 typedef struct cachearray_dereferenced {
-  struct cachearray_t *dereferenced; // merely points to a cachearray
+  struct cachearray_t *dereference; // merely points to a cachearray
   short depth; // number of items in array
   short flags;
 } cachearray_dereferenced;
