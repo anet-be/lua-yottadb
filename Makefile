@@ -37,12 +37,49 @@ _yottadb.so: $(SOURCES) yottadb.h callins.h cachearray.h exports.map Makefile
 
 # Requires: 'luarocks install ldoc'
 docs: docs/yottadb.html
-docs/yottadb.html: *.lua *.c *.ld docs/config/* Makefile
+docs/yottadb.html: *.lua *.c docs/config/*.ld docs/config/* Makefile
 	@echo "Making yottadb.html"
-	ldoc . -c config_docs.ld
+	ldoc . -c docs/config/main.ld
 	@echo
 	@echo "Making yottadb_private.html"
-	ldoc . -c config_private_docs.ld
+	ldoc . -c docs/config/private.ld
+	@echo
+	@echo "Making docs for YDB manual yottadb_ydb.MD"
+	ldoc . -c docs/config/ydb.ld
+
+# ~~~ Release a new version and create luarock
+
+#Fetch MLua version from mlua.h. You can override this with "VERSION=x.y-z" to regenerate a specific rockspec
+VERSION=$(shell sed -Ene 's/#define LUA_YOTTADB_VERSION ([0-9]+),([0-9]+).*/\1.\2-1/p' yottadb.h)
+tag=v$(shell echo $(VERSION) | grep -Eo '[0-9]+.[0-9]+')
+
+# Prevent git from giving detachedHead warning during `luarocks pack`
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=advice.detachedHead
+export GIT_CONFIG_VALUE_0=false
+
+rockspec:
+	@echo Creating lua-yottadb rockspec $(VERSION)
+	sed -Ee "s/(version += +['\"]).*(['\"].*)/\1$(VERSION)\2/" rockspecs/lua-yottadb.rockspec.template >rockspecs/lua-yottadb-$(VERSION).rockspec
+release: rockspec
+	@echo
+	@read -p "About to push lua-yottadb git tag $(tag) with rockspec $(VERSION). Continue (y/n)? " -n1 && echo && [ "$$REPLY" = "y" ]
+	@git diff --quiet || { echo "Commit changes to git first"; exit 1; }
+	@git merge-base --is-ancestor HEAD master@{upstream} || { echo "Push changes to git first"; exit 1; }
+	git add rockspecs/lua-yottadb-$(VERSION).rockspec
+	rm -f tests/*.o
+	luarocks make --local  # test that basic make works first
+	git tag -n $(tag) | grep -q ".*" && echo "Tag $(tag) already exists. Run 'make untag' to remove the git tag first" && exit 1
+	git tag -a $(tag)
+	git push origin $(tag)
+	git remote -v | grep "^upstream" && git push upstream $(tag)
+	luarocks pack rockspecs/lua-yottadb-$(VERSION).rockspec
+	luarocks upload $(LRFLAGS) rockspecs/lua-yottadb-$(VERSION).rockspec \
+		|| { echo "Try 'make release LRFLAGS=--api-key=<key>'"; exit 2; }
+untag:
+	git tag -d $(tag)
+	git push -d origin $(tag)
+	git remote -v | grep "^upstream" && git push -d upstream $(tag)
 
 listing: _yottadb.so
 	objdump -Mintel -rRwS _yottadb.so >_yottadb.lst
@@ -66,3 +103,4 @@ test: _yottadb.so
 	source $(ydb_dist)/ydb_env_set && $(lua) tests/test.lua $(TESTS)
 
 .PHONY: all docs listing clean install benchmark benchmarks test
+.PHONY: rockspec release untag
