@@ -1,0 +1,2 @@
+*.m linguist-language=mumps
+*.ci linguist-language=c

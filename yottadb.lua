@@ -16,17 +16,9 @@ M._VERSION = _yottadb._VERSION
 local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]+ r([0-9]+[.][0-9]+)") )
 
 
--- The following 5 lines at the start of this file makes this the first-documented
--- section after 'Functions', but the blank lines in between are necessary
-
---- High level functions
--- @section
-
---- @section end
-
 -- The following renames documentation section title "Functions" to "Low level functions". Blank line necessary:
 
---- Low level functions
+--- Low level wrapper functions
 -- @section
 
 --- Block or unblock YDB signals for while M code is running.
@@ -434,8 +426,8 @@ function M.tp(id, varnames, f, ...)
   _yottadb.tp(id, varnames, f, table.unpack(args, 4))
 end
 
---- Returns a high-level transaction-safed version of the given function. It will be called within
---   a yottadb transaction and the dbase globals restored on error or trollback()
+--- Returns a high-level transaction-safed version of the given function.
+-- It will be called within a yottadb transaction and the dbase globals restored on error or `trollback()`
 -- @param[opt] id optional string transaction id. For special ids `BA` or `BATCH`, see [ydb docs here](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing).
 -- @param[opt] varnames optional table of local M variable names to restore on transaction trestart()
 --   (or `{'*'}` for all locals) -- restoration does apply to rollback
@@ -736,7 +728,8 @@ M.DELETE = {}
 --- High level functions
 -- @section
 
---- Populate database from a table. In its simpest form:
+--- Populate database from a table.
+-- In its simplest form:
 --    node:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
 -- @param tbl is the table to store into the database:
 --
@@ -782,7 +775,7 @@ end
 --- Fetch database node and subtree and return a Lua table of it.
 -- But be aware that order is not preserved by Lua tables.
 --
---  Note: special field name `__` in the returned table indicates the value of the node itself.
+-- Note: special field name `__` in the returned table indicates the value of the node itself.
 -- @param[opt] maxdepth subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
 -- @param[opt] filter optional `function(node, node_top_subscript_name, value, recurse, depth)` or nil
 --
@@ -852,10 +845,10 @@ end
 -- Notes:
 --
 -- * pairs() order is guaranteed to equal the M collation sequence order
--- (even though pairs() order is not normally guaranteed for Lua tables).
--- This means that pairs() is a reasonable substitute for ipairs which is not implemented.
+--   (even though pairs() order is not normally guaranteed for Lua tables).
+--   This means that pairs() is a reasonable substitute for ipairs which is not implemented.
 -- * this is very slightly slower than node:subscripts() which only iterates subscript names without
--- fetching the node value.
+--   fetching the node value.
 -- @function node:__pairs
 -- @param[opt] reverse Boolean flag iterates in reverse if true
 -- @usage for subnode,value[,subscript] in pairs(node) do ...
@@ -880,12 +873,12 @@ node.pairs = node.__pairs
 --- Not implemented - use `pairs(node)` or `node:__pairs()` instead.
 -- See alternative usage below.
 -- The reason this is not implemented is that since
---  Lua >=5.3 implements ipairs via `__index()`.
---  This would mean that `__index()` would have to treat integer subscript lookup specially, so:
+-- Lua >=5.3 implements ipairs via `__index()`.
+-- This would mean that `__index()` would have to treat integer subscript lookup specially, so:
 --
 -- * although `node['abc']`  => produces a new node so that `node.abc.def.ghi` works
 -- * `node[1]`  => would have to produce value `node(1).__` so ipairs() works <br>
---  Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation.
+--   Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation.
 --
 -- Alternatives using pairs() are as follows:
 -- @function node:__ipairs
@@ -982,7 +975,7 @@ end
 
 --- @section end
 
---- Get node properties
+--- Node properties
 -- @section
 
 --- Fetch the varname of the node, i.e. the leftmost subscript
@@ -1024,7 +1017,7 @@ end
 -- * `has_tree` (whether or not this node has a subtree)
 -- * `__varname` database variable name string -- for compatibility with a previous version
 -- * `__subsarray` table array of database subscript name strings -- for compatibility with a previous version
--- and deprecated definitions of `key:subscript()`, `key:subscript_next()`, `key:subscript_previous()`. <br>
+--   and deprecated definitions of `key:subscript()`, `key:subscript_next()`, `key:subscript_previous()`. <br>
 -- @param varname String variable name.
 -- @param[opt] subsarray list of subscripts or table {subscripts}
 -- @return key object of the specified node with metatable yottadb._key
@@ -1043,7 +1036,8 @@ end
 -- Inherit node methods/properties
 for k, v in pairs(node) do  key[k]=v  if string.sub(k,1,2)~='__' then key['__'..k]=v end  end
 
---- Properties of key object are listed below, accessed with dot, unlike object methods which use a colon.
+--- Properties of key object that are accessed with a dot.
+-- These properties, listed below, are unlike object methods, which are accessed with a colon.
 -- This kind of property access is for backward compatibility.
 --
 -- For example, access data property with: `key.data`
