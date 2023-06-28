@@ -1,15 +1,62 @@
-> local lev = ldoc.level or 2
-> local lev1,lev2 = ('#'):rep(lev),('#'):rep(lev+1)
+>--debug: ldoc.global.require('startup')
+> local function trim(s) return s:gsub('^%s*',''):gsub('%s*$','') end
+> local function no_spaces(s) return s:gsub('%s*$',''):gsub('%W','-') end
+> local function heading(name,char) return char:rep(#name+2) .. '\n' .. name .. '\n' .. char:rep(#name+2) end
+
+> -- Reformat paragraphs to allow 0-1 space indent == required-indent
+> local prev_indent = 0
+> local function indenter(spaces, bullet, line, ending)
+>  -- ensure bullet ends with a space and number ends with dot
+>  if bullet=='*' or bullet:match('[#0-9]+([^.])')=='.' then
+>   bullet, line = '', bullet..line
+>  end
+>  local indentation = spaces..bullet
+>  local prefix = ''
+>  -- auto-indent lines without any indent
+>  if indentation=='' or indentation==' ' then  indentation = (' '):rep(prev_indent)  end
+>  if prev_indent==0 and indentation=='    ' then  prefix = '::\n\n' end
+>  if prev_indent>0 and #indentation ~= prev_indent then  ldoc.print("***WARNING***: Indentation should be %d in text: '%s'"):format(prev_indent, indentation..line..ending)  end
+>  prev_indent = #ending>1 and 0 or #indentation
+>  return ("%s%s%s%s"):format(prefix, indentation, line, ending)
+> end
+
+> local function md2rst(text)
+>  prev_indent=0
+>  return text
+>   :gsub('<br%s*/*>', '\n')
+>   :gsub('`', '``')
+>   :gsub('(%b[])(%b())', function(name,url) return ('`%s <%s>`_'):format(name:sub(2,-2),url:sub(2,-2)) end)
+>   :gsub('([ ]*)([*#0-9.]*[ ]*)([^\n]*)(\n*)', indenter)
+> end
+> local function M(text,item) return text and md2rst(text) or '' end
+
 > for kind, items in module.kinds() do
+>  kind = trim(kind)
+$(heading(kind,'+'))
+
+$(M(module.kinds:get_section_description(kind)))
+
 >  local kitem = module.kinds:get_item(kind)
+>  local has_description = kitem and ldoc.descript(kitem) ~= ''
 >  if kitem then
-$(lev1) $(ldoc.descript(kitem))
+>   if has_description then
+$(M(ldoc.descript(kitem),kitem))
+
+>   end
+>   if kitem.usage then
+.. code-block:: lua
+    :caption: Usage:
+    :dedent:
+    :force:
+    $(kitem.usage[1])
+
+>   end
+>  end
+
+>  for item in items() do
+$(heading(ldoc.display_name(item),'~'))
+
+$(M(ldoc.descript(item)))
 
 >  end
->   for item in items() do
-$(lev2) $(ldoc.display_name(item))
-
-$(ldoc.descript(item))
-
-> end
 > end

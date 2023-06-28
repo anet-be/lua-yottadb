@@ -36,16 +36,19 @@ _yottadb.so: $(SOURCES) yottadb.h callins.h cachearray.h exports.map Makefile
 	$(CC) $<  -o $@  $(CFLAGS) $(LDFLAGS)  -llua -lm -l:_yottadb.so -L.
 
 # Requires: 'luarocks install ldoc'
-docs: docs/yottadb.html
-docs/yottadb.html: *.lua *.c docs/config/*.ld docs/config/* Makefile
+DOC_DEPS = *.lua *.c docs/config/* Makefile
+docs: docs/yottadb.html docs/yottadb_c.html docs/yottadb_ydb.rst docs/ldoc.css
+docs/yottadb.html docs/yottadb_c.html docs/yottadb_ydb.rst docs/ldoc.css: $(DOC_DEPS)
 	@echo "Making yottadb.html"
 	ldoc . -c docs/config/main.ld
 	@echo
 	@echo "Making yottadb_private.html"
 	ldoc . -c docs/config/private.ld
 	@echo
-	@echo "Making docs for YDB manual yottadb_ydb.MD"
+	@echo "Making docs for YDB manual yottadb_ydb.rst"
 	ldoc . -c docs/config/ydb.ld
+	@echo "Alert: Be sure to test yottadb_ydb.rst by cloning YDBDoc and running 'make html': it is included by YDBDoc/MultiLangProgGuide/luaprogram.rst"
+	@echo
 
 # ~~~ Release a new version and create luarock
 
