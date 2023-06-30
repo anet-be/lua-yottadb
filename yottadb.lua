@@ -628,6 +628,33 @@ end
 -- * not committed if the function returns `yottadb.YDB_TP_ROLLBACK` or errors out.
 -- @return transaction-safed function.
 -- @see tp
+-- @example
+-- > Znode = ydb.node('^Ztest')
+-- > transact = ydb.transaction(function(end_func)
+--   print("^Ztest starts as", Znode:get())
+--   Znode:set('value')
+--   end_func()
+--   end)
+--
+-- > transact(ydb.trollback)  -- perform a rollback after setting Znode
+-- ^Ztest starts as	nil
+-- YDB Error: 2147483645: YDB_TP_ROLLBACK
+-- > Znode.get()  -- see that the data didn't get set
+-- nil
+--
+-- > tries = 2
+-- > function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
+-- > transact(trier)  -- restart with initial dbase state and try again
+-- ^Ztest starts as	nil
+-- ^Ztest starts as	nil
+-- > Znode:get()  -- check that the data got set after restart
+-- value
+--
+-- > Znode:set(nil)
+-- > transact(function() end)  -- end the transaction normally without restart
+-- ^Ztest starts as	nil
+-- > Znode:get()  -- check that the data got set
+-- value
 function M.transaction(id, varnames, f)
   -- fill in missing inputs if necessary
   if type(id) ~= 'string' then  id, varnames, f = "", id, varnames  end
@@ -741,6 +768,15 @@ end
 -- otherwise it is treated as the filename of a call-in file to be opened and read.
 -- @return A table of functions analogous to a Lua module.
 -- Each function in the table will call an M routine specified in `Mprototypes`.
+-- @example
+-- $ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
+-- $ lua
+-- > arithmetic = yottadb.require('examples/arithmetic.ci')
+-- > arithmetic.add_verbose("Sum is:", 2, 3)
+-- Sum is: 5
+-- Sum is: 5
+-- > arithmetic.sub(5,7)
+-- -2
 function M.require(Mprototypes)
   local routines = {}
   if not Mprototypes:find(':', 1, true) then
@@ -791,10 +827,24 @@ end
 --- Class node
 -- @section
 
---- Creates and returns a new YottaDB node object.
+--- Creates object that represents a YottaDB node.
 -- This node has all of the class methods defined below.
 -- Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
 -- Calling this on an existing node `yottadb.node(node)` creates an (immutable) copy of node.
+--
+-- **Note1:** Although the syntax `node:method()` is pretty, be aware that it is slow. If you are concerned
+-- about speed, use `node:__method()` instead, which is equivalent but 15x faster.
+-- This is because Lua expands `node:method()` to `node.method(node)`, so lua-yottadb creates
+-- an intermediate object of database subnode `node.method`, thinking it is is a database subnode access.
+-- Then, when this object gets called with `()`, lua-yottadb discovers that its first parameter is of type `node` --
+-- at which point it finally knows invoke `node.__method()` instead of treating it as a database subnode access.
+--
+-- **Note2:** Because lua-yottadb's underlying method access is with the `__` prefix, database node names
+-- starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to 
+-- access a database node named `__nodename`. In addition, Lua object methods starting with two underscores,
+-- like `__tostring`, are only accessible with an *additional* `__` prefix, for example, `node:____tostring()`.
+--
+-- **Note3:** Several standard Lua operators work on nodes. These are: `+ - = pairs() tostring()`
 -- @param varname String variable name.
 -- @param[opt] subsarray table of {subscripts}
 -- @param[opt] ... list of subscripts to append after any elements in optional subsarray table
@@ -830,27 +880,6 @@ function M.node(varname, ...)
   end
   return self
 end
-
---- @section end
-
--- Note: the following doc must be here instead of up at the definition of node to retain its position in the html doc
-
---- Object that represents a YDB node.
---
--- **Note1:** Although the syntax `node:method()` is pretty, be aware that it is slow. If you are concerned
--- about speed, use `node:__method()` instead, which is equivalent but 15x faster.
--- This is because Lua expands `node:method()` to `node.method(node)`, so lua-yottadb creates
--- an intermediate object of database subnode `node.method`, thinking it is is a database subnode access.
--- Then, when this object gets called with `()`, lua-yottadb discovers that its first parameter is of type `node` --
--- at which point it finally knows invoke `node.__method()` instead of treating it as a database subnode access.
---
--- **Note2:** Because lua-yottadb's underlying method access is with the `__` prefix, database node names
--- starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to 
--- access a database node named `__nodename`. In addition, Lua object methods starting with two underscores,
--- like `__tostring`, are only accessible with an *additional* `__` prefix, for example, `node:____tostring()`.
---
--- **Note3:** Several standard Lua operators work on nodes. These are: `+ - = pairs() tostring()`
--- @type node
 
 --- Get node's value.
 -- Equivalent to (but 2.5x slower than) `node.__`
@@ -914,6 +943,9 @@ end
 -- @see node:settree
 M.DELETE = {}
 
+--- @section end
+
+
 --- High level functions
 -- @section
 
@@ -934,6 +966,15 @@ M.DELETE = {}
 -- * if filter returns yottadb.DELETE as value, the key is deleted
 -- * if filter returns nil as key or value, settree will simply not update the current database value
 -- @param[opt] _seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
+-- @example
+-- > n=ydb.node('^oaks')
+-- > n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
+-- > n:dump()
+-- ^oaks="treedata"
+-- ^oaks("1","angle")="30"
+-- ^oaks("1","shadow")="10"
+-- ^oaks("2","angle")="30"
+-- ^oaks("2","shadow")="13"
 function node:settree(tbl, filter, _seen)
   if not _seen then
     -- Check parameters first time through
@@ -978,7 +1019,7 @@ end
 -- @param[opt] _value is for internal use only (to avoid duplicate value fetches, for speed)
 -- @param[opt] _depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
 -- @return Lua table containing data
--- @example t = node:gettree()
+-- @example tbl = node:gettree()
 -- @example node:gettree(nil, print) end)
 -- -- prints details of every node in the tree
 -- @see settree
@@ -1350,7 +1391,8 @@ end
 -- @param[opt] subsarray Table of subscripts to add to node -- valid only if the second parameter is a table
 -- @param[opt=30] maxlines Maximum number of lines to output before stopping dump
 -- @return dump as a string
--- @example ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
+-- @example ydb.dump(node, {subsarray, ...}[, maxlines])
+-- @example ydb.dump('^MYVAR', 'people')
 function M.dump(node, ...)
   -- check whether maxlines was supplied as last parameter
   local subs, maxlines

@@ -64,7 +64,7 @@ cowboy
 cowboy
 ```
 
-(Note: lua-yottadb is able to distinguish n:method(n) from subnode creation n.method. See [details here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#Class_node).)
+(Note: lua-yottadb is able to distinguish n:method(n) from subnode creation n.method. See [details in the notes here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#Class_node).)
 
 Now, let's try `dump` to see what we've got so far:
 
@@ -109,7 +109,7 @@ Oak 2 is 7.5m high
 Oak 3 is 15.0m high
 ```
 
-You may also wish to look at **`node:gettree()`** which has multiple uses. On first appearances, it just loads a database tree into a Lua table (opposite of `settree` above), but it also allows you to iterate over a whole database tree and process each node through a filter function. For example, to use `print` as a filter function, do `node:gettree(nil, print) end)` from the [API docs](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#node:gettree). Under the covers, it is actually `getree` that is used to create `node:dump()`.
+You may also wish to look at **`node:gettree()`** which has multiple uses. On first appearances, it just loads a database tree into a Lua table (opposite of `settree` above), but it also allows you to iterate over a whole database tree and process each node through a filter function. For example, to use `print` as a filter function, do `node:gettree(nil, print)` from the [API docs](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#node:gettree). Incidentally, lua-yottadb itself uses `gettree` to implement `node:dump()`.
 
 ### Database transactions are also available:
 
@@ -175,7 +175,7 @@ test: 5
 subtable (table: 0x56494c7dd5b0):
   x: 10
   y: 20
-> n=ydb.key('^oaks')
+> n=ydb.node('^oaks')
 > n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
 > n
 ^oaks="treedata"

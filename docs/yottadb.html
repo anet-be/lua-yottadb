@@ -245,7 +245,7 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#node">node (varname[, subsarray][, ...], node)</a></td>
-	<td class="summary">Creates and returns a new YottaDB node object.</td>
+	<td class="summary">Creates object that represents a YottaDB node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:__ipairs">node:__ipairs ()</a></td>
@@ -1365,6 +1365,35 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
          <a href="yottadb.html#tp">tp</a>
     </ul>
 
+    <h3>Example:</h3>
+    <ul>
+        <pre class="example">&gt; Znode = ydb.node(<span class="string">'^Ztest'</span>)
+&gt; transact = ydb.transaction(<span class="keyword">function</span>(end_func)
+  <span class="global">print</span>(<span class="string">"^Ztest starts as"</span>, Znode:get())
+  Znode:set(<span class="string">'value'</span>)
+  end_func()
+  <span class="keyword">end</span>)
+
+&gt; transact(ydb.trollback)  <span class="comment">-- perform a rollback after setting Znode
+</span>^Ztest starts as	<span class="keyword">nil</span>
+YDB Error: <span class="number">2147483645</span>: YDB_TP_ROLLBACK
+&gt; Znode.get()  <span class="comment">-- see that the data didn't get set
+</span><span class="keyword">nil</span>
+
+&gt; tries = <span class="number">2</span>
+&gt; <span class="keyword">function</span> trier()  tries=tries-<span class="number">1</span>  <span class="keyword">if</span> tries&gt;<span class="number">0</span> <span class="keyword">then</span> ydb.trestart() <span class="keyword">end</span>  <span class="keyword">end</span>
+&gt; transact(trier)  <span class="comment">-- restart with initial dbase state and try again
+</span>^Ztest starts as	<span class="keyword">nil</span>
+^Ztest starts as	<span class="keyword">nil</span>
+&gt; Znode:get()  <span class="comment">-- check that the data got set after restart
+</span>value
+
+&gt; Znode:set(<span class="keyword">nil</span>)
+&gt; transact(<span class="keyword">function</span>() <span class="keyword">end</span>)  <span class="comment">-- end the transaction normally without restart
+</span>^Ztest starts as	<span class="keyword">nil</span>
+&gt; Znode:get()  <span class="comment">-- check that the data got set
+</span>value</pre>
+    </ul>
 
 </dd>
     <dt>
@@ -1433,9 +1462,10 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
 
 
 
-    <h3>Example:</h3>
+    <h3>Examples:</h3>
     <ul>
-        <pre class="example">ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)</pre>
+        <li><pre class="example">ydb.dump(node, {subsarray, ...}[, maxlines])</pre></li>
+        <li><pre class="example">ydb.dump(<span class="string">'^MYVAR'</span>, <span class="string">'people'</span>)</pre></li>
     </ul>
 
 </dd>
@@ -1526,7 +1556,7 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">t = node:gettree()</pre></li>
+        <li><pre class="example">tbl = node:gettree()</pre></li>
         <li><pre class="example">node:gettree(<span class="keyword">nil</span>, <span class="global">print</span>) <span class="keyword">end</span>)
  <span class="comment">-- prints details of every node in the tree</span></pre></li>
     </ul>
@@ -1583,6 +1613,17 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
 
 
 
+    <h3>Example:</h3>
+    <ul>
+        <pre class="example">&gt; n=ydb.node(<span class="string">'^oaks'</span>)
+&gt; n:settree({__=<span class="string">'treedata'</span>, {shadow=<span class="number">10</span>,angle=<span class="number">30</span>}, {shadow=<span class="number">13</span>,angle=<span class="number">30</span>}})
+&gt; n:dump()
+^oaks=<span class="string">"treedata"</span>
+^oaks(<span class="string">"1"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
+^oaks(<span class="string">"1"</span>,<span class="string">"shadow"</span>)=<span class="string">"10"</span>
+^oaks(<span class="string">"2"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
+^oaks(<span class="string">"2"</span>,<span class="string">"shadow"</span>)=<span class="string">"13"</span></pre>
+    </ul>
 
 </dd>
     <dt>
@@ -1614,6 +1655,17 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
 
 
 
+    <h3>Example:</h3>
+    <ul>
+        <pre class="example">$ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
+$ lua
+&gt; arithmetic = yottadb.<span class="global">require</span>(<span class="string">'examples/arithmetic.ci'</span>)
+&gt; arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="number">2</span>, <span class="number">3</span>)
+Sum is: <span class="number">5</span>
+Sum is: <span class="number">5</span>
+&gt; arithmetic.sub(<span class="number">5</span>,<span class="number">7</span>)
+-<span class="number">2</span></pre>
+    </ul>
 
 </dd>
 </dl>
@@ -1625,10 +1677,24 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
     <strong>node (varname[, subsarray][, ...], node)</strong>
     </dt>
     <dd>
-    Creates and returns a new YottaDB node object.
+    Creates object that represents a YottaDB node.
  This node has all of the class methods defined below.
  Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
- Calling this on an existing node <code>yottadb.node(node)</code> creates an (immutable) copy of node.
+ Calling this on an existing node <code>yottadb.node(node)</code> creates an (immutable) copy of node.</p>
+
+<p> <strong>Note1:</strong> Although the syntax <code>node:method()</code> is pretty, be aware that it is slow. If you are concerned
+ about speed, use <code>node:__method()</code> instead, which is equivalent but 15x faster.
+ This is because Lua expands <code>node:method()</code> to <code>node.method(node)</code>, so lua-yottadb creates
+ an intermediate object of database subnode <code>node.method</code>, thinking it is is a database subnode access.
+ Then, when this object gets called with <code>()</code>, lua-yottadb discovers that its first parameter is of type <a href="yottadb.html#node">node</a> --
+ at which point it finally knows invoke <code>node.__method()</code> instead of treating it as a database subnode access.</p>
+
+<p> <strong>Note2:</strong> Because lua-yottadb's underlying method access is with the <code>__</code> prefix, database node names
+ starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to
+ access a database node named <code>__nodename</code>. In addition, Lua object methods starting with two underscores,
+ like <code>__tostring</code>, are only accessible with an <em>additional</em> <code>__</code> prefix, for example, <code>node:____tostring()</code>.</p>
+
+<p> <strong>Note3:</strong> Several standard Lua operators work on nodes. These are: <code>+ - = pairs() tostring()</code>
 
     </ul>
 
@@ -2330,7 +2396,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-06-30 13:07:04 </i>
+<i style="float:right;">Last updated 2023-06-30 15:54:57 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
