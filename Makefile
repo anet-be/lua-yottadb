@@ -11,6 +11,14 @@ else
 	lua_include:=/usr/local/share/lua/$(lua_version)
 endif
 
+PREFIX:=/usr/local
+# Determine whether make was called from luarocks using the --local flag (or a prefix within user's $HOME directory)
+# If so, put mlua.so and mlua.xc files into a local directory
+local:=$(shell echo "$(LUAROCKS_PREFIX)" | grep -q "^$(HOME)" && echo 1)
+ifeq ($(local),1)
+  PREFIX:=$(LUAROCKS_PREFIX)
+endif
+
 #Ensure tests use our own build of yottadb, not the system one
 #Lua5.1 chokes on too many ending semicolons, so don't add them unless it's empty
 LUA_PATH ?= ;;
@@ -55,7 +63,7 @@ docs/lua-yottadb-ydbdocs.rst: $(DOC_DEPS)
 
 # ~~~ Release a new version and create luarock
 
-#Fetch MLua version from mlua.h. You can override this with "VERSION=x.y-z" to regenerate a specific rockspec
+#Fetch lua-yottadb version from yottadb.h. You can override this with "VERSION=x.y-z" to regenerate a specific rockspec
 VERSION=$(shell sed -Ene 's/#define LUA_YOTTADB_VERSION ([0-9]+),([0-9]+).*/\1.\2-1/p' yottadb.h)
 tag=v$(shell echo $(VERSION) | grep -Eo '[0-9]+.[0-9]+')
 
@@ -64,16 +72,16 @@ export GIT_CONFIG_COUNT=1
 export GIT_CONFIG_KEY_0=advice.detachedHead
 export GIT_CONFIG_VALUE_0=false
 
-rockspec:
+rockspec: rockspecs/lua-yottadb.rockspec.template
 	@echo Creating lua-yottadb rockspec $(VERSION)
 	sed -Ee "s/(version += +['\"]).*(['\"].*)/\1$(VERSION)\2/" rockspecs/lua-yottadb.rockspec.template >rockspecs/lua-yottadb-$(VERSION).rockspec
 release: rockspec
+	git add rockspecs/lua-yottadb-$(VERSION).rockspec
+	@git diff --quiet || { echo "Commit changes to git first"; exit 1; }
 	@echo
 	@read -p "About to push lua-yottadb git tag $(tag) with rockspec $(VERSION). Continue (y/n)? " -n1 && echo && [ "$$REPLY" = "y" ]
-	@git diff --quiet || { echo "Commit changes to git first"; exit 1; }
 	@git merge-base --is-ancestor HEAD master@{upstream} || { echo "Push changes to git first"; exit 1; }
-	git add rockspecs/lua-yottadb-$(VERSION).rockspec
-	rm -f tests/*.o
+	rm -f tests/*.o  # Don't add these to the rock
 	luarocks make --local  # test that basic make works first
 	git tag -n $(tag) | grep -q ".*" && echo "Tag $(tag) already exists. Run 'make untag' to remove the git tag first" && exit 1
 	git tag -a $(tag)
@@ -93,13 +101,12 @@ listing: _yottadb.so
 clean:
 	rm -f *.so *.o *.lst
 
-PREFIX=/usr/local
 share_dir=$(PREFIX)/share/lua/$(lua_version)
 lib_dir=$(PREFIX)/lib/lua/$(lua_version)
 install: yottadb.lua _yottadb.so
-	install -d $(DESTDIR)$(share_dir) $(DESTDIR)$(lib_dir)
-	install _yottadb.so $(DESTDIR)$(lib_dir)
-	install yottadb.lua $(DESTDIR)$(share_dir)
+	install -d $(share_dir) $(lib_dir)
+	install _yottadb.so $(lib_dir)
+	install yottadb.lua $(share_dir)
 
 benchmark: benchmarks
 benchmarks:

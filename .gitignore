@@ -1,5 +1,6 @@
 *.so
 *.o
+*.rock
 t
 t.c
 t.lua
