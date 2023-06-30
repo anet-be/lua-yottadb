@@ -99,7 +99,7 @@ listing: _yottadb.so
 	objdump -Mintel -rRwS _yottadb.so >_yottadb.lst
 
 clean:
-	rm -f *.so *.o *.lst
+	rm -f *.so *.o *.lst lua-yottadb-*.rock
 
 share_dir=$(PREFIX)/share/lua/$(lua_version)
 lib_dir=$(PREFIX)/lib/lua/$(lua_version)
