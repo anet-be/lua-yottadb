@@ -33,7 +33,7 @@ build = {
       LUAROCKS_PREFIX='$(PREFIX)',  -- let Makefile know where Lua wants it installed so it can detect --local flag
       -- Don't set PREFIX='$(PREFIX)' because lua-yottadb needs its binaries to be in the system's Lua path. I don't really understand why luarocks sets its PREFIX to non-path locations
    },
-   copy_directories = {'tests', 'examples'},
+   copy_directories = {'tests', 'examples', 'docs'},
 }
 dependencies = {
    'lua >= 5.1',
