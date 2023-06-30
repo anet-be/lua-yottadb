@@ -230,6 +230,7 @@
     <dd>
     Gets the value of a variable/node or nil if it has no data.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -254,7 +255,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.get(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.get(cachearray)</pre></li>
@@ -272,6 +273,7 @@
  Note: <code>_yottadb.YDB_DEL_xxxx</code> values differ from the values in <code>libyottadb.h</code>, but they work the same.
  Specifying type=nil or not supplied is the same as <em>yottadb.YDB</em>DEL_NODE
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -294,7 +296,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.delete(varname[, {subs} | ...][, <span class="global">type</span>=_yottadb.YDB_DEL_xxxx])</pre></li>
         <li><pre class="example">_yottadb.delete(cachearray[, <span class="global">type</span>=_yottadb.YDB_DEL_xxxx])</pre></li>
@@ -310,6 +312,7 @@
  Raises an error of no such intrinsic variable exists.
  if value = nil then perform delete(node) instead
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -337,7 +340,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.set(varname[, {subs} | ...], value),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.set(cachearray, value)</pre></li>
@@ -351,6 +354,7 @@
     <dd>
     Returns information about a variable/node (except intrinsic variables).
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -382,7 +386,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.data(varname[, {subs | ...}]),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.data(cachearray)</pre></li>
@@ -399,6 +403,7 @@
  Caution: timeout is <em>not</em> optional if <code>...</code> list of subscript is provided.
  Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -422,7 +427,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.lock_incr(varname[, {subs}][, timeout=<span class="number">0</span>])</pre></li>
         <li><pre class="example">_yottadb.lock_incr(varname[, ...], timeout)</pre></li>
@@ -437,6 +442,7 @@
     <dd>
     Decrements a lock on a variable/node, releasing it if possible.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -456,7 +462,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.lock_decr(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.lock_decr(cachearray)</pre></li>
@@ -471,6 +477,7 @@
     Initiates a transaction.
    Note: restarts are subject to $ZMAXTPTIME after which they cause error <code>%YDB-E-TPTIMEOUT</code>
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -504,7 +511,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.tp([transid,] [varnames,] f[, ...])</pre>
     </ul>
@@ -517,6 +524,7 @@
     <dd>
     Returns the next subscript for a variable/node.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -541,7 +549,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.subscript_next(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.subscript_next(cachearray)</pre></li>
@@ -555,6 +563,7 @@
     <dd>
     Returns the previous subscript for a variable/node.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -579,7 +588,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.subscript_previous(varname[, {subs} | ...]),  <span class="keyword">or</span>:</pre></li>
         <li><pre class="example">_yottadb.subscript_previous(cachearray)</pre></li>
@@ -594,6 +603,7 @@
     Returns the full subscript table of the next node after a variable/node.
  A next node chain started from varname will eventually reach all nodes under that varname in order.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -618,7 +628,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.node_next(varname[, {subs} | ...])</pre>
     </ul>
@@ -632,6 +642,7 @@
     Returns the full subscript table of the node prior to a variable/node.
  A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -652,7 +663,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.node_previous(varname[, {subs}])</pre>
     </ul>
@@ -666,6 +677,7 @@
     Releases all locks held and attempts to acquire all requested locks, waiting if requested.
  Raises an error if a lock could not be acquired.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -682,7 +694,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.lock([{node_specifiers}[, timeout=<span class="number">0</span>]])</pre>
     </ul>
@@ -695,6 +707,7 @@
     <dd>
     Deletes trees of all local variables except the given ones.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -706,7 +719,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.delete_excl(varnames)</pre>
     </ul>
@@ -722,6 +735,7 @@
  Caution: increment is <em>not</em> optional if <code>...</code> list of subscript is provided.
  Otherwise incr cannot tell whether last parameter is a subscript or an increment.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -741,7 +755,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.incr(varname[, {subs}][, increment=<span class="number">1</span>])</pre></li>
         <li><pre class="example">_yottadb.incr(varname[, ...], increment=n)</pre></li>
@@ -756,6 +770,7 @@
     <dd>
     Returns the zwrite-formatted version of the given string.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -772,7 +787,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.str2zwr(s)</pre>
     </ul>
@@ -785,6 +800,7 @@
     <dd>
     Returns the string described by the given zwrite-formatted string.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -801,7 +817,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.zwr2str(s)</pre>
     </ul>
@@ -822,6 +838,7 @@
  Also read the notes on signals in the README.
  Note: any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -848,7 +865,7 @@
          <a href="yottadb_c.html#block_M_signals">block_M_signals</a>
     </ul>
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.init(signal_blocker)</pre>
     </ul>
@@ -872,6 +889,7 @@
  The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
  OS calls and make it as fast as possible.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -892,7 +910,7 @@
          <a href="yottadb_c.html#init">init</a>
     </ul>
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">yottadb.block_M_signals(bool)</pre>
     </ul>
@@ -921,6 +939,7 @@
 </ul>
 
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -952,7 +971,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cip(ci_handle, routine_name_handle, type_list[, param1][, param2][, ...])</pre>
     </ul>
@@ -965,6 +984,7 @@
     <dd>
     Register a routine name for subsequent passing to <code>cip()</code>.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -984,7 +1004,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.register_routine(routine_name, entrypoint)</pre>
     </ul>
@@ -997,6 +1017,7 @@
     <dd>
     Open a call-in table using ydb<em>ci</em>tab_open()
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1013,7 +1034,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.ci_tab_open(ci_table_filename)</pre>
     </ul>
@@ -1031,6 +1052,7 @@
     Set metatable for a cachearray since Lua itself can't set userdata metatables.
  This is the same as debug.setmetatable(cachearray, mt) but production apps are not supposed to use the debug library.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1050,7 +1072,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_setmetatable(cachearray, metatable)</pre>
     </ul>
@@ -1066,6 +1088,7 @@
  to raw <code>_yottadb()</code> functions as a speedy subsarray.
  Returned cachearray is always immutable (copied from a mutable one if necessary)
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1090,7 +1113,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Examples:</h3>
     <ul>
         <li><pre class="example">_yottadb.cachearray_create(varname[, t1][, ...])</pre></li>
         <li><pre class="example">_yottadb.cachearray_create(cachearray[, ...])</pre></li>
@@ -1107,6 +1130,7 @@
  with free space for the appendage.
  Note: Function may be called by C as it tidies up its Lua stack itself.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1127,7 +1151,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_append(cachearray[, ...])</pre>
     </ul>
@@ -1144,6 +1168,7 @@
  Forces <code>cachearray_append()</code> to create child nodes that are copies rather than re-using this cachearray.
  The user can detect whether a node is mutable (could change) using the node's <code>__mutable()</code> method.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1160,7 +1185,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_tomutable(cachearray)</pre>
     </ul>
@@ -1173,6 +1198,7 @@
     <dd>
     Return cachearray flags field
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1189,7 +1215,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_flags(cachearray)</pre>
     </ul>
@@ -1206,6 +1232,7 @@
  without creating a new cachearray for every single iteration.
  The user can detect whether a node is mutable using the node's <code>__mutable()</code> method.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1227,7 +1254,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_subst(cachearray, <span class="global">string</span>)</pre>
     </ul>
@@ -1241,6 +1268,7 @@
     Return string of cachearray subscripts or empty string if no subscripts.
  Strings are quoted with %q. Numbers are quoted only if they differ from their string representation.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1261,7 +1289,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_tostring(cachearray[, depth])</pre>
     </ul>
@@ -1274,6 +1302,7 @@
     <dd>
     Return the depth of the cachearray.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1290,7 +1319,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_depth(cachearray)</pre>
     </ul>
@@ -1303,6 +1332,7 @@
     <dd>
     Return the cachearray subscript at the specified depth.
 
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1319,7 +1349,7 @@
 
 
 
-    <h3>Usage:</h3>
+    <h3>Example:</h3>
     <ul>
         <pre class="example">_yottadb.cachearray_subscript(cachearray, depth)</pre>
     </ul>
@@ -1332,7 +1362,7 @@
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-05-27 13:29:16 </i>
+<i style="float:right;">Last updated 2023-06-30 13:07:04 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

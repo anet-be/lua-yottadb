@@ -82,8 +82,8 @@ local _function_nil = {['function']=true, ['nil']=true}
 -- and returns `v`, or calls `error()` with an error message that implicates function argument 
 -- number `narg`.
 -- Used with API function arguments so users receive more helpful error messages.
--- @usage assert_type(value, _string_nil, 1)
--- @usage assert_type(option.setting, 'number', 'setting') -- implicates key
+-- @invocation assert_type(value, _string_nil, 1)
+-- @invocation assert_type(option.setting, 'number', 'setting') -- implicates key
 -- @param v Value to assert the type of.
 -- @param expected_types String of valid type or Table whose keys are valid type names to check against.
 -- @param narg Integer positional argument number `v` is associated with. This is not required to be a number.
@@ -112,7 +112,7 @@ end
 --- Asserts that all items in table *t* are strings, or calls `error()` with an error message
 -- that implicates function argument number *narg* named *name*.
 -- Like `assert_type()`, this is intended for improved readability of API input errors.
--- @usage assert_strings(subsarray, 'subsarray', 2)
+-- @invocation assert_strings(subsarray, 'subsarray', 2)
 -- @param t Table to check. If it is not a table, the assertion passes.
 -- @param name String argument name to use in error messages.
 -- @param narg The position argument number *t* is associated with.
@@ -157,6 +157,10 @@ end
 -- @param message String error message.
 -- @return the YDB error code (if any) for the given error message,
 -- @return or `nil` if the message is not a YDB error.
+-- @example
+-- > ydb=require('yottadb')
+-- > ydb.get_error_code('YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.')
+-- -150374122
 function M.get_error_code(message)
   return tonumber(assert_type(message, 'string', 1):match('YDB Error: (%-?%d+):'))
 end
@@ -170,8 +174,8 @@ local key = {}
 
 --- Return whether a node has a value or subtree.
 -- @function data
--- @usage yottadb.data('varname'[, {subsarray}][, ...])
--- @usage yottadb.data(cachearray)
+-- @invocation yottadb.data('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.data(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
@@ -179,36 +183,73 @@ local key = {}
 -- @return 1: node has value, not subtree
 -- @return 10: node has no value, but does have a subtree
 -- @return 11: node has both value and subtree
+-- @example
+-- > ydb.set('^Population', {'Belgium'}, 1367000)
+-- > ydb.set('^Population', {'Thailand'}, 8414000)
+-- > ydb.set('^Population', {'USA'}, 325737000)
+-- > ydb.set('^Population', {'USA', '17900802'}, 3929326)
+-- > ydb.set('^Population', {'USA', '18000804'}, 5308483)
+--
+-- > ydb = require('yottadb')
+-- > ydb.data('^Population')
+-- 10.0
+-- > ydb.data('^Population', {'USA'})
+-- 11.0
 M.data = _yottadb.data
 
 --- Deletes the value of a single database variable/node.
 -- @function delete_node
--- @usage yottadb.delete_node('varname'[, {subsarray}][, ...])
--- @usage yottadb.delete_node(cachearray)
+-- @invocation yottadb.delete_node('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.delete_node(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
+-- @example
+-- > ydb = require('yottadb')
+-- > ydb.set('^Population', {'Belgium'}, 1367000)
+-- > ydb.delete_node('^Population', {'Belgium'})
+-- > ydb.get('^Population', {'Belgium'})
+-- nil
 M.delete_node = _yottadb.delete
 
 --- Deletes a database variable/node tree/subtree.
 -- @function delete_tree
--- @usage yottadb.delete_tree('varname'[, {subsarray}][, ...])
--- @usage yottadb.delete_tree(cachearray)
+-- @invocation yottadb.delete_tree('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.delete_tree(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
+-- @example
+-- > ydb = require('yottadb')
+-- > ydb.get('^Population', {'USA'})
+-- 325737000
+-- > ydb.get('^Population', {'USA', '17900802'})
+-- 3929326
+-- > ydb.get('^Population', {'USA', '18000804'})
+-- 5308483
+-- > ydb.delete_tree('^Population', {'USA'})
+-- > ydb.data('^Population', {'USA'})
+-- 0.0
 function M.delete_tree(varname, ...)
   return _yottadb.delete(varname, ..., true)
 end
 
 --- Gets and returns the value of a database variable/node, or `nil` if the variable/node does not exist.
 -- @function get
--- @usage yottadb.get('varname'[, {subsarray}][, ...])
--- @usage yottadb.get(cachearray)
+-- @invocation yottadb.get('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.get(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string value or `nil`
+-- @example
+-- > ydb = require('yottadb')
+-- > ydb.get('^Population')
+-- nil
+-- > ydb.get('^Population', {'Belgium'})
+-- 1367000
+-- > ydb.get('$zgbldir')
+-- /home/ydbuser/.yottadb/r1.34_x86_64/g/yottadb.gld
 M.get = _yottadb.get
 
 --- Increments the numeric value of a database variable/node.
@@ -216,14 +257,22 @@ M.get = _yottadb.get
 -- Caution: increment is *not* optional if `...` list of subscript is provided.
 -- Otherwise incr() cannot tell whether last parameter is a subscript or an increment.
 -- @function incr
--- @usage yottadb.incr(varname[, {subs}][, increment=1])
--- @usage yottadb.incr(varname[, {subs}], ..., increment=1)
--- @usage yottadb.incr(cachearray[, increment=1])
+-- @invocation yottadb.incr(varname[, {subs}][, increment=1])
+-- @invocation yottadb.incr(varname[, {subs}], ..., increment=1)
+-- @invocation yottadb.incr(cachearray[, increment=1])
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @param increment Number or string amount to increment by (default=1)
 -- @return the new value
+-- @example
+-- > ydb = require('yottadb')
+-- > ydb.get('num')
+-- 4
+-- > ydb.incr('num', 3)
+-- 7
+-- > ydb.incr('num')
+-- 8
 M.incr = _yottadb.incr
 
 --- Releases all locks held and attempts to acquire all requested locks, waiting if requested.
@@ -255,9 +304,9 @@ end
 -- Caution: timeout is *not* optional if `...` list of subscript is provided.
 -- Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 -- @function lock_incr
--- @usage yottadb.lock_incr(varname[, {subs}][, ...][, timeout=0])
--- @usage yottadb.lock_incr(varname[, {subs}], ..., timeout=0)
--- @usage yottadb.lock_incr(cachearray[, timeout=0])
+-- @invocation yottadb.lock_incr(varname[, {subs}][, ...][, timeout=0])
+-- @invocation yottadb.lock_incr(varname[, {subs}], ..., timeout=0)
+-- @invocation yottadb.lock_incr(cachearray[, timeout=0])
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
@@ -269,8 +318,8 @@ M.lock_incr = _yottadb.lock_incr
 --- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
 -- Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 -- @function lock_decr
--- @usage yottadb.lock_decr('varname'[, {subsarray}][, ...])
--- @usage yottadb.lock_decr(cachearray)
+-- @invocation yottadb.lock_decr('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.lock_decr(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
@@ -280,60 +329,121 @@ M.lock_decr = _yottadb.lock_decr
 --- Returns the full subscript list (think 'path') of the next node after a database variable/node.
 -- A next node chain started from varname will eventually reach all nodes under that varname in order.
 --
--- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
+-- Note: `node:gettree()` or `node:subscripts()` may be a better way to iterate a node tree
 -- @function node_next
--- @usage yottadb.node_next('varname'[, {subsarray}][, ...])
--- @usage yottadb.node_next(cachearray)
+-- @invocation yottadb.node_next('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.node_next(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0 (always)
--- @return list of subscripts for the node, or nil if there isn't a next node
+-- @return list of subscripts for the node, or `nil` if there isn't a next node
+-- @example
+-- > ydb = require('yottadb')
+-- > print(table.concat(ydb.node_next('^Population'), ', '))
+-- Belgium
+-- > print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
+-- Thailand
+-- > print(table.concat(ydb.node_next('^Population', {'Thailand'}), ', '))
+-- USA
+-- > print(table.concat(ydb.node_next('^Population', {'USA'}), ', '))
+-- USA, 17900802
+-- > print(table.concat(ydb.node_next('^Population', {'USA', '17900802'}), ', '))
+-- USA, 18000804
+-- @example
+-- -- Note: The format used above to print the next node will give an error if there is no next node, i.e., the value returned is nil.
+-- -- This case will have to be handled gracefully. The following code snippet is one way to handle nil as the return value:
+--
+-- local ydb = require('yottadb')
+-- next = ydb.node_next('^Population', {'USA', '18000804'})
+-- if next ~= nil then
+--   print(table.concat(next, ', '))
+-- else
+--   print(next)
+-- end
 M.node_next = _yottadb.node_next
 
 --- Returns the full subscript list (think 'path') of the previous node after a database variable/node.
 -- A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.
 --
--- Note: `node:gettree()` may be a better way to iterate a node tree (see comment on `yottadb.nodes()`)
+-- Note: `node:gettree()` or `node:subscripts()` may be a better way to iterate a node tree
 -- @function node_previous
--- @usage yottadb.node_previous('varname'[, {subsarray}][, ...])
--- @usage yottadb.node_previous(cachearray)
+-- @invocation yottadb.node_previous('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.node_previous(cachearray)
 -- @param varname String of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0 (always)
--- @return list of subscripts for the node, or nil if there isn't a previous node
+-- @return list of subscripts for the node, or `nil` if there isn't a previous node
+-- @example
+-- > ydb = require('yottadb')
+-- > print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
+-- USA, 17900802
+-- > print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
+-- USA
+-- > print(table.concat(ydb.node_previous('^Population', {'USA'}), ', '))
+-- Thailand
+-- > print(table.concat(ydb.node_previous('^Population', {'Thailand'}), ', '))
+-- Belgium
+--
+-- @example -- Note: See the note on handling nil return values in node_next() which applies to node_previous() as well.
 M.node_previous = _yottadb.node_previous
 
 --- Sets the value of a database variable/node.
 -- @function set
--- @usage yottadb.set(varname[, {subs}][, ...], value)
--- @usage yottadb.set(cachearray, value)
+-- @invocation yottadb.set(varname[, {subs}][, ...], value)
+-- @invocation yottadb.set(cachearray, value)
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @param value String/number/nil value to set node to. If this is a number, it is converted to a string. If it is nil, the value is deleted.
--- @return value
+-- @return `value`
+-- @example
+-- > ydb = require('yottadb')
+-- > ydb.set('^Population', {'Belgium'}, 1367000)
+-- > ydb.set('^Population', {'Thailand'}, 8414000)
+-- > ydb.set('^Population', {'USA'}, 325737000)
+-- > ydb.set('^Population', {'USA', '17900802'}, 3929326)
+-- > ydb.set('^Population', {'USA', '18000804'}, 5308483)
 M.set = _yottadb.set
 
 --- Returns the next subscript for a database variable/node, or `nil` if there isn't one.
 -- @function subscript_next
--- @usage yottadb.subscript_next(varname[, {subsarray}][, ...])
--- @usage yottadb.subscript_next(cachearray)
+-- @invocation yottadb.subscript_next(varname[, {subsarray}][, ...])
+-- @invocation yottadb.subscript_next(cachearray)
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
--- @return string subscript name, or nil if there are no more subscripts
+-- @return string subscript name, or `nil` if there are no more subscripts
+-- @example
+-- > ydb=require('yottadb')
+-- > ydb.subscript_next('^Population', {''})
+-- Belgium
+-- > ydb.subscript_next('^Population', {'Belgium'})
+-- Thailand
+-- > ydb.subscript_next('^Population', {'Thailand'})
+-- USA
 M.subscript_next = _yottadb.subscript_next
 
 --- Returns the previous subscript for a database variable/node, or `nil` if there isn't one.
 -- @function subscript_previous
--- @usage yottadb.subscript_previous(varname[, {subsarray}][, ...])
--- @usage yottadb.subscript_previous(cachearray)
+-- @invocation yottadb.subscript_previous(varname[, {subsarray}][, ...])
+-- @invocation yottadb.subscript_previous(cachearray)
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
--- @return string subscript name, or nil if there are no previous subscripts
+-- @return string subscript name, or `nil` if there are no previous subscripts
+-- @example
+-- > ydb=require('yottadb')
+-- > ydb.subscript_previous('^Population', {'USA', ''})
+-- 18000804
+-- > ydb.subscript_previous('^Population', {'USA', '18000804'})
+-- 17900802
+-- > ydb.subscript_previous('^Population', {'USA', '17900802'})
+-- nil
+-- > ydb.subscript_previous('^Population', {'USA'})
+-- Thailand
+-- >
 M.subscript_previous = _yottadb.subscript_previous
 
 --- Returns an iterator for iterating over database *sibling* subscripts starting from given varname(subs).
@@ -343,8 +453,8 @@ M.subscript_previous = _yottadb.subscript_previous
 -- cachearray input (which is purely so that key:subscripts can call it).
 -- As a result, it's not very efficient. But I don't anticipate it will get much use due to node:subscripts()
 -- having a more intuitive outcome, in my opinion.
--- @usage for name in yottadb.subscripts(varname[, {subsarray}][, ...][, reverse]) do ... end
--- @usage for name in yottadb.subscripts(cachearray[, ...][, reverse]) do ... end
+-- @invocation for name in yottadb.subscripts(varname[, {subsarray}][, ...][, reverse]) do ... end
+-- @invocation for name in yottadb.subscripts(cachearray[, ...][, reverse]) do ... end
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts or table {subscripts}
@@ -383,12 +493,31 @@ end
 -- @function str2zwr
 -- @param s String to format.
 -- @return formatted string
+-- @example
+-- > ydb=require('yottadb')
+-- > str='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
+-- > print(str)
+-- The quick brown fox jumps over the lazy dog.
+-- > ydb.str2zwr(str)
+-- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
 M.str2zwr = _yottadb.str2zwr
 
 --- Returns the string described by the given zwrite-formatted string.
 -- @function zwr2str
 -- @param s String in zwrite format.
 -- @return string
+-- @example
+-- > ydb=require('yottadb')
+-- > str1='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
+-- > zwr_str=ydb.str2zwr(str1)
+-- > print(zwr_str)
+-- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
+-- > str2=ydb.zwr2str(zwr_str)
+-- > print(str2)
+-- The quick brown fox jumps over the lazy dog.
+-- > str1==str2
+-- true
+-- >
 M.zwr2str = _yottadb.zwr2str
 
 -- The following 6 lines defines the 'High level functions' section to appear
@@ -402,15 +531,75 @@ M.zwr2str = _yottadb.zwr2str
 --- Initiates a transaction (low level function).
 -- @param[opt] id optional string transaction id. For special ids `BA` or `BATCH`, see [ydb docs here](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing).
 -- @param[opt] varnames optional table of local M variable names to restore on transaction restart
---   (or `{'*'}` for all locals) -- restoration does apply to rollback
+-- (or `{'*'}` for all locals) -- restoration does apply to rollback
 -- @param f Function to call. The transaction's affected globals are:
 --
 -- * committed if the function returns nothing or `yottadb.YDB_OK`
--- * restarted if the function returns `yottadb.YDB_TP_RESTART` (`f` will be called again) <br>
---    Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
+-- * restarted if the function returns `yottadb.YDB_TP_RESTART` (`f` will be called again)
+-- Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
 -- * not committed if the function returns `yottadb.YDB_TP_ROLLBACK` or errors out.
 -- @param[opt] ... arguments to pass to `f`
 -- @see transaction
+-- @example
+-- local ydb = require('yottadb')
+--
+-- function transfer_to_savings(t)
+--    local ok, e = pcall(ydb.incr, '^checking', -t)
+--    if (ydb.get_error_code(e) == ydb.YDB_TP_RESTART) then
+--       return ydb.YDB_TP_RESTART
+--    end
+--    if (not ok or tonumber(e)<0) then
+--       return ydb.YDB_TP_ROLLBACK
+--    end
+--    local ok, e = pcall(ydb.incr, '^savings', t)
+--    if (ydb.get_error_code(e) == ydb.YDB_TP_RESTART) then
+--       return ydb.YDB_TP_RESTART
+--    end
+--    if (not ok) then
+--       return ydb.YDB_TP_ROLLBACK
+--    end
+--    return ydb.YDB_OK
+-- end
+--
+-- ydb.set('^checking', 200)
+-- ydb.set('^savings', 85000)
+--
+-- print("Amount currently in checking account: $" .. ydb.get('^checking'))
+-- print("Amount currently in savings account: $" .. ydb.get('^savings'))
+--
+-- print("Transferring $10 from checking to savings")
+-- local ok, e = pcall(ydb.tp, '', {'*'}, transfer_to_savings, 10)
+-- if (not e) then
+--    print("Transfer successful")
+-- elseif (ydb.get_error_code(e) == ydb.YDB_TP_ROLLBACK) then
+--    print("Transfer not possible. Insufficient funds")
+-- end
+--
+-- print("Amount in checking account: $" .. ydb.get('^checking'))
+-- print("Amount in savings account: $" .. ydb.get('^savings'))
+--
+-- print("Transferring $1000 from checking to savings")
+-- local ok, e = pcall(ydb.tp, '', {'*'}, transfer_to_savings, 1000)
+-- if (not e) then
+--    print("Transfer successful")
+-- elseif (ydb.get_error_code(e) == ydb.YDB_TP_ROLLBACK) then
+--    print("Transfer not possible. Insufficient funds")
+-- end
+--
+-- print("Amount in checking account: $" .. ydb.get('^checking'))
+-- print("Amount in savings account: $" .. ydb.get('^savings'))
+-- @example
+-- Output:
+--   Amount currently in checking account: $200
+--   Amount currently in savings account: $85000
+--   Transferring $10 from checking to savings
+--   Transfer successful
+--   Amount in checking account: $190
+--   Amount in savings account: $85010
+--   Transferring $1000 from checking to savings
+--   Transfer not possible. Insufficient funds
+--   Amount in checking account: $190
+--   Amount in savings account: $85010
 function M.tp(id, varnames, f, ...)
   -- fill in missing inputs if necessary
   local args={id, varnames, f, ...}
@@ -430,12 +619,12 @@ end
 -- It will be called within a yottadb transaction and the dbase globals restored on error or `trollback()`
 -- @param[opt] id optional string transaction id. For special ids `BA` or `BATCH`, see [ydb docs here](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing).
 -- @param[opt] varnames optional table of local M variable names to restore on transaction trestart()
---   (or `{'*'}` for all locals) -- restoration does apply to rollback
+-- (or `{'*'}` for all locals) -- restoration does apply to rollback
 -- @param f Function to call. The transaction's affected globals are:
 --
 -- * committed if the function returns nothing or `yottadb.YDB_OK`
--- * restarted if the function returns `yottadb.YDB_TP_RESTART` (`f` will be called again) <br>
---    Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
+-- * restarted if the function returns `yottadb.YDB_TP_RESTART` (`f` will be called again)
+-- Note: restarts are subject to `$ZMAXTPTIME` after which they cause error `%YDB-E-TPTIMEOUT`
 -- * not committed if the function returns `yottadb.YDB_TP_ROLLBACK` or errors out.
 -- @return transaction-safed function.
 -- @see tp
@@ -610,13 +799,13 @@ end
 -- @param[opt] subsarray table of {subscripts}
 -- @param[opt] ... list of subscripts to append after any elements in optional subsarray table
 -- @param node `|key:` is an existing node or key to copy into a new object (you can turn a `key` type into a `node` type this way)
--- @usage yottadb.node('varname'[, {subsarray}][, ...]) or:
--- @usage yottadb.node(node|key[, {}][, ...])
--- @usage yottadb.node('varname')('sub1', 'sub2')
--- @usage yottadb.node('varname', 'sub1', 'sub2')
--- @usage yottadb.node('varname', {'sub1', 'sub2'})
--- @usage yottadb.node('varname').sub1.sub2
--- @usage yottadb.node('varname')['sub1']['sub2']
+-- @usage yottadb.node('varname'[, {subsarray}][, ...])
+-- yottadb.node(node|key[, {}][, ...])
+-- yottadb.node('varname')('sub1', 'sub2')
+-- yottadb.node('varname', 'sub1', 'sub2')
+-- yottadb.node('varname', {'sub1', 'sub2'})
+-- yottadb.node('varname').sub1.sub2
+-- yottadb.node('varname')['sub1']['sub2']
 -- @return node object with metatable yottadb.node
 function M.node(varname, ...)
   local self
@@ -705,7 +894,7 @@ function node:lock_decr()  return M.lock_decr(self)  end
 -- Very slightly faster than node:__pairs() because it iterates subscript names without fetching the node value. <br>
 -- Note that subscripts() order is guaranteed to equal the M collation sequence.
 -- @param[opt] reverse set to true to iterate in reverse order
--- @usage for subscript in node:subscripts() do ...
+-- @example for subscript in node:subscripts() do ...
 -- @return iterator over *child* subscript names of a node, returning a sequence of subscript name strings
 -- @see node:__pairs
 function node:subscripts(reverse)
@@ -777,7 +966,7 @@ end
 --
 -- Note: special field name `__` in the returned table indicates the value of the node itself.
 -- @param[opt] maxdepth subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
--- @param[opt] filter optional `function(node, node_top_subscript_name, value, recurse, depth)` or nil
+-- @param[opt] filter `function(node, node_top_subscript_name, value, recurse, depth)` or nil
 --
 -- * if filter is nil, all values are fetched unfiltered
 -- * if filter is a function it is invoked on every subscript
@@ -789,8 +978,8 @@ end
 -- @param[opt] _value is for internal use only (to avoid duplicate value fetches, for speed)
 -- @param[opt] _depth is for internal use only (to record depth of recursion) and must start unspecified (nil)
 -- @return Lua table containing data
--- @usage t = node:gettree()
--- @usage node:gettree(nil, print) end)
+-- @example t = node:gettree()
+-- @example node:gettree(nil, print) end)
 -- -- prints details of every node in the tree
 -- @see settree
 function node:gettree(maxdepth, filter, _value, _depth)
@@ -851,8 +1040,8 @@ end
 --   fetching the node value.
 -- @function node:__pairs
 -- @param[opt] reverse Boolean flag iterates in reverse if true
--- @usage for subnode,value[,subscript] in pairs(node) do ...
---     where subnode is a node/key object.
+-- @example for subnode,value[,subscript] in pairs(node) do ...
+-- -- where subnode is a node/key object.
 -- @return subnode, subnode_value_or_nil, subscript
 -- @see node:subscripts
 function node:__pairs(reverse)
@@ -882,10 +1071,10 @@ node.pairs = node.__pairs
 --
 -- Alternatives using pairs() are as follows:
 -- @function node:__ipairs
--- @usage for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
--- (this works since standard M order is numbers first -- unless your db specified another collation)
--- @usage `for i=1,1/0 do   v=node[i].__  if not v break then   <do_your_stuff with k,v>   end`
--- (alternative that ensures integer keys)
+-- @example for k,v in pairs(node) do   if not tonumber(k) break end   <do_your_stuff with k,v>   end
+-- -- this works since standard M order is numbers first -- unless your db specified another collation
+-- @example for i=1,1/0 do   v=node[i].__  if not v break then   <do_your_stuff with k,v>   end
+-- -- alternative that ensures integer keys
 
 -- Creates and returns a new node with the given subscript(s) ... added.
 -- If no subscripts supplied, return a copy of the node
@@ -1109,7 +1298,7 @@ function key:delete_node() M.delete_node(self) end
 -- * if sibling access becomes a common use-case, it should be reimplemented as an iterator.
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
 -- @param[opt] reverse If `true` then get previous instead of next
---   or subscript_previous()
+-- or subscript_previous()
 -- @see node:__pairs, subscript_previous
 function key:subscript_next(reset, reverse)
   local actuator = reverse and M.subscript_previous or M.subscript_next
@@ -1128,7 +1317,7 @@ end
 --- Deprecated way to get previous *sibling* subscript.
 -- See notes for subscript_previous()
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to subscript_next()
---   or subscript_previous()
+-- or subscript_previous()
 -- @see node:__pairs, subscript_next
 function key:subscript_previous(reset)
   return self:subscript_next(reset, true)
@@ -1161,7 +1350,7 @@ end
 -- @param[opt] subsarray Table of subscripts to add to node -- valid only if the second parameter is a table
 -- @param[opt=30] maxlines Maximum number of lines to output before stopping dump
 -- @return dump as a string
--- @usage ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
+-- @example ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
 function M.dump(node, ...)
   -- check whether maxlines was supplied as last parameter
   local subs, maxlines

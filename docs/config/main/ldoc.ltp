@@ -162,7 +162,7 @@
           </div>
 #       end
 #       if kitem.usage then
-            <h3>Usage:</h3>
+            <h3>Example$(#kitem.usage>1 and 's' or ''):</h3>
             <pre class="example">$(ldoc.prettify(kitem.usage[1]))</pre>
 #        end
 #   end
@@ -273,7 +273,7 @@
 
 #   if item.usage then
 #     local li,il = use_li(item.usage)
-    <h3>Usage:</h3>
+    <h3>Example$(#item.usage>1 and 's' or ''):</h3>
     <ul>
 #     for usage in iter(item.usage) do
         $(li)<pre class="example">$(ldoc.prettify(usage))</pre>$(il)
