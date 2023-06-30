@@ -934,6 +934,40 @@ It will be called within a yottadb transaction and the dbase globals restored on
 
 
 
+:Example:
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      > Znode = ydb.node('^Ztest')
+      > transact = ydb.transaction(function(end_func)
+        print("^Ztest starts as", Znode:get())
+        Znode:set('value')
+        end_func()
+        end)
+
+      > transact(ydb.trollback)  -- perform a rollback after setting Znode
+      ^Ztest starts as	nil
+      YDB Error: 2147483645: YDB_TP_ROLLBACK
+      > Znode.get()  -- see that the data didn't get set
+      nil
+
+      > tries = 2
+      > function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
+      > transact(trier)  -- restart with initial dbase state and try again
+      ^Ztest starts as	nil
+      ^Ztest starts as	nil
+      > Znode:get()  -- check that the data got set after restart
+      value
+
+      > Znode:set(nil)
+      > transact(function() end)  -- end the transaction normally without restart
+      ^Ztest starts as	nil
+      > Znode:get()  -- check that the data got set
+      value
+
+
 
 ~~~~~~~~~~~~~
 trestart ()
@@ -992,13 +1026,20 @@ Dump the specified node and its children
 
 
 
-:Example:
+:Examples:
 
   .. code-block:: lua
     :dedent: 2
     :force:
 
-      ydb.dump(node, {subsarray, ...}[, maxlines])  OR  ydb.dump(node, sub1, sub2, ...)
+      ydb.dump(node, {subsarray, ...}[, maxlines])
+
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      ydb.dump('^MYVAR', 'people')
 
 
 
@@ -1070,7 +1111,7 @@ Note: special field name ``__`` in the returned table indicates the value of the
     :dedent: 2
     :force:
 
-      t = node:gettree()
+      tbl = node:gettree()
 
 
   .. code-block:: lua
@@ -1120,6 +1161,22 @@ In its simplest form:
 
 
 
+:Example:
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      > n=ydb.node('^oaks')
+      > n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
+      > n:dump()
+      ^oaks="treedata"
+      ^oaks("1","angle")="30"
+      ^oaks("1","shadow")="10"
+      ^oaks("2","angle")="30"
+      ^oaks("2","shadow")="13"
+
+
 
 ~~~~~~~~~~~~~~~~~~~~~~~
 require (Mprototypes)
@@ -1145,6 +1202,22 @@ and matching M file `arithmetic.m <https://github.com/anet-be/lua-yottadb/blob/m
 
 
 
+:Example:
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      $ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
+      $ lua
+      > arithmetic = yottadb.require('examples/arithmetic.ci')
+      > arithmetic.add_verbose("Sum is:", 2, 3)
+      Sum is: 5
+      Sum is: 5
+      > arithmetic.sub(5,7)
+      -2
+
+
 
 ++++++++++++
 Class node
@@ -1157,10 +1230,24 @@ Class node
 node (varname[, subsarray][, ...], node)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Creates and returns a new YottaDB node object.
+Creates object that represents a YottaDB node.
 This node has all of the class methods defined below.
 Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
 Calling this on an existing node ``yottadb.node(node)`` creates an (immutable) copy of node.
+
+ **Note1:** Although the syntax ``node:method()`` is pretty, be aware that it is slow. If you are concerned
+   about speed, use ``node:__method()`` instead, which is equivalent but 15x faster.
+   This is because Lua expands ``node:method()`` to ``node.method(node)``, so lua-yottadb creates
+   an intermediate object of database subnode ``node.method``, thinking it is is a database subnode access.
+   Then, when this object gets called with ``()``, lua-yottadb discovers that its first parameter is of type ``node`` --
+   at which point it finally knows invoke ``node.__method()`` instead of treating it as a database subnode access.
+
+ **Note2:** Because lua-yottadb's underlying method access is with the ``__`` prefix, database node names
+   starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to
+   access a database node named ``__nodename``. In addition, Lua object methods starting with two underscores,
+   like ``__tostring``, are only accessible with an *additional* ``__`` prefix, for example, ``node:____tostring()``.
+
+ **Note3:** Several standard Lua operators work on nodes. These are: ``+ - = pairs() tostring()``
 
 
 

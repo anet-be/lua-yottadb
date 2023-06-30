@@ -37,13 +37,16 @@ _yottadb.so: $(SOURCES) yottadb.h callins.h cachearray.h exports.map Makefile
 
 # Requires: 'luarocks install ldoc'
 DOC_DEPS = *.lua *.c docs/config/* Makefile
-docs: docs/yottadb.html docs/yottadb_c.html docs/yottadb_ydb.rst docs/ldoc.css
-docs/yottadb.html docs/yottadb_c.html docs/yottadb_ydb.rst docs/ldoc.css: $(DOC_DEPS)
+docs: docs/yottadb.html docs/yottadb_c.html docs/yottadb_ydb.rst
+docs/yottadb.html: $(DOC_DEPS)
+	@echo
 	@echo "Making yottadb.html"
 	ldoc . -c docs/config/main.ld
+docs/yottadb_c.html: $(DOC_DEPS)
 	@echo
 	@echo "Making yottadb_private.html"
 	ldoc . -c docs/config/private.ld
+docs/yottadb_ydb.rst: $(DOC_DEPS)
 	@echo
 	@echo "Making docs for YDB manual yottadb_ydb.rst"
 	ldoc . -c docs/config/ydb.ld
