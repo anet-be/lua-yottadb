@@ -83,7 +83,7 @@ release: rockspec
 	@git merge-base --is-ancestor HEAD master@{upstream} || { echo "Push changes to git first"; exit 1; }
 	rm -f tests/*.o  # Don't add these to the rock
 	luarocks make --local  # test that basic make works first
-	git tag -n $(tag) | grep -q ".*" && echo "Tag $(tag) already exists. Run 'make untag' to remove the git tag first" && exit 1
+	! git tag -n $(tag) | grep -q ".*" || { echo "Tag $(tag) already exists. Run 'make untag' to remove the git tag first"; exit 1; }
 	git tag -a $(tag)
 	git push origin $(tag)
 	git remote -v | grep "^upstream" && git push upstream $(tag)
