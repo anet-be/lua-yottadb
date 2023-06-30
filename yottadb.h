@@ -4,6 +4,7 @@
 #define LUA_YOTTADB_H
 
 /* Version History
+v2.2 First version to generate YDB docs for inclusion into Lua section of official YDB manual
 v2.1 Additional 3.6x speed improvement on node creation (now 47x v1.x) - PR #26
  - Bugfix: yottadb.set(node, nil) now returns nil like its docs say it should
 v2.0 Major efficiency rewrite
@@ -27,7 +28,7 @@ v0.1 Initial release by Mitchel:
 */
 
 // Define version: Maj,Min
-#define LUA_YOTTADB_VERSION 2,1
+#define LUA_YOTTADB_VERSION 2,2
 #define LUA_YOTTADB_VERSION_STRING   WRAP_PARAMETER(CREATE_VERSION_STRING, LUA_YOTTADB_VERSION)   /* "X.Y" format */
 #define LUA_YOTTADB_VERSION_NUMBER   WRAP_PARAMETER(CREATE_VERSION_NUMBER, LUA_YOTTADB_VERSION)   /* XXYY integer format */
 // Version creation helper macros
