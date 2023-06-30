@@ -1,7 +1,9 @@
 >--debug: ldoc.global.require('startup')
 > local function trim(s) return s:gsub('^%s*',''):gsub('%s*$','') end
+> local iter = ldoc.modules.iter
 > local function no_spaces(s) return s:gsub('%s*$',''):gsub('%W','-') end
-> local function heading(name,char) return char:rep(#name+2) .. '\n' .. name .. '\n' .. char:rep(#name+2) end
+> local function heading(char,name) return char:rep(#name+2) .. '\n' .. name .. '\n' .. char:rep(#name+2) end
+> local function indentby(n,text) return (' '):rep(n)..text:gsub('\n', '\n'..(' '):rep(n)) end
 
 > -- Reformat paragraphs to allow 0-1 space indent == required-indent
 > local prev_indent = 0
@@ -15,13 +17,13 @@
 >  -- auto-indent lines without any indent
 >  if indentation=='' or indentation==' ' then  indentation = (' '):rep(prev_indent)  end
 >  if prev_indent==0 and indentation=='    ' then  prefix = '::\n\n' end
->  if prev_indent>0 and #indentation ~= prev_indent then  ldoc.print("***WARNING***: Indentation should be %d in text: '%s'"):format(prev_indent, indentation..line..ending)  end
+>  if prev_indent>0 and #indentation < prev_indent then  ldoc.print(("***WARNING***: Indentation should be %d in text: '%s'"):format(prev_indent, indentation..line..ending))  end
 >  prev_indent = #ending>1 and 0 or #indentation
 >  return ("%s%s%s%s"):format(prefix, indentation, line, ending)
 > end
 
-> local function md2rst(text)
->  prev_indent=0
+> local function md2rst(text,indent)
+>  prev_indent=indent or 0
 >  return text
 >   :gsub('<br%s*/*>', '\n')
 >   :gsub('`', '``')
@@ -30,9 +32,13 @@
 > end
 > local function M(text,item) return text and md2rst(text) or '' end
 
+
+>--- currently works for both Functions and Tables. The params field either contains
+>--- function parameters or table fields.
+>
 > for kind, items in module.kinds() do
 >  kind = trim(kind)
-$(heading(kind,'+'))
+$(heading('+', kind))
 
 $(M(module.kinds:get_section_description(kind)))
 
@@ -45,18 +51,115 @@ $(M(ldoc.descript(kitem),kitem))
 >   end
 >   if kitem.usage then
 .. code-block:: lua
-    :caption: Usage:
-    :dedent:
-    :force:
-    $(kitem.usage[1])
+  :caption: Usage:
+  :dedent: 2
+  :force:
+
+$(indentby(4,kitem.usage[1]))
 
 >   end
 >  end
 
 >  for item in items() do
-$(heading(ldoc.display_name(item),'~'))
+$(heading('~', ldoc.display_name(item)))
 
 $(M(ldoc.descript(item)))
 
->  end
-> end
+>-- Show any custom tags
+>-- This section doesn't work. Don't know why. Compare with ldoc's standard template ldoc-html-ltp.lua to find out why
+>-- I don't need it though, so I'm not going to debug it
+>   for custom in ldoc.modules.iter(ldoc.custom_tags or {}) do
+>    local tag = item.tags[custom[1]]
+>    if tag and not custom.hidden then
+:$(custom.title or custom[1]):
+
+>     for value in iter(tag) do
+$indentby(2, $(M(value)))
+
+>     end -- for
+>    end -- if tag
+>   end -- iter tags
+
+>-- Show any parameters
+>	  local show_return = not ldoc.no_return_or_parms
+>	  local show_parms = show_return
+>   if show_parms and item.params and #item.params > 0 then
+>    local subnames = module.kinds:type_of(item).subnames
+>    if subnames then
+>--The following displays 'Parameters:' which I think is obvious and unnecessary: comment it out
+>--**$(subnames):**
+
+>    end
+>    for parm in iter(item.params) do
+>     local param,sublist = item:subparam(parm)
+>     local indent = sublist and '  ' or ''
+>     if sublist then
+* $(sublist)$(M(item.params.map[sublist],item))
+>     end
+>     for p in iter(param) do
+>      local name,tp,def = item:display_name_of(p), ldoc.typename(item:type_of_param(p)), item:default_of_param(p)
+$(indent)* ``$(name)``:
+>      if tp ~= '' then
+  ($(tp))
+>      end
+>      if def == true then
+  (*optional*)
+>      elseif def then
+  (*default*: $(def))
+>      end
+>      if item:readonly(p) then
+  (*readonly*)
+>      end
+$(md2rst(item.params.map[p],2))
+
+>     end -- for p
+>    end -- for parm
+>   end -- if params
+
+>-- Show return values
+>   if show_return and item.retgroups then
+>    local groups = item.retgroups
+:Returns:
+>    for i,group in ldoc.ipairs(groups) do
+>     local oli = #group>1 and '#. ' or '  '
+>     for r in group:iter() do
+>      local type, ctypes = item:return_type(r)
+>      local rt = ldoc.typename(type)
+$(indentby(2,M(oli..(rt ~= '' and '('..rt..')' or '')..r.text)))
+
+>     end -- for r
+>    end -- for group
+>   end -- if returns
+
+>-- Show any errors raised
+>   if show_return and item.raise then
+:Raises:
+$(indentby(2,M(item.raise,item)))
+>   end
+
+>-- Skip "See also" section in ydb docs -- it's too noisy
+>   local include_seealso = false
+>   if include_seealso and item.see then
+:See also:
+>    for see in iter(item.see) do
+$(indentby(2,M(see.label)))
+>    end -- for
+>   end -- if see
+
+>-- Show usage examples
+>   if item.usage then
+:Example$(#item.usage>1 and 's' or ''):
+
+>    local first = true
+>    for usage in iter(item.usage) do
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+$(indentby(6,usage))
+
+>    end -- for usage
+>   end -- if usage
+
+>  end -- for item
+> end -- for kind

@@ -14,3 +14,6 @@ output = 'yottadb_ydb'
 backtick_references = true
 format = 'markdown'
 sort = true
+
+alias('example', 'usage')
+custom_tags = {{'invocation', title='Invocation', hidden=true}}
