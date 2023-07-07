@@ -78,17 +78,17 @@ Return whether a node has a value or subtree.
     :dedent: 2
     :force:
 
-      > ydb.set('^Population', {'Belgium'}, 1367000)
-      > ydb.set('^Population', {'Thailand'}, 8414000)
-      > ydb.set('^Population', {'USA'}, 325737000)
-      > ydb.set('^Population', {'USA', '17900802'}, 3929326)
-      > ydb.set('^Population', {'USA', '18000804'}, 5308483)
+      ydb.set('^Population', {'Belgium'}, 1367000)
+      ydb.set('^Population', {'Thailand'}, 8414000)
+      ydb.set('^Population', {'USA'}, 325737000)
+      ydb.set('^Population', {'USA', '17900802'}, 3929326)
+      ydb.set('^Population', {'USA', '18000804'}, 5308483)
 
-      > ydb = require('yottadb')
-      > ydb.data('^Population')
-      10.0
-      > ydb.data('^Population', {'USA'})
-      11.0
+      ydb = require('yottadb')
+      ydb.data('^Population')
+      -- 10.0
+      ydb.data('^Population', {'USA'})
+      -- 11.0
 
 
 
@@ -121,11 +121,11 @@ Deletes the value of a single database variable/node.
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > ydb.set('^Population', {'Belgium'}, 1367000)
-      > ydb.delete_node('^Population', {'Belgium'})
-      > ydb.get('^Population', {'Belgium'})
-      nil
+      ydb = require('yottadb')
+      ydb.set('^Population', {'Belgium'}, 1367000)
+      ydb.delete_node('^Population', {'Belgium'})
+      ydb.get('^Population', {'Belgium'})
+      -- nil
 
 
 
@@ -158,16 +158,16 @@ Deletes a database variable/node tree/subtree.
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > ydb.get('^Population', {'USA'})
-      325737000
-      > ydb.get('^Population', {'USA', '17900802'})
-      3929326
-      > ydb.get('^Population', {'USA', '18000804'})
-      5308483
-      > ydb.delete_tree('^Population', {'USA'})
-      > ydb.data('^Population', {'USA'})
-      0.0
+      ydb = require('yottadb')
+      ydb.get('^Population', {'USA'})
+      -- 325737000
+      ydb.get('^Population', {'USA', '17900802'})
+      -- 3929326
+      ydb.get('^Population', {'USA', '18000804'})
+      -- 5308483
+      ydb.delete_tree('^Population', {'USA'})
+      ydb.data('^Population', {'USA'})
+      -- 0.0
 
 
 
@@ -203,13 +203,13 @@ Gets and returns the value of a database variable/node, or ``nil`` if the variab
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > ydb.get('^Population')
-      nil
-      > ydb.get('^Population', {'Belgium'})
-      1367000
-      > ydb.get('$zgbldir')
-      /home/ydbuser/.yottadb/r1.34_x86_64/g/yottadb.gld
+      ydb = require('yottadb')
+      ydb.get('^Population')
+      -- nil
+      ydb.get('^Population', {'Belgium'})
+      -- 1367000
+      ydb.get('$zgbldir')
+      -- /home/ydbuser/.yottadb/r1.34_x86_64/g/yottadb.gld
 
 
 
@@ -239,9 +239,9 @@ Get the YDB error code (if any) contained in the given error message.
     :dedent: 2
     :force:
 
-      > ydb=require('yottadb')
-      > ydb.get_error_code('YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.')
-      -150374122
+      ydb = require('yottadb')
+      ydb.get_error_code('YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.')
+      -- -150374122
 
 
 
@@ -283,13 +283,13 @@ Otherwise incr() cannot tell whether last parameter is a subscript or an increme
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > ydb.get('num')
-      4
-      > ydb.incr('num', 3)
-      7
-      > ydb.incr('num')
-      8
+      ydb = require('yottadb')
+      ydb.get('num')
+      -- 4
+      ydb.incr('num', 3)
+      -- 7
+      ydb.incr('num')
+      -- 8
 
 
 
@@ -446,17 +446,17 @@ Note: ``node:gettree()`` or ``node:subscripts()`` may be a better way to iterate
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > print(table.concat(ydb.node_next('^Population'), ', '))
-      Belgium
-      > print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
-      Thailand
-      > print(table.concat(ydb.node_next('^Population', {'Thailand'}), ', '))
-      USA
-      > print(table.concat(ydb.node_next('^Population', {'USA'}), ', '))
-      USA, 17900802
-      > print(table.concat(ydb.node_next('^Population', {'USA', '17900802'}), ', '))
-      USA, 18000804
+      ydb = require('yottadb')
+      print(table.concat(ydb.node_next('^Population'), ', '))
+      -- Belgium
+      print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
+      -- Thailand
+      print(table.concat(ydb.node_next('^Population', {'Thailand'}), ', '))
+      -- USA
+      print(table.concat(ydb.node_next('^Population', {'USA'}), ', '))
+      -- USA, 17900802
+      print(table.concat(ydb.node_next('^Population', {'USA', '17900802'}), ', '))
+      -- USA, 18000804
 
 
   .. code-block:: lua
@@ -513,15 +513,15 @@ Note: ``node:gettree()`` or ``node:subscripts()`` may be a better way to iterate
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
-      USA, 17900802
-      > print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
-      USA
-      > print(table.concat(ydb.node_previous('^Population', {'USA'}), ', '))
-      Thailand
-      > print(table.concat(ydb.node_previous('^Population', {'Thailand'}), ', '))
-      Belgium
+      ydb = require('yottadb')
+      print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
+      -- USA, 17900802
+      print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
+      -- USA
+      print(table.concat(ydb.node_previous('^Population', {'USA'}), ', '))
+      -- Thailand
+      print(table.concat(ydb.node_previous('^Population', {'Thailand'}), ', '))
+      -- Belgium
 
 
   .. code-block:: lua
@@ -567,12 +567,12 @@ Sets the value of a database variable/node.
     :dedent: 2
     :force:
 
-      > ydb = require('yottadb')
-      > ydb.set('^Population', {'Belgium'}, 1367000)
-      > ydb.set('^Population', {'Thailand'}, 8414000)
-      > ydb.set('^Population', {'USA'}, 325737000)
-      > ydb.set('^Population', {'USA', '17900802'}, 3929326)
-      > ydb.set('^Population', {'USA', '18000804'}, 5308483)
+      ydb = require('yottadb')
+      ydb.set('^Population', {'Belgium'}, 1367000)
+      ydb.set('^Population', {'Thailand'}, 8414000)
+      ydb.set('^Population', {'USA'}, 325737000)
+      ydb.set('^Population', {'USA', '17900802'}, 3929326)
+      ydb.set('^Population', {'USA', '18000804'}, 5308483)
 
 
 
@@ -600,12 +600,12 @@ Returns the zwrite-formatted version of the given string.
     :dedent: 2
     :force:
 
-      > ydb=require('yottadb')
-      > str='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
-      > print(str)
-      The quick brown fox jumps over the lazy dog.
-      > ydb.str2zwr(str)
-      "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
+      ydb=require('yottadb')
+      str='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
+      print(str)
+      -- The quick brown fox jumps over the lazy dog.
+      ydb.str2zwr(str)
+      -- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
 
 
 
@@ -641,13 +641,13 @@ Returns the next subscript for a database variable/node, or ``nil`` if there isn
     :dedent: 2
     :force:
 
-      > ydb=require('yottadb')
-      > ydb.subscript_next('^Population', {''})
-      Belgium
-      > ydb.subscript_next('^Population', {'Belgium'})
-      Thailand
-      > ydb.subscript_next('^Population', {'Thailand'})
-      USA
+      ydb=require('yottadb')
+      ydb.subscript_next('^Population', {''})
+      -- Belgium
+      ydb.subscript_next('^Population', {'Belgium'})
+      -- Thailand
+      ydb.subscript_next('^Population', {'Thailand'})
+      -- USA
 
 
 
@@ -683,16 +683,15 @@ Returns the previous subscript for a database variable/node, or ``nil`` if there
     :dedent: 2
     :force:
 
-      > ydb=require('yottadb')
-      > ydb.subscript_previous('^Population', {'USA', ''})
-      18000804
-      > ydb.subscript_previous('^Population', {'USA', '18000804'})
-      17900802
-      > ydb.subscript_previous('^Population', {'USA', '17900802'})
-      nil
-      > ydb.subscript_previous('^Population', {'USA'})
-      Thailand
-      >
+      ydb=require('yottadb')
+      ydb.subscript_previous('^Population', {'USA', ''})
+      -- 18000804
+      ydb.subscript_previous('^Population', {'USA', '18000804'})
+      -- 17900802
+      ydb.subscript_previous('^Population', {'USA', '17900802'})
+      -- nil
+      ydb.subscript_previous('^Population', {'USA'})
+      -- Thailand
 
 
 
@@ -774,17 +773,16 @@ Returns the string described by the given zwrite-formatted string.
     :dedent: 2
     :force:
 
-      > ydb=require('yottadb')
-      > str1='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
-      > zwr_str=ydb.str2zwr(str1)
-      > print(zwr_str)
-      "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
-      > str2=ydb.zwr2str(zwr_str)
-      > print(str2)
-      The quick brown fox jumps over the lazy dog.
-      > str1==str2
-      true
-      >
+      ydb=require('yottadb')
+      str1='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
+      zwr_str=ydb.str2zwr(str1)
+      print(zwr_str)
+      -- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
+      str2=ydb.zwr2str(zwr_str)
+      print(str2)
+      -- The quick brown fox jumps over the lazy dog.
+      str1==str2
+      -- true
 
 
 
@@ -940,32 +938,32 @@ It will be called within a yottadb transaction and the dbase globals restored on
     :dedent: 2
     :force:
 
-      > Znode = ydb.node('^Ztest')
-      > transact = ydb.transaction(function(end_func)
+      Znode = ydb.node('^Ztest')
+      transact = ydb.transaction(function(end_func)
         print("^Ztest starts as", Znode:get())
         Znode:set('value')
         end_func()
         end)
 
-      > transact(ydb.trollback)  -- perform a rollback after setting Znode
-      ^Ztest starts as	nil
-      YDB Error: 2147483645: YDB_TP_ROLLBACK
-      > Znode.get()  -- see that the data didn't get set
-      nil
+      transact(ydb.trollback)  -- perform a rollback after setting Znode
+      -- ^Ztest starts as	nil
+      -- YDB Error: 2147483645: YDB_TP_ROLLBACK
+      Znode.get()  -- see that the data didn't get set
+      -- nil
 
-      > tries = 2
-      > function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
-      > transact(trier)  -- restart with initial dbase state and try again
-      ^Ztest starts as	nil
-      ^Ztest starts as	nil
-      > Znode:get()  -- check that the data got set after restart
-      value
+      tries = 2
+      function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
+      transact(trier)  -- restart with initial dbase state and try again
+      -- ^Ztest starts as	nil
+      -- ^Ztest starts as	nil
+      Znode:get()  -- check that the data got set after restart
+      -- value
 
-      > Znode:set(nil)
-      > transact(function() end)  -- end the transaction normally without restart
-      ^Ztest starts as	nil
-      > Znode:get()  -- check that the data got set
-      value
+      Znode:set(nil)
+      transact(function() end)  -- end the transaction normally without restart
+      -- ^Ztest starts as	nil
+      Znode:get()  -- check that the data got set
+      -- value
 
 
 
@@ -1161,15 +1159,22 @@ In its simplest form:
 
 
 
-:Example:
+:Examples:
 
   .. code-block:: lua
     :dedent: 2
     :force:
 
-      > n=ydb.node('^oaks')
-      > n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
-      > n:dump()
+      n=ydb.node('^oaks')
+      n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
+      n:dump()
+
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      -- outputs:
       ^oaks="treedata"
       ^oaks("1","angle")="30"
       ^oaks("1","shadow")="10"
@@ -1210,12 +1215,12 @@ and matching M file `arithmetic.m <https://github.com/anet-be/lua-yottadb/blob/m
 
       $ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
       $ lua
-      > arithmetic = yottadb.require('examples/arithmetic.ci')
-      > arithmetic.add_verbose("Sum is:", 2, 3)
-      Sum is: 5
-      Sum is: 5
-      > arithmetic.sub(5,7)
-      -2
+      arithmetic = yottadb.require('examples/arithmetic.ci')
+      arithmetic.add_verbose("Sum is:", 2, 3)
+      -- Sum is: 5
+      -- Sum is: 5
+      arithmetic.sub(5,7)
+      -- -2
 
 
 

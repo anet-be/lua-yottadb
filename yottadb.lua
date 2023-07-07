@@ -158,9 +158,9 @@ end
 -- @return the YDB error code (if any) for the given error message,
 -- @return or `nil` if the message is not a YDB error.
 -- @example
--- > ydb=require('yottadb')
--- > ydb.get_error_code('YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.')
--- -150374122
+-- ydb = require('yottadb')
+-- ydb.get_error_code('YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.')
+-- -- -150374122
 function M.get_error_code(message)
   return tonumber(assert_type(message, 'string', 1):match('YDB Error: (%-?%d+):'))
 end
@@ -184,17 +184,17 @@ local key = {}
 -- @return 10: node has no value, but does have a subtree
 -- @return 11: node has both value and subtree
 -- @example
--- > ydb.set('^Population', {'Belgium'}, 1367000)
--- > ydb.set('^Population', {'Thailand'}, 8414000)
--- > ydb.set('^Population', {'USA'}, 325737000)
--- > ydb.set('^Population', {'USA', '17900802'}, 3929326)
--- > ydb.set('^Population', {'USA', '18000804'}, 5308483)
+-- ydb.set('^Population', {'Belgium'}, 1367000)
+-- ydb.set('^Population', {'Thailand'}, 8414000)
+-- ydb.set('^Population', {'USA'}, 325737000)
+-- ydb.set('^Population', {'USA', '17900802'}, 3929326)
+-- ydb.set('^Population', {'USA', '18000804'}, 5308483)
 --
--- > ydb = require('yottadb')
--- > ydb.data('^Population')
--- 10.0
--- > ydb.data('^Population', {'USA'})
--- 11.0
+-- ydb = require('yottadb')
+-- ydb.data('^Population')
+-- -- 10.0
+-- ydb.data('^Population', {'USA'})
+-- -- 11.0
 M.data = _yottadb.data
 
 --- Deletes the value of a single database variable/node.
@@ -205,11 +205,11 @@ M.data = _yottadb.data
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @example
--- > ydb = require('yottadb')
--- > ydb.set('^Population', {'Belgium'}, 1367000)
--- > ydb.delete_node('^Population', {'Belgium'})
--- > ydb.get('^Population', {'Belgium'})
--- nil
+-- ydb = require('yottadb')
+-- ydb.set('^Population', {'Belgium'}, 1367000)
+-- ydb.delete_node('^Population', {'Belgium'})
+-- ydb.get('^Population', {'Belgium'})
+-- -- nil
 M.delete_node = _yottadb.delete
 
 --- Deletes a database variable/node tree/subtree.
@@ -220,16 +220,16 @@ M.delete_node = _yottadb.delete
 -- @param[opt] subsarray Table of {subscripts}
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @example
--- > ydb = require('yottadb')
--- > ydb.get('^Population', {'USA'})
--- 325737000
--- > ydb.get('^Population', {'USA', '17900802'})
--- 3929326
--- > ydb.get('^Population', {'USA', '18000804'})
--- 5308483
--- > ydb.delete_tree('^Population', {'USA'})
--- > ydb.data('^Population', {'USA'})
--- 0.0
+-- ydb = require('yottadb')
+-- ydb.get('^Population', {'USA'})
+-- -- 325737000
+-- ydb.get('^Population', {'USA', '17900802'})
+-- -- 3929326
+-- ydb.get('^Population', {'USA', '18000804'})
+-- -- 5308483
+-- ydb.delete_tree('^Population', {'USA'})
+-- ydb.data('^Population', {'USA'})
+-- -- 0.0
 function M.delete_tree(varname, ...)
   return _yottadb.delete(varname, ..., true)
 end
@@ -243,13 +243,13 @@ end
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string value or `nil`
 -- @example
--- > ydb = require('yottadb')
--- > ydb.get('^Population')
--- nil
--- > ydb.get('^Population', {'Belgium'})
--- 1367000
--- > ydb.get('$zgbldir')
--- /home/ydbuser/.yottadb/r1.34_x86_64/g/yottadb.gld
+-- ydb = require('yottadb')
+-- ydb.get('^Population')
+-- -- nil
+-- ydb.get('^Population', {'Belgium'})
+-- -- 1367000
+-- ydb.get('$zgbldir')
+-- -- /home/ydbuser/.yottadb/r1.34_x86_64/g/yottadb.gld
 M.get = _yottadb.get
 
 --- Increments the numeric value of a database variable/node.
@@ -266,13 +266,13 @@ M.get = _yottadb.get
 -- @param increment Number or string amount to increment by (default=1)
 -- @return the new value
 -- @example
--- > ydb = require('yottadb')
--- > ydb.get('num')
--- 4
--- > ydb.incr('num', 3)
--- 7
--- > ydb.incr('num')
--- 8
+-- ydb = require('yottadb')
+-- ydb.get('num')
+-- -- 4
+-- ydb.incr('num', 3)
+-- -- 7
+-- ydb.incr('num')
+-- -- 8
 M.incr = _yottadb.incr
 
 --- Releases all locks held and attempts to acquire all requested locks, waiting if requested.
@@ -339,17 +339,17 @@ M.lock_decr = _yottadb.lock_decr
 -- @return 0 (always)
 -- @return list of subscripts for the node, or `nil` if there isn't a next node
 -- @example
--- > ydb = require('yottadb')
--- > print(table.concat(ydb.node_next('^Population'), ', '))
--- Belgium
--- > print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
--- Thailand
--- > print(table.concat(ydb.node_next('^Population', {'Thailand'}), ', '))
--- USA
--- > print(table.concat(ydb.node_next('^Population', {'USA'}), ', '))
--- USA, 17900802
--- > print(table.concat(ydb.node_next('^Population', {'USA', '17900802'}), ', '))
--- USA, 18000804
+-- ydb = require('yottadb')
+-- print(table.concat(ydb.node_next('^Population'), ', '))
+-- -- Belgium
+-- print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
+-- -- Thailand
+-- print(table.concat(ydb.node_next('^Population', {'Thailand'}), ', '))
+-- -- USA
+-- print(table.concat(ydb.node_next('^Population', {'USA'}), ', '))
+-- -- USA, 17900802
+-- print(table.concat(ydb.node_next('^Population', {'USA', '17900802'}), ', '))
+-- -- USA, 18000804
 -- @example
 -- -- Note: The format used above to print the next node will give an error if there is no next node, i.e., the value returned is nil.
 -- -- This case will have to be handled gracefully. The following code snippet is one way to handle nil as the return value:
@@ -376,15 +376,15 @@ M.node_next = _yottadb.node_next
 -- @return 0 (always)
 -- @return list of subscripts for the node, or `nil` if there isn't a previous node
 -- @example
--- > ydb = require('yottadb')
--- > print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
--- USA, 17900802
--- > print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
--- USA
--- > print(table.concat(ydb.node_previous('^Population', {'USA'}), ', '))
--- Thailand
--- > print(table.concat(ydb.node_previous('^Population', {'Thailand'}), ', '))
--- Belgium
+-- ydb = require('yottadb')
+-- print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
+-- -- USA, 17900802
+-- print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
+-- -- USA
+-- print(table.concat(ydb.node_previous('^Population', {'USA'}), ', '))
+-- -- Thailand
+-- print(table.concat(ydb.node_previous('^Population', {'Thailand'}), ', '))
+-- -- Belgium
 --
 -- @example -- Note: See the note on handling nil return values in node_next() which applies to node_previous() as well.
 M.node_previous = _yottadb.node_previous
@@ -399,12 +399,12 @@ M.node_previous = _yottadb.node_previous
 -- @param value String/number/nil value to set node to. If this is a number, it is converted to a string. If it is nil, the value is deleted.
 -- @return `value`
 -- @example
--- > ydb = require('yottadb')
--- > ydb.set('^Population', {'Belgium'}, 1367000)
--- > ydb.set('^Population', {'Thailand'}, 8414000)
--- > ydb.set('^Population', {'USA'}, 325737000)
--- > ydb.set('^Population', {'USA', '17900802'}, 3929326)
--- > ydb.set('^Population', {'USA', '18000804'}, 5308483)
+-- ydb = require('yottadb')
+-- ydb.set('^Population', {'Belgium'}, 1367000)
+-- ydb.set('^Population', {'Thailand'}, 8414000)
+-- ydb.set('^Population', {'USA'}, 325737000)
+-- ydb.set('^Population', {'USA', '17900802'}, 3929326)
+-- ydb.set('^Population', {'USA', '18000804'}, 5308483)
 M.set = _yottadb.set
 
 --- Returns the next subscript for a database variable/node, or `nil` if there isn't one.
@@ -416,13 +416,13 @@ M.set = _yottadb.set
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string subscript name, or `nil` if there are no more subscripts
 -- @example
--- > ydb=require('yottadb')
--- > ydb.subscript_next('^Population', {''})
--- Belgium
--- > ydb.subscript_next('^Population', {'Belgium'})
--- Thailand
--- > ydb.subscript_next('^Population', {'Thailand'})
--- USA
+-- ydb=require('yottadb')
+-- ydb.subscript_next('^Population', {''})
+-- -- Belgium
+-- ydb.subscript_next('^Population', {'Belgium'})
+-- -- Thailand
+-- ydb.subscript_next('^Population', {'Thailand'})
+-- -- USA
 M.subscript_next = _yottadb.subscript_next
 
 --- Returns the previous subscript for a database variable/node, or `nil` if there isn't one.
@@ -434,16 +434,15 @@ M.subscript_next = _yottadb.subscript_next
 -- @param[opt] ... List of subscripts or table {subscripts}
 -- @return string subscript name, or `nil` if there are no previous subscripts
 -- @example
--- > ydb=require('yottadb')
--- > ydb.subscript_previous('^Population', {'USA', ''})
--- 18000804
--- > ydb.subscript_previous('^Population', {'USA', '18000804'})
--- 17900802
--- > ydb.subscript_previous('^Population', {'USA', '17900802'})
--- nil
--- > ydb.subscript_previous('^Population', {'USA'})
--- Thailand
--- >
+-- ydb=require('yottadb')
+-- ydb.subscript_previous('^Population', {'USA', ''})
+-- -- 18000804
+-- ydb.subscript_previous('^Population', {'USA', '18000804'})
+-- -- 17900802
+-- ydb.subscript_previous('^Population', {'USA', '17900802'})
+-- -- nil
+-- ydb.subscript_previous('^Population', {'USA'})
+-- -- Thailand
 M.subscript_previous = _yottadb.subscript_previous
 
 --- Returns an iterator for iterating over database *sibling* subscripts starting from given varname(subs).
@@ -494,12 +493,12 @@ end
 -- @param s String to format.
 -- @return formatted string
 -- @example
--- > ydb=require('yottadb')
--- > str='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
--- > print(str)
--- The quick brown fox jumps over the lazy dog.
--- > ydb.str2zwr(str)
--- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
+-- ydb=require('yottadb')
+-- str='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
+-- print(str)
+-- -- The quick brown fox jumps over the lazy dog.
+-- ydb.str2zwr(str)
+-- -- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
 M.str2zwr = _yottadb.str2zwr
 
 --- Returns the string described by the given zwrite-formatted string.
@@ -507,17 +506,16 @@ M.str2zwr = _yottadb.str2zwr
 -- @param s String in zwrite format.
 -- @return string
 -- @example
--- > ydb=require('yottadb')
--- > str1='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
--- > zwr_str=ydb.str2zwr(str1)
--- > print(zwr_str)
--- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
--- > str2=ydb.zwr2str(zwr_str)
--- > print(str2)
--- The quick brown fox jumps over the lazy dog.
--- > str1==str2
--- true
--- >
+-- ydb=require('yottadb')
+-- str1='The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'
+-- zwr_str=ydb.str2zwr(str1)
+-- print(zwr_str)
+-- -- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
+-- str2=ydb.zwr2str(zwr_str)
+-- print(str2)
+-- -- The quick brown fox jumps over the lazy dog.
+-- str1==str2
+-- -- true
 M.zwr2str = _yottadb.zwr2str
 
 -- The following 6 lines defines the 'High level functions' section to appear
@@ -629,32 +627,32 @@ end
 -- @return transaction-safed function.
 -- @see tp
 -- @example
--- > Znode = ydb.node('^Ztest')
--- > transact = ydb.transaction(function(end_func)
+-- Znode = ydb.node('^Ztest')
+-- transact = ydb.transaction(function(end_func)
 --   print("^Ztest starts as", Znode:get())
 --   Znode:set('value')
 --   end_func()
 --   end)
 --
--- > transact(ydb.trollback)  -- perform a rollback after setting Znode
--- ^Ztest starts as	nil
--- YDB Error: 2147483645: YDB_TP_ROLLBACK
--- > Znode.get()  -- see that the data didn't get set
--- nil
+-- transact(ydb.trollback)  -- perform a rollback after setting Znode
+-- -- ^Ztest starts as	nil
+-- -- YDB Error: 2147483645: YDB_TP_ROLLBACK
+-- Znode.get()  -- see that the data didn't get set
+-- -- nil
 --
--- > tries = 2
--- > function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
--- > transact(trier)  -- restart with initial dbase state and try again
--- ^Ztest starts as	nil
--- ^Ztest starts as	nil
--- > Znode:get()  -- check that the data got set after restart
--- value
+-- tries = 2
+-- function trier()  tries=tries-1  if tries>0 then ydb.trestart() end  end
+-- transact(trier)  -- restart with initial dbase state and try again
+-- -- ^Ztest starts as	nil
+-- -- ^Ztest starts as	nil
+-- Znode:get()  -- check that the data got set after restart
+-- -- value
 --
--- > Znode:set(nil)
--- > transact(function() end)  -- end the transaction normally without restart
--- ^Ztest starts as	nil
--- > Znode:get()  -- check that the data got set
--- value
+-- Znode:set(nil)
+-- transact(function() end)  -- end the transaction normally without restart
+-- -- ^Ztest starts as	nil
+-- Znode:get()  -- check that the data got set
+-- -- value
 function M.transaction(id, varnames, f)
   -- fill in missing inputs if necessary
   if type(id) ~= 'string' then  id, varnames, f = "", id, varnames  end
@@ -771,12 +769,12 @@ end
 -- @example
 -- $ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
 -- $ lua
--- > arithmetic = yottadb.require('examples/arithmetic.ci')
--- > arithmetic.add_verbose("Sum is:", 2, 3)
--- Sum is: 5
--- Sum is: 5
--- > arithmetic.sub(5,7)
--- -2
+-- arithmetic = yottadb.require('examples/arithmetic.ci')
+-- arithmetic.add_verbose("Sum is:", 2, 3)
+-- -- Sum is: 5
+-- -- Sum is: 5
+-- arithmetic.sub(5,7)
+-- -- -2
 function M.require(Mprototypes)
   local routines = {}
   if not Mprototypes:find(':', 1, true) then
@@ -967,9 +965,11 @@ M.DELETE = {}
 -- * if filter returns nil as key or value, settree will simply not update the current database value
 -- @param[opt] _seen is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
 -- @example
--- > n=ydb.node('^oaks')
--- > n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
--- > n:dump()
+-- n=ydb.node('^oaks')
+-- n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
+-- n:dump()
+-- @example
+-- -- outputs:
 -- ^oaks="treedata"
 -- ^oaks("1","angle")="30"
 -- ^oaks("1","shadow")="10"

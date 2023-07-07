@@ -440,17 +440,17 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}, <span class="number">8414000</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}, <span class="number">325737000</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}, <span class="number">3929326</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}, <span class="number">5308483</span>)
+        <pre class="example">ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}, <span class="number">8414000</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}, <span class="number">325737000</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}, <span class="number">3929326</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}, <span class="number">5308483</span>)
 
-&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.data(<span class="string">'^Population'</span>)
-<span class="number">10.0</span>
-&gt; ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-<span class="number">11.0</span></pre>
+ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.data(<span class="string">'^Population'</span>)
+<span class="comment">-- 10.0
+</span>ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+<span class="comment">-- 11.0</span></pre>
     </ul>
 
 </dd>
@@ -483,11 +483,11 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
-&gt; ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
-&gt; ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
-<span class="keyword">nil</span></pre>
+        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
+ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
+ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
+<span class="comment">-- nil</span></pre>
     </ul>
 
 </dd>
@@ -520,16 +520,16 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-<span class="number">325737000</span>
-&gt; ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
-<span class="number">3929326</span>
-&gt; ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
-<span class="number">5308483</span>
-&gt; ydb.delete_tree(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-&gt; ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-<span class="number">0.0</span></pre>
+        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+<span class="comment">-- 325737000
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
+<span class="comment">-- 3929326
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
+<span class="comment">-- 5308483
+</span>ydb.delete_tree(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+<span class="comment">-- 0.0</span></pre>
     </ul>
 
 </dd>
@@ -567,13 +567,13 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.get(<span class="string">'^Population'</span>)
-<span class="keyword">nil</span>
-&gt; ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
-<span class="number">1367000</span>
-&gt; ydb.get(<span class="string">'$zgbldir'</span>)
-/home/ydbuser/.yottadb/r1.<span class="number">34</span>_x86_64/g/yottadb.gld</pre>
+        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.get(<span class="string">'^Population'</span>)
+<span class="comment">-- nil
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
+<span class="comment">-- 1367000
+</span>ydb.get(<span class="string">'$zgbldir'</span>)
+<span class="comment">-- /home/ydbuser/.yottadb/r1.34_x86_64/g/yottadb.gld</span></pre>
     </ul>
 
 </dd>
@@ -605,9 +605,9 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.'</span>)
--<span class="number">150374122</span></pre>
+        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.'</span>)
+<span class="comment">-- -150374122</span></pre>
     </ul>
 
 </dd>
@@ -651,13 +651,13 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.get(<span class="string">'num'</span>)
-<span class="number">4</span>
-&gt; ydb.incr(<span class="string">'num'</span>, <span class="number">3</span>)
-<span class="number">7</span>
-&gt; ydb.incr(<span class="string">'num'</span>)
-<span class="number">8</span></pre>
+        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.get(<span class="string">'num'</span>)
+<span class="comment">-- 4
+</span>ydb.incr(<span class="string">'num'</span>, <span class="number">3</span>)
+<span class="comment">-- 7
+</span>ydb.incr(<span class="string">'num'</span>)
+<span class="comment">-- 8</span></pre>
     </ul>
 
 </dd>
@@ -848,17 +848,17 @@
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>), <span class="string">', '</span>))
-Belgium
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}), <span class="string">', '</span>))
-Thailand
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}), <span class="string">', '</span>))
-USA
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}), <span class="string">', '</span>))
-USA, <span class="number">17900802</span>
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}), <span class="string">', '</span>))
-USA, <span class="number">18000804</span></pre></li>
+        <li><pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+<span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>), <span class="string">', '</span>))
+<span class="comment">-- Belgium
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}), <span class="string">', '</span>))
+<span class="comment">-- Thailand
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}), <span class="string">', '</span>))
+<span class="comment">-- USA
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}), <span class="string">', '</span>))
+<span class="comment">-- USA, 17900802
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}), <span class="string">', '</span>))
+<span class="comment">-- USA, 18000804</span></pre></li>
         <li><pre class="example"><span class="comment">-- Note: The format used above to print the next node will give an error if there is no next node, i.e., the value returned is nil.
 </span><span class="comment">-- This case will have to be handled gracefully. The following code snippet is one way to handle nil as the return value:
 </span>
@@ -911,15 +911,15 @@ USA, <span class="number">18000804</span></pre></li>
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}), <span class="string">', '</span>))
-USA, <span class="number">17900802</span>
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}), <span class="string">', '</span>))
-USA
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}), <span class="string">', '</span>))
-Thailand
-&gt; <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}), <span class="string">', '</span>))
-Belgium</pre></li>
+        <li><pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+<span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}), <span class="string">', '</span>))
+<span class="comment">-- USA, 17900802
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}), <span class="string">', '</span>))
+<span class="comment">-- USA
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}), <span class="string">', '</span>))
+<span class="comment">-- Thailand
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}), <span class="string">', '</span>))
+<span class="comment">-- Belgium</span></pre></li>
         <li><pre class="example"><span class="comment">-- Note: See the note on handling nil return values in node_next() which applies to node_previous() as well.</span></pre></li>
     </ul>
 
@@ -961,12 +961,12 @@ Belgium</pre></li>
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}, <span class="number">8414000</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}, <span class="number">325737000</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}, <span class="number">3929326</span>)
-&gt; ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}, <span class="number">5308483</span>)</pre>
+        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}, <span class="number">8414000</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}, <span class="number">325737000</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}, <span class="number">3929326</span>)
+ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}, <span class="number">5308483</span>)</pre>
     </ul>
 
 </dd>
@@ -996,12 +996,12 @@ Belgium</pre></li>
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'</span>
-&gt; <span class="global">print</span>(str)
-The quick brown fox jumps over the lazy dog.
-&gt; ydb.str2zwr(str)
-<span class="string">"The quick brown dog"</span>_$C(<span class="number">8</span>,<span class="number">8</span>,<span class="number">8</span>)_<span class="string">"fox jumps over the lazy fox"</span>_$C(<span class="number">8</span>,<span class="number">8</span>,<span class="number">8</span>)_<span class="string">"dog."</span></pre>
+        <pre class="example">ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
+str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'</span>
+<span class="global">print</span>(str)
+<span class="comment">-- The quick brown fox jumps over the lazy dog.
+</span>ydb.str2zwr(str)
+<span class="comment">-- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."</span></pre>
     </ul>
 
 </dd>
@@ -1039,13 +1039,13 @@ The quick brown fox jumps over the lazy dog.
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">''</span>})
-Belgium
-&gt; ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
-Thailand
-&gt; ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>})
-USA</pre>
+        <pre class="example">ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">''</span>})
+<span class="comment">-- Belgium
+</span>ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
+<span class="comment">-- Thailand
+</span>ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>})
+<span class="comment">-- USA</span></pre>
     </ul>
 
 </dd>
@@ -1083,16 +1083,15 @@ USA</pre>
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">''</span>})
-<span class="number">18000804</span>
-&gt; ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
-<span class="number">17900802</span>
-&gt; ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
-<span class="keyword">nil</span>
-&gt; ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-Thailand
-&gt;</pre>
+        <pre class="example">ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
+ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">''</span>})
+<span class="comment">-- 18000804
+</span>ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
+<span class="comment">-- 17900802
+</span>ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
+<span class="comment">-- nil
+</span>ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+<span class="comment">-- Thailand</span></pre>
     </ul>
 
 </dd>
@@ -1192,17 +1191,16 @@ Thailand
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
-&gt; str1=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'</span>
-&gt; zwr_str=ydb.str2zwr(str1)
-&gt; <span class="global">print</span>(zwr_str)
-<span class="string">"The quick brown dog"</span>_$C(<span class="number">8</span>,<span class="number">8</span>,<span class="number">8</span>)_<span class="string">"fox jumps over the lazy fox"</span>_$C(<span class="number">8</span>,<span class="number">8</span>,<span class="number">8</span>)_<span class="string">"dog."</span>
-&gt; str2=ydb.zwr2str(zwr_str)
-&gt; <span class="global">print</span>(str2)
-The quick brown fox jumps over the lazy dog.
-&gt; str1==str2
-<span class="keyword">true</span>
-&gt;</pre>
+        <pre class="example">ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
+str1=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b\b\bdog.'</span>
+zwr_str=ydb.str2zwr(str1)
+<span class="global">print</span>(zwr_str)
+<span class="comment">-- "The quick brown dog"_$C(8,8,8)_"fox jumps over the lazy fox"_$C(8,8,8)_"dog."
+</span>str2=ydb.zwr2str(zwr_str)
+<span class="global">print</span>(str2)
+<span class="comment">-- The quick brown fox jumps over the lazy dog.
+</span>str1==str2
+<span class="comment">-- true</span></pre>
     </ul>
 
 </dd>
@@ -1367,32 +1365,32 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&gt; Znode = ydb.node(<span class="string">'^Ztest'</span>)
-&gt; transact = ydb.transaction(<span class="keyword">function</span>(end_func)
+        <pre class="example">Znode = ydb.node(<span class="string">'^Ztest'</span>)
+transact = ydb.transaction(<span class="keyword">function</span>(end_func)
   <span class="global">print</span>(<span class="string">"^Ztest starts as"</span>, Znode:get())
   Znode:set(<span class="string">'value'</span>)
   end_func()
   <span class="keyword">end</span>)
 
-&gt; transact(ydb.trollback)  <span class="comment">-- perform a rollback after setting Znode
-</span>^Ztest starts as	<span class="keyword">nil</span>
-YDB Error: <span class="number">2147483645</span>: YDB_TP_ROLLBACK
-&gt; Znode.get()  <span class="comment">-- see that the data didn't get set
-</span><span class="keyword">nil</span>
-
-&gt; tries = <span class="number">2</span>
-&gt; <span class="keyword">function</span> trier()  tries=tries-<span class="number">1</span>  <span class="keyword">if</span> tries&gt;<span class="number">0</span> <span class="keyword">then</span> ydb.trestart() <span class="keyword">end</span>  <span class="keyword">end</span>
-&gt; transact(trier)  <span class="comment">-- restart with initial dbase state and try again
-</span>^Ztest starts as	<span class="keyword">nil</span>
-^Ztest starts as	<span class="keyword">nil</span>
-&gt; Znode:get()  <span class="comment">-- check that the data got set after restart
-</span>value
-
-&gt; Znode:set(<span class="keyword">nil</span>)
-&gt; transact(<span class="keyword">function</span>() <span class="keyword">end</span>)  <span class="comment">-- end the transaction normally without restart
-</span>^Ztest starts as	<span class="keyword">nil</span>
-&gt; Znode:get()  <span class="comment">-- check that the data got set
-</span>value</pre>
+transact(ydb.trollback)  <span class="comment">-- perform a rollback after setting Znode
+</span><span class="comment">-- ^Ztest starts as	nil
+</span><span class="comment">-- YDB Error: 2147483645: YDB_TP_ROLLBACK
+</span>Znode.get()  <span class="comment">-- see that the data didn't get set
+</span><span class="comment">-- nil
+</span>
+tries = <span class="number">2</span>
+<span class="keyword">function</span> trier()  tries=tries-<span class="number">1</span>  <span class="keyword">if</span> tries&gt;<span class="number">0</span> <span class="keyword">then</span> ydb.trestart() <span class="keyword">end</span>  <span class="keyword">end</span>
+transact(trier)  <span class="comment">-- restart with initial dbase state and try again
+</span><span class="comment">-- ^Ztest starts as	nil
+</span><span class="comment">-- ^Ztest starts as	nil
+</span>Znode:get()  <span class="comment">-- check that the data got set after restart
+</span><span class="comment">-- value
+</span>
+Znode:set(<span class="keyword">nil</span>)
+transact(<span class="keyword">function</span>() <span class="keyword">end</span>)  <span class="comment">-- end the transaction normally without restart
+</span><span class="comment">-- ^Ztest starts as	nil
+</span>Znode:get()  <span class="comment">-- check that the data got set
+</span><span class="comment">-- value</span></pre>
     </ul>
 
 </dd>
@@ -1613,16 +1611,17 @@ YDB Error: <span class="number">2147483645</span>: YDB_TP_ROLLBACK
 
 
 
-    <h3>Example:</h3>
+    <h3>Examples:</h3>
     <ul>
-        <pre class="example">&gt; n=ydb.node(<span class="string">'^oaks'</span>)
-&gt; n:settree({__=<span class="string">'treedata'</span>, {shadow=<span class="number">10</span>,angle=<span class="number">30</span>}, {shadow=<span class="number">13</span>,angle=<span class="number">30</span>}})
-&gt; n:dump()
-^oaks=<span class="string">"treedata"</span>
+        <li><pre class="example">n=ydb.node(<span class="string">'^oaks'</span>)
+n:settree({__=<span class="string">'treedata'</span>, {shadow=<span class="number">10</span>,angle=<span class="number">30</span>}, {shadow=<span class="number">13</span>,angle=<span class="number">30</span>}})
+n:dump()</pre></li>
+        <li><pre class="example"><span class="comment">-- outputs:
+</span>^oaks=<span class="string">"treedata"</span>
 ^oaks(<span class="string">"1"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
 ^oaks(<span class="string">"1"</span>,<span class="string">"shadow"</span>)=<span class="string">"10"</span>
 ^oaks(<span class="string">"2"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
-^oaks(<span class="string">"2"</span>,<span class="string">"shadow"</span>)=<span class="string">"13"</span></pre>
+^oaks(<span class="string">"2"</span>,<span class="string">"shadow"</span>)=<span class="string">"13"</span></pre></li>
     </ul>
 
 </dd>
@@ -1659,12 +1658,12 @@ YDB Error: <span class="number">2147483645</span>: YDB_TP_ROLLBACK
     <ul>
         <pre class="example">$ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
 $ lua
-&gt; arithmetic = yottadb.<span class="global">require</span>(<span class="string">'examples/arithmetic.ci'</span>)
-&gt; arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="number">2</span>, <span class="number">3</span>)
-Sum is: <span class="number">5</span>
-Sum is: <span class="number">5</span>
-&gt; arithmetic.sub(<span class="number">5</span>,<span class="number">7</span>)
--<span class="number">2</span></pre>
+arithmetic = yottadb.<span class="global">require</span>(<span class="string">'examples/arithmetic.ci'</span>)
+arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="number">2</span>, <span class="number">3</span>)
+<span class="comment">-- Sum is: 5
+</span><span class="comment">-- Sum is: 5
+</span>arithmetic.sub(<span class="number">5</span>,<span class="number">7</span>)
+<span class="comment">-- -2</span></pre>
     </ul>
 
 </dd>
@@ -2396,7 +2395,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-06-30 15:54:57 </i>
+<i style="float:right;">Last updated 2023-07-07 09:32:34 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

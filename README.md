@@ -24,44 +24,44 @@ Below are some examples to get you started. When you have exhausted that, read t
 Let's tinker with setting some database values in different ways:
 
 ```lua
-> ydb = require 'yottadb'
-> n = ydb.node('^hello')  -- create node object pointing to YottaDB global ^hello
+ydb = require 'yottadb'
+n = ydb.node('^hello')  -- create node object pointing to YottaDB global ^hello
 
-> n:get()  -- get current value of the node in the database
-nil
-> n:set('Hello World')
-> n:get()
-Hello World
+n:get()  -- get current value of the node in the database
+-- nil
+n:set('Hello World')
+n:get()
+-- Hello World
 
 -- Equivalent ways to create a new subnode object pointing to an added 'cowboy' subscript
-> n2 = ydb.node('^hello')('cowboy')
-> n2 = ydb.node('^hello', 'cowboy')
-> n2 = n('cowboy')
-> n2 = n['cowboy']
-> n2 = n.cowboy
+n2 = ydb.node('^hello')('cowboy')
+n2 = ydb.node('^hello', 'cowboy')
+n2 = n('cowboy')
+n2 = n['cowboy']
+n2 = n.cowboy
 
-> n2:set('Howdy partner!')  -- set ^hello('cowboy') to 'Howdy partner!'
-> n2, n2:get()
-^hello("cowboy")	Howdy partner!
+n2:set('Howdy partner!')  -- set ^hello('cowboy') to 'Howdy partner!'
+n2, n2:get()
+-- ^hello("cowboy")	Howdy partner!
 
-> n2.ranches:set(3)  -- create subnode object ydb.node('^hello', 'cowboy', 'ranches') and set to 3
-> n2.ranches._ = 3   -- same as :set() but 3x faster (ugly but direct access to value)
+n2.ranches:set(3)  -- create subnode object ydb.node('^hello', 'cowboy', 'ranches') and set to 3
+n2.ranches.__ = 3   -- same as :set() but 3x faster (ugly but direct access to value)
 
-> n3 = n.chinese  -- add a second subscript to '^hello', creating a third object
-> n3:set('你好世界!') -- value can be number or string, including UTF-8
-> n3, n3:get()
-hello("chinese")	你好世界!
+n3 = n.chinese  -- add a second subscript to '^hello', creating a third object
+n3:set('你好世界!') -- value can be number or string, including UTF-8
+n3, n3:get()
+-- hello("chinese")	你好世界!
 ```
 
 We can also use other [methods of the node object](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#Class_node) like `incr() name() has_value() has_key() lock_incr()`:
 
 ```lua
-> n2.ranches:incr(2)  -- increment
-5
-> n2:name()
-cowboy
-> n2.__name()  -- uglier but 15x faster access to node object methods
-cowboy
+n2.ranches:incr(2)  -- increment
+-- 5
+n2:name()
+-- cowboy
+n2:__name()  -- uglier but 15x faster access to node object methods
+-- cowboy
 ```
 
 (Note: lua-yottadb is able to distinguish n:method(n) from subnode creation n.method. See [details in the notes here](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#Class_node).)
@@ -69,7 +69,12 @@ cowboy
 Now, let's try `dump` to see what we've got so far:
 
 ```lua
-> n:dump()
+n:dump()
+```
+
+The output will be:
+
+```lua
 ^hello="Hello World"
 ^hello("chinese")="你好世界!"
 ^hello("cowboy")="Howdy partner!"
@@ -79,16 +84,16 @@ Now, let's try `dump` to see what we've got so far:
 We can delete a node -- either its *value* or its entire *tree*:
 
 ```lua
-> n:set(nil)  -- delete the value of '^hello', but not any of its child nodes
-> n:get()
-nil
-> n:dump()  -- the values of the child node are still in the database
-hello("chinese")="你好世界!!"
-hello("cowboy")="Howdy partner!"
+n:set(nil)  -- delete the value of '^hello', but not any of its child nodes
+n:get()
+-- nil
+n:dump()  -- the values of the child node are still in the database
+-- hello("chinese")="你好世界!!"
+-- hello("cowboy")="Howdy partner!"
 
-> n:delete_tree() -- delete both the value at the '^hello' node and all of its children
-> n:dump()
-nil
+n:delete_tree() -- delete both the value at the '^hello' node and all of its children
+n:dump()
+-- nil
 ```
 
 ### Doing something useful
@@ -96,17 +101,17 @@ nil
 Let's use Lua to calculate the height of 3 oak trees, based on their shadow length and the angle of the sun. Method `settree()` is a handy way to enter literal data into the database from a Lua table constructor:
 
 ```lua
-> trees = ydb.node('^oaks')  -- create node object pointing to YottaDB global ^oaks
-> -- store initial data values into database subnodes ^oaks('1', 'shadow'), etc.
-> trees:settree({{shadow=10, angle=30}, {shadow=13, angle=30}, {shadow=15, angle=45}})
+trees = ydb.node('^oaks')  -- create node object pointing to YottaDB global ^oaks
+-- store initial data values into database subnodes ^oaks('1', 'shadow'), etc.
+trees:settree({{shadow=10, angle=30}, {shadow=13, angle=30}, {shadow=15, angle=45}})
 
-> for index, oaktree in pairs(trees) do
-     oaktree.height.__ = oaktree.shadow.__ * math.tan( math.rad(oaktree.angle.__) )
-     print( string.format('Oak %s is %.1fm high', index, oaktree.height.__) )
+for index, oaktree in pairs(trees) do
+    oaktree.height.__ = oaktree.shadow.__ * math.tan( math.rad(oaktree.angle.__) )
+    print( string.format('Oak %s is %.1fm high', index, oaktree.height.__) )
   end
-Oak 1 is 5.8m high
-Oak 2 is 7.5m high
-Oak 3 is 15.0m high
+-- Oak 1 is 5.8m high
+-- Oak 2 is 7.5m high
+-- Oak 3 is 15.0m high
 ```
 
 You may also wish to look at **`node:gettree()`** which has multiple uses. On first appearances, it just loads a database tree into a Lua table (opposite of `settree` above), but it also allows you to iterate over a whole database tree and process each node through a filter function. For example, to use `print` as a filter function, do `node:gettree(nil, print)` from the [API docs](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#node:gettree). Incidentally, lua-yottadb itself uses `gettree` to implement `node:dump()`.
