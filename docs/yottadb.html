@@ -64,10 +64,7 @@
     <li><a href="#trollback">trollback ()</a></li>
 <br/>
 <li><a href="#High_level_functions"><b>High level functions </b></a></li>
-    <li><a href="#dump">dump (node[, subsarray[, maxlines=30]])</a></li>
-    <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
-    <li><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></li>
-    <li><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></li>
+    <li><a href="#dump">dump (node[, ...[, maxlines=30]])</a></li>
     <li><a href="#require">require (Mprototypes)</a></li>
 <br/>
 <li><a href="#Class_node"><b>Class node </b></a></li>
@@ -75,12 +72,15 @@
     <li><a href="#node:__ipairs">node:__ipairs ()</a></li>
     <li><a href="#node:__pairs">node:__pairs ([reverse])</a></li>
     <li><a href="#node:delete_tree">node:delete_tree ()</a></li>
+    <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
     <li><a href="#node:get">node:get ([default])</a></li>
+    <li><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></li>
     <li><a href="#node:incr">node:incr ([increment=1])</a></li>
     <li><a href="#node:lock">node:lock ([timeout])</a></li>
     <li><a href="#node:lock_decr">node:lock_decr ()</a></li>
     <li><a href="#node:lock_incr">node:lock_incr ([timeout])</a></li>
     <li><a href="#node:set">node:set (value)</a></li>
+    <li><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></li>
     <li><a href="#node:subscripts">node:subscripts ([reverse])</a></li>
 <br/>
 <li><a href="#Node_properties"><b>Node properties </b></a></li>
@@ -120,7 +120,7 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#block_M_signals">block_M_signals (bool)</a></td>
-	<td class="summary">Block or unblock YDB signals for while M code is running.</td>
+	<td class="summary">Block or unblock YDB signals while M code is running.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#data">data (varname[, subsarray[, ...]])</a></td>
@@ -128,15 +128,15 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#delete_node">delete_node (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Deletes the value of a single database variable/node.</td>
+	<td class="summary">Deletes the value of a single database variable or node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Deletes a database variable/node tree/subtree.</td>
+	<td class="summary">Deletes a database variable tree or node subtree.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get">get (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Gets and returns the value of a database variable/node, or <code>nil</code> if the variable/node does not exist.</td>
+	<td class="summary">Gets and returns the value of a database variable or node; or <code>nil</code> if the variable or node does not exist.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get_error_code">get_error_code (message)</a></td>
@@ -144,7 +144,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#incr">incr (varname[, subsarray][, ...], increment)</a></td>
-	<td class="summary">Increments the numeric value of a database variable/node.</td>
+	<td class="summary">Increments the numeric value of a database variable or node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#init">init ([signal_blocker])</a></td>
@@ -152,7 +152,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lock">lock ([nodes[, timeout]])</a></td>
-	<td class="summary">Releases all locks held and attempts to acquire all requested locks, waiting if requested.</td>
+	<td class="summary">Releases all locks held and attempts to acquire all requested locks.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lock_decr">lock_decr (varname[, subsarray[, ...]])</a></td>
@@ -160,19 +160,19 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lock_incr">lock_incr (varname[, subsarray[, ...[, timeout]]])</a></td>
-	<td class="summary">Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.</td>
+	<td class="summary">Attempts to acquire or increment a lock named {varname, subsarray}.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node_next">node_next (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Returns the full subscript list (think 'path') of the next node after a database variable/node.</td>
+	<td class="summary">Returns the full subscript list of the next node after a database variable or node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node_previous">node_previous (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Returns the full subscript list (think 'path') of the previous node after a database variable/node.</td>
+	<td class="summary">Returns the full subscript list of the previous node after a database variable or node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#set">set (varname[, subsarray][, ...], value)</a></td>
-	<td class="summary">Sets the value of a database variable/node.</td>
+	<td class="summary">Sets the value of a database variable or node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#str2zwr">str2zwr (s)</a></td>
@@ -180,15 +180,15 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#subscript_next">subscript_next (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Returns the next subscript for a database variable/node, or <code>nil</code> if there isn't one.</td>
+	<td class="summary">Returns the next subscript for a database variable or node; or <code>nil</code> if there isn't one.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#subscript_previous">subscript_previous (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Returns the previous subscript for a database variable/node, or <code>nil</code> if there isn't one.</td>
+	<td class="summary">Returns the previous subscript for a database variable or node; or <code>nil</code> if there isn't one.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#subscripts">subscripts (varname[, subsarray[, ...[, reverse]]])</a></td>
-	<td class="summary">Returns an iterator for iterating over database <em>sibling</em> subscripts starting from given varname(subs).</td>
+	<td class="summary">Returns an iterator for iterating over database <em>sibling</em> subscripts starting from the node referenced by <a href="yottadb.html#node:varname">varname</a> and <code>subarray</code>.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#ydb_eintr_handler">ydb_eintr_handler ()</a></td>
@@ -207,7 +207,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#transaction">transaction ([id][, varnames], f)</a></td>
-	<td class="summary">Returns a high-level transaction-safed version of the given function.</td>
+	<td class="summary">Returns a high-level transaction-safe version of the given function.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#trestart">trestart ()</a></td>
@@ -215,26 +215,14 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#trollback">trollback ()</a></td>
-	<td class="summary">Make the currently running transaction function rollback immediately and produce a rollback error.</td>
+	<td class="summary">Make the currently running transaction function rollback immediately and produce rollback error YDB<em>TP</em>ROLLBACK</td>
 	</tr>
 </table>
 <h2><a href="#High_level_functions">High level functions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#dump">dump (node[, subsarray[, maxlines=30]])</a></td>
-	<td class="summary">Dump the specified node and its children</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#node:dump">node:dump ([maxlines=30])</a></td>
-	<td class="summary">Dump the specified node and its children</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></td>
-	<td class="summary">Fetch database node and subtree and return a Lua table of it.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></td>
-	<td class="summary">Populate database from a table.</td>
+	<td class="name" nowrap><a href="#dump">dump (node[, ...[, maxlines=30]])</a></td>
+	<td class="summary">Dump the specified node tree.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#require">require (Mprototypes)</a></td>
@@ -245,31 +233,39 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#node">node (varname[, subsarray][, ...], node)</a></td>
-	<td class="summary">Creates object that represents a YottaDB node.</td>
+	<td class="summary">Creates an object that represents a YottaDB node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:__ipairs">node:__ipairs ()</a></td>
-	<td class="summary">Not implemented - use <code>pairs(node)</code> or <code>node:__pairs()</code> instead.</td>
+	<td class="summary">Not implemented: use <code>pairs(node)</code> or <code>node:__pairs()</code> instead.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:__pairs">node:__pairs ([reverse])</a></td>
-	<td class="summary">Makes pairs() work - iterate over the child (subnode, subnode_value, subscript) of given node.</td>
+	<td class="summary">Implement <code>pairs()</code> by iterating over the children of a given node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:delete_tree">node:delete_tree ()</a></td>
-	<td class="summary">Delete database tree pointed to by node object</td>
+	<td class="summary">Delete database tree pointed to by node object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:dump">node:dump ([maxlines=30])</a></td>
+	<td class="summary">Dump the specified node tree.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:get">node:get ([default])</a></td>
-	<td class="summary">Get node's value.</td>
+	<td class="summary">Get <a href="yottadb.html#node">node</a>'s value.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></td>
+	<td class="summary">Fetch database node and subtree and return a Lua table of it.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:incr">node:incr ([increment=1])</a></td>
-	<td class="summary">Increment node's value</td>
+	<td class="summary">Increment <a href="yottadb.html#node">node</a>'s value.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:lock">node:lock ([timeout])</a></td>
-	<td class="summary">Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.</td>
+	<td class="summary">Releases all locks held and attempts to acquire a lock matching this node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:lock_decr">node:lock_decr ()</a></td>
@@ -277,11 +273,15 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:lock_incr">node:lock_incr ([timeout])</a></td>
-	<td class="summary">Attempts to acquire or increment a lock matching this node, waiting if requested.</td>
+	<td class="summary">Attempts to acquire or increment a lock matching this node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:set">node:set (value)</a></td>
-	<td class="summary">Set node's value.</td>
+	<td class="summary">Set <a href="yottadb.html#node">node</a>'s value.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></td>
+	<td class="summary">Populate database from a table.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:subscripts">node:subscripts ([reverse])</a></td>
@@ -292,7 +292,7 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#node:data">node:data ()</a></td>
-	<td class="summary">Fetch the 'data' flags of the node @see data</td>
+	<td class="summary">Fetch the 'data' flags of the node @see data.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:depth">node:depth ()</a></td>
@@ -300,15 +300,15 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:has_tree">node:has_tree ()</a></td>
-	<td class="summary">Return true if the node has a tree; otherwise false</td>
+	<td class="summary">Return true if the node has a tree; otherwise false.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:has_value">node:has_value ()</a></td>
-	<td class="summary">Return true if the node has a value; otherwise false</td>
+	<td class="summary">Return true if the node has a value; otherwise false.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:ismutable">node:ismutable ()</a></td>
-	<td class="summary">Return true if the node is mutable; otherwise false</td>
+	<td class="summary">Return true if the node is mutable; otherwise false.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:name">node:name ()</a></td>
@@ -316,7 +316,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:subsarray">node:subsarray ()</a></td>
-	<td class="summary">Return node's subsarray of subscript strings as a table</td>
+	<td class="summary">Return <a href="yottadb.html#node">node</a>'s subsarray of subscript strings as a table.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:varname">node:varname ()</a></td>
@@ -327,7 +327,7 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#key">key (varname[, subsarray])</a></td>
-	<td class="summary">Creates deprecated object that represents a YDB node.</td>
+	<td class="summary">Creates an object that represents a YDB node; deprecated after v0.1.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#key._property_">key._property_</a></td>
@@ -363,17 +363,17 @@
     <strong>block_M_signals (bool)</strong>
     </dt>
     <dd>
-    Block or unblock YDB signals for while M code is running.
+    Block or unblock YDB signals while M code is running.
  This function is designed to be passed to yottadb.init() as the <code>signal_blocker</code> parameter.
  Most signals (listed in <code>BLOCKED_SIGNALS</code> in callins.c) are blocked using sigprocmask()
  but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
  in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are
  interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
  handler does actually run, allowing YDB to flush the database or IO as necessary without
- your M code having to call the M command <code>VIEW &quot;FLUSH&quot;</code>.</p>
+ your M code needing to call the M command <code>VIEW &quot;FLUSH&quot;</code>.</p>
 
-<p> Note: this function does take time, as OS calls are slow. Using it will increase the M calling
- overhead by about 1.4 microseconds: 2-5x the bare calling overhead (see <code>make benchmarks</code>)
+<p> <em>Note:</em> This function does take time, as OS calls are slow. Using it will increase the M calling
+ overhead by about 1.4 microseconds, or 2-5x the bare calling overhead (see <code>make benchmarks</code>)
  The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
  OS calls and make it as fast as possible.
 
@@ -412,10 +412,10 @@
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -440,13 +440,7 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
-ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Thailand'</span>}, <span class="number">8414000</span>)
-ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>}, <span class="number">325737000</span>)
-ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}, <span class="number">3929326</span>)
-ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}, <span class="number">5308483</span>)
-
-ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <pre class="example">&lt;include setup from example at ydb.set()&gt;
 ydb.data(<span class="string">'^Population'</span>)
 <span class="comment">-- 10.0
 </span>ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
@@ -459,17 +453,17 @@ ydb.data(<span class="string">'^Population'</span>)
     <strong>delete_node (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Deletes the value of a single database variable/node.
+    Deletes the value of a single database variable or node.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -496,17 +490,17 @@ ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgiu
     <strong>delete_tree (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Deletes a database variable/node tree/subtree.
+    Deletes a database variable tree or node subtree.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -520,7 +514,7 @@ ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgiu
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <pre class="example">&lt;include setup from example at ydb.set()&gt;
 ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
 <span class="comment">-- 325737000
 </span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
@@ -538,21 +532,21 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
     <strong>get (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Gets and returns the value of a database variable/node, or <code>nil</code> if the variable/node does not exist.
+    Gets and returns the value of a database variable or node; or <code>nil</code> if the variable or node does not exist.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
     </ul>
@@ -567,7 +561,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <pre class="example">&lt;include setup from example at ydb.set()&gt;
 ydb.get(<span class="string">'^Population'</span>)
 <span class="comment">-- nil
 </span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
@@ -616,9 +610,10 @@ ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRAC
     <strong>incr (varname[, subsarray][, ...], increment)</strong>
     </dt>
     <dd>
-    Increments the numeric value of a database variable/node.
- Raises an error on overflow.
- Caution: increment is <em>not</em> optional if <code>...</code> list of subscript is provided.
+    Increments the numeric value of a database variable or node.
+ Raises an error on overflow.</p>
+
+<p> <em>Caution:</em> increment is <em>not</em> optional if <code>...</code> list of subscript is provided.
  Otherwise incr() cannot tell whether last parameter is a subscript or an increment.
 
     </ul>
@@ -629,11 +624,11 @@ ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRAC
          of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">increment</span>
@@ -667,20 +662,22 @@ ydb.get(<span class="string">'num'</span>)
     </dt>
     <dd>
     Initialize ydb and set blocking of M signals.
- If <code>signal_blocker</code> is specified, block M signals which could otherwise interrupt slow IO operations like reading from user/pipe.
- Also read the notes on signals in the README.
- Note: any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
+ If <code>signal_blocker</code> is specified, block M signals which could otherwise interrupt slow IO operations like reading from stdin or a pipe.
  Assert any errors.
+ See also the notes on signals in the <a href="https://github.com/anet-be/lua-yottadb#signals--eintr-errors">README</a>.</p>
+
+<p> <em>Note:</em> any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">signal_blocker</span>
-         specifies a Lua callback CFunction (e.g. <code>yottadb.block_M_signals()</code>) which will be
- called with parameter false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
- Setting <code>signal_blocker</code> to nil switches off signal blocking.
- Note: Changing this to support a generic Lua function as callback would be possible but slow, as it would require
+         Specifies a Lua callback CFunction (e.g. <code>yottadb.block_M_signals()</code>) which will be
+ called with its one parameter set to false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
+ Setting <code>signal_blocker</code> to <code>nil</code> switches off signal blocking.</p>
+
+<p> <em>Note:</em> Changing this to support a generic Lua function as callback would be possible but slow, as it would require
  fetching the function pointer from a C closure, and using <code>lua_call()</code>.
          (<em>optional</em>)
         </li>
@@ -705,7 +702,8 @@ ydb.get(<span class="string">'num'</span>)
     <strong>lock ([nodes[, timeout]])</strong>
     </dt>
     <dd>
-    Releases all locks held and attempts to acquire all requested locks, waiting if requested.
+    Releases all locks held and attempts to acquire all requested locks.
+ Returns after <code>timeout</code>, if specified.
  Raises an error yottadb.YDB<em>LOCK</em>TIMEOUT if a lock could not be acquired.
 
     </ul>
@@ -745,10 +743,10 @@ ydb.get(<span class="string">'num'</span>)
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -772,9 +770,11 @@ ydb.get(<span class="string">'num'</span>)
     <strong>lock_incr (varname[, subsarray[, ...[, timeout]]])</strong>
     </dt>
     <dd>
-    Attempts to acquire or increment a lock of the same name as {varname, subsarray}, waiting if requested.
- Raises a error yottadb.YDB<em>LOCK</em>TIMEOUT if a lock could not be acquired.
- Caution: timeout is <em>not</em> optional if <code>...</code> list of subscript is provided.
+    Attempts to acquire or increment a lock named {varname, subsarray}.
+ Returns after <code>timeout</code>, if specified.
+ Raises a yottadb.YDB<em>LOCK</em>TIMEOUT error if lock could not be acquired.</p>
+
+<p> <em>Caution:</em> timeout is <em>not</em> optional if <code>...</code> list of subscripts is provided.
  Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
     </ul>
@@ -785,11 +785,11 @@ ydb.get(<span class="string">'num'</span>)
          of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">timeout</span>
@@ -814,20 +814,20 @@ ydb.get(<span class="string">'num'</span>)
     <strong>node_next (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Returns the full subscript list (think 'path') of the next node after a database variable/node.
+    Returns the full subscript list of the next node after a database variable or node.
  A next node chain started from varname will eventually reach all nodes under that varname in order.</p>
 
-<p> Note: <code>node:gettree()</code> or <code>node:subscripts()</code> may be a better way to iterate a node tree
+<p> <em>Note:</em> <code>node:gettree()</code> or <code>node:subscripts()</code> may be a better way to iterate a node tree
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -848,7 +848,7 @@ ydb.get(<span class="string">'num'</span>)
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <li><pre class="example">&lt;include setup from example at ydb.set()&gt;
 <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>), <span class="string">', '</span>))
 <span class="comment">-- Belgium
 </span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}), <span class="string">', '</span>))
@@ -877,20 +877,20 @@ ydb.get(<span class="string">'num'</span>)
     <strong>node_previous (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Returns the full subscript list (think 'path') of the previous node after a database variable/node.
+    Returns the full subscript list of the previous node after a database variable or node.
  A previous node chain started from varname will eventually reach all nodes under that varname in reverse order.</p>
 
-<p> Note: <code>node:gettree()</code> or <code>node:subscripts()</code> may be a better way to iterate a node tree
+<p> <em>Note:</em> <code>node:gettree()</code> or <code>node:subscripts()</code> may be a better way to iterate a node tree
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">varname</span>
-         String of database node (this can also be replaced by cachearray)
+         String of the database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -911,7 +911,7 @@ ydb.get(<span class="string">'num'</span>)
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <li><pre class="example">&lt;include setup from example at ydb.set()&gt;
 <span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}), <span class="string">', '</span>))
 <span class="comment">-- USA, 17900802
 </span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}), <span class="string">', '</span>))
@@ -929,7 +929,7 @@ ydb.get(<span class="string">'num'</span>)
     <strong>set (varname[, subsarray][, ...], value)</strong>
     </dt>
     <dd>
-    Sets the value of a database variable/node.
+    Sets the value of a database variable or node.
 
     </ul>
 
@@ -939,15 +939,15 @@ ydb.get(<span class="string">'num'</span>)
          of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">value</span>
-         String/number/nil value to set node to. If this is a number, it is converted to a string. If it is nil, the value is deleted.
+         The value to assign to the node. If this is a number, it is converted to a string. If it is <code>nil</code>, the node's value, if any, is deleted.
         </li>
     </ul>
 
@@ -1010,7 +1010,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
     <strong>subscript_next (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Returns the next subscript for a database variable/node, or <code>nil</code> if there isn't one.
+    Returns the next subscript for a database variable or node; or <code>nil</code> if there isn't one.
 
     </ul>
 
@@ -1020,11 +1020,11 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
          of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
     </ul>
@@ -1039,7 +1039,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <pre class="example">&lt;include setup from example at ydb.set()&gt;
 ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">''</span>})
 <span class="comment">-- Belgium
 </span>ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
@@ -1054,7 +1054,7 @@ ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="stri
     <strong>subscript_previous (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Returns the previous subscript for a database variable/node, or <code>nil</code> if there isn't one.
+    Returns the previous subscript for a database variable or node; or <code>nil</code> if there isn't one.
 
     </ul>
 
@@ -1064,11 +1064,11 @@ ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="stri
          of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
     </ul>
@@ -1083,7 +1083,7 @@ ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="stri
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">ydb=<span class="global">require</span>(<span class="string">'yottadb'</span>)
+        <pre class="example">&lt;include setup from example at ydb.set()&gt;
 ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">''</span>})
 <span class="comment">-- 18000804
 </span>ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
@@ -1100,13 +1100,11 @@ ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="
     <strong>subscripts (varname[, subsarray[, ...[, reverse]]])</strong>
     </dt>
     <dd>
-    Returns an iterator for iterating over database <em>sibling</em> subscripts starting from given varname(subs).
- Note: this starts from the given location and gives the next <em>sibling</em> subscript in the M collation sequence.
- It operates differently than <code>node:subscipts()</code> which yields all subscripts that are <em>children</em> of the given node.
- It has a kludgy implementation due to implementing so many input options as well as handling a
- cachearray input (which is purely so that key:subscripts can call it).
- As a result, it's not very efficient. But I don't anticipate it will get much use due to node:subscripts()
- having a more intuitive outcome, in my opinion.
+    Returns an iterator for iterating over database <em>sibling</em> subscripts starting from the node referenced by <a href="yottadb.html#node:varname">varname</a> and <code>subarray</code>. </p>
+
+<p> <em>Note:</em> this starts from the given location and gives the next <em>sibling</em> subscript in the M collation sequence.
+ It operates differently than <code>node:subscipts()</code> which yields all subscripts that are <em>children</em> of the given node,
+ and which you may consider to be preferable.
 
     </ul>
 
@@ -1116,11 +1114,11 @@ ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="
          of database node (this can also be replaced by cachearray)
         </li>
         <li><span class="parameter">subsarray</span>
-         Table of {subscripts}
+         Table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
-         List of subscripts or table {subscripts}
+         List of subscripts or table subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">reverse</span>
@@ -1154,7 +1152,7 @@ ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="
     <h3>Returns:</h3>
     <ol>
 
-        YDB_OK on success, and >0 on error (with message in ZSTATUS)
+        YDB_OK on success, and greater than zero on error (with message in ZSTATUS)
     </ol>
 
 
@@ -1214,18 +1212,20 @@ zwr_str=ydb.str2zwr(str1)
     </dt>
     <dd>
     Initiates a transaction (low level function).
+ Restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code>
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">id</span>
-         optional string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">ydb docs here</a>.
+         optional string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">Transaction Processing</a>.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">varnames</span>
          optional table of local M variable names to restore on transaction restart
- (or <code>{&apos;*&apos;}</code> for all locals) -- restoration does apply to rollback
+ (or <code>{&apos;*&apos;}</code> for all locals)
+ Restoration applies to rollback.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">f</span>
@@ -1233,10 +1233,9 @@ zwr_str=ydb.str2zwr(str1)
 <p> Function to call. The transaction's affected globals are:</p>
 
 <ul>
-    <li>committed if the function returns nothing or <code>yottadb.YDB_OK</code></li>
-    <li>restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called again)
-    Note: restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code></li>
-    <li>not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors out.</li>
+    <li>Committed if the function returns nothing or <code>yottadb.YDB_OK</code>.</li>
+    <li>Restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called again).</li>
+    <li>Not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors out.</li>
 </ul>
 
         </li>
@@ -1321,20 +1320,20 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
     <strong>transaction ([id][, varnames], f)</strong>
     </dt>
     <dd>
-    Returns a high-level transaction-safed version of the given function.
- It will be called within a yottadb transaction and the dbase globals restored on error or <code>trollback()</code>
+    Returns a high-level transaction-safe version of the given function.
+ It will be called within a yottadb transaction and the dbase globals restored on error or <code>yottadb.trollback()</code>
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">id</span>
-         optional string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">ydb docs here</a>.
+         optional string transaction id. For special ids <code>BA</code> or <code>BATCH</code>, see <a href="https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing">Transaction Processing</a>.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">varnames</span>
-         optional table of local M variable names to restore on transaction trestart()
- (or <code>{&apos;*&apos;}</code> for all locals) -- restoration does apply to rollback
+         optional table of local M variable names to restore on transaction <code>trestart()</code>
+ (or <code>{&apos;*&apos;}</code> for all locals). Restoration applies to rollback.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">f</span>
@@ -1342,10 +1341,10 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
 <p> Function to call. The transaction's affected globals are:</p>
 
 <ul>
-    <li>committed if the function returns nothing or <code>yottadb.YDB_OK</code></li>
-    <li>restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called again)
-    Note: restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code></li>
-    <li>not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors out.</li>
+    <li>Committed if the function returns nothing or <code>yottadb.YDB_OK</code>.</li>
+    <li>Restarted if the function returns <code>yottadb.YDB_TP_RESTART</code> (<code>f</code> will be called again).
+    Restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code></li>
+    <li>Not committed if the function returns <code>yottadb.YDB_TP_ROLLBACK</code> or errors out.</li>
 </ul>
 
         </li>
@@ -1354,7 +1353,7 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
     <h3>Returns:</h3>
     <ol>
 
-        transaction-safed function.
+        transaction-safe function.
     </ol>
 
 
@@ -1375,7 +1374,9 @@ transact = ydb.transaction(<span class="keyword">function</span>(end_func)
 transact(ydb.trollback)  <span class="comment">-- perform a rollback after setting Znode
 </span><span class="comment">-- ^Ztest starts as	nil
 </span><span class="comment">-- YDB Error: 2147483645: YDB_TP_ROLLBACK
-</span>Znode.get()  <span class="comment">-- see that the data didn't get set
+</span><span class="comment">-- stack traceback:
+</span><span class="comment">--   [C]: in function '_yottadb.tp' ...
+</span>Znode:get()  <span class="comment">-- see that the data didn't get set
 </span><span class="comment">-- nil
 </span>
 tries = <span class="number">2</span>
@@ -1414,7 +1415,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     <strong>trollback ()</strong>
     </dt>
     <dd>
-    Make the currently running transaction function rollback immediately and produce a rollback error.
+    Make the currently running transaction function rollback immediately and produce rollback error YDB<em>TP</em>ROLLBACK
 
     </ul>
 
@@ -1430,10 +1431,10 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     <dl class="function">
     <dt>
     <a name = "dump"></a>
-    <strong>dump (node[, subsarray[, maxlines=30]])</strong>
+    <strong>dump (node[, ...[, maxlines=30]])</strong>
     </dt>
     <dd>
-    Dump the specified node and its children
+    Dump the specified node tree.
 
     </ul>
 
@@ -1442,8 +1443,8 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
         <li><span class="parameter">node</span>
          Either a node object with <code>...</code> subscripts or glvn varname with <code>...</code> subsarray
         </li>
-        <li><span class="parameter">subsarray</span>
-         Table of subscripts to add to node -- valid only if the second parameter is a table
+        <li><span class="parameter">...</span>
+         Either a table or a list of subscripts to add to node
          (<em>optional</em>)
         </li>
         <li><span class="parameter">maxlines</span>
@@ -1462,166 +1463,8 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">ydb.dump(node, {subsarray, ...}[, maxlines])</pre></li>
+        <li><pre class="example">ydb.dump(node, [...[, maxlines]])</pre></li>
         <li><pre class="example">ydb.dump(<span class="string">'^MYVAR'</span>, <span class="string">'people'</span>)</pre></li>
-    </ul>
-
-</dd>
-    <dt>
-    <a name = "node:dump"></a>
-    <strong>node:dump ([maxlines=30])</strong>
-    </dt>
-    <dd>
-    Dump the specified node and its children
-
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">maxlines</span>
-         Maximum number of lines to output before stopping dump
-         (<em>default</em> 30)
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        dump as a string
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "node:gettree"></a>
-    <strong>node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</strong>
-    </dt>
-    <dd>
-    Fetch database node and subtree and return a Lua table of it.
- But be aware that order is not preserved by Lua tables.</p>
-
-<p> Note: special field name <code>__</code> in the returned table indicates the value of the node itself.
-
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">maxdepth</span>
-         subscript depth to fetch (nil=infinite; 1 fetches first layer of subscript's values only)
-         (<em>optional</em>)
-        </li>
-        <li><span class="parameter">filter</span>
-
-<p> <code>function(node, node_top_subscript_name, value, recurse, depth)</code> or nil</p>
-
-<ul>
-    <li>if filter is nil, all values are fetched unfiltered</li>
-    <li>if filter is a function it is invoked on every subscript
-    to allow it to cast/alter every value and recurse flag;
-    note that at node root (depth=0), subscript passed to filter is the empty string ""</li>
-    <li>filter may optionally return two items: <code>value</code>, <code>recurse</code> -- copies of the input parameters, optionally altered:
-    <ul>
-        <li>if filter returns <code>value</code> then gettree will store it in the table for that database subscript/value; or store nothing if <code>value=nil</code></li>
-        <li>if filter returns <code>recurse=false</code>, it will prevent recursion deeper into that particular subscript; if <code>nil</code>, it will use the original value of recurse</li>
-    </ul></li>
-</ul>
-
-         (<em>optional</em>)
-        </li>
-        <li><span class="parameter">_value</span>
-         is for internal use only (to avoid duplicate value fetches, for speed)
-         (<em>optional</em>)
-        </li>
-        <li><span class="parameter">_depth</span>
-         is for internal use only (to record depth of recursion) and must start unspecified (nil)
-         (<em>optional</em>)
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        Lua table containing data
-    </ol>
-
-
-    <h3>See also:</h3>
-    <ul>
-         <a href="yottadb.html#node:settree">settree</a>
-    </ul>
-
-    <h3>Examples:</h3>
-    <ul>
-        <li><pre class="example">tbl = node:gettree()</pre></li>
-        <li><pre class="example">node:gettree(<span class="keyword">nil</span>, <span class="global">print</span>) <span class="keyword">end</span>)
- <span class="comment">-- prints details of every node in the tree</span></pre></li>
-    </ul>
-
-</dd>
-    <dt>
-    <a name = "node:settree"></a>
-    <strong>node:settree (tbl[, filter[, _seen]])</strong>
-    </dt>
-    <dd>
-
-<p>Populate database from a table.
- In its simplest form:</p>
-<pre><code>node:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
-</code></pre>
-
-
-    </ul>
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">tbl</span>
-
-<p> is the table to store into the database:</p>
-
-<ul>
-    <li>special field name <code>__</code> sets the value of the node itself, as opposed to a subnode</li>
-    <li>assign special value <code>yottadb.DELETE</code> to a node to delete the value of the node. You cannot delete the whole subtree</li>
-</ul>
-
-        </li>
-        <li><span class="parameter">filter</span>
-
-<p> optional function(node, key, value) or nil</p>
-
-<ul>
-    <li>if filter is nil, all values are set unfiltered</li>
-    <li>if filter is a function(node, key, value) it is invoked on every node
-    to allow it to cast/alter every key name and value</li>
-    <li>filter must return the same or altered: key, value</li>
-    <li>type errors can be handled (or ignored) using this function, too.</li>
-    <li>if filter returns yottadb.DELETE as value, the key is deleted</li>
-    <li>if filter returns nil as key or value, settree will simply not update the current database value</li>
-</ul>
-
-         (<em>optional</em>)
-        </li>
-        <li><span class="parameter">_seen</span>
-         is for internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed)
-         (<em>optional</em>)
-        </li>
-    </ul>
-
-
-
-
-    <h3>Examples:</h3>
-    <ul>
-        <li><pre class="example">n=ydb.node(<span class="string">'^oaks'</span>)
-n:settree({__=<span class="string">'treedata'</span>, {shadow=<span class="number">10</span>,angle=<span class="number">30</span>}, {shadow=<span class="number">13</span>,angle=<span class="number">30</span>}})
-n:dump()</pre></li>
-        <li><pre class="example"><span class="comment">-- outputs:
-</span>^oaks=<span class="string">"treedata"</span>
-^oaks(<span class="string">"1"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
-^oaks(<span class="string">"1"</span>,<span class="string">"shadow"</span>)=<span class="string">"10"</span>
-^oaks(<span class="string">"2"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
-^oaks(<span class="string">"2"</span>,<span class="string">"shadow"</span>)=<span class="string">"13"</span></pre></li>
     </ul>
 
 </dd>
@@ -1632,14 +1475,14 @@ n:dump()</pre></li>
     <dd>
     Import Mumps routines as Lua functions specified in ydb 'call-in' file.  <br>
  See example call-in file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci">arithmetic.ci</a>
- and matching M file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m">arithmetic.m</a>
+ and matching M file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m">arithmetic.m</a>.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">Mprototypes</span>
-         is a list of lines in the format of ydb 'callin' files per ydb_ci().
+         A list of lines in the format of ydb 'call-in' files required by <code>ydb_ci()</code>.
  If the string contains <code>:</code> it is considered to be the call-in specification itself;
  otherwise it is treated as the filename of a call-in file to be opened and read.
         </li>
@@ -1657,7 +1500,7 @@ n:dump()</pre></li>
     <h3>Example:</h3>
     <ul>
         <pre class="example">$ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
-$ lua
+$ lua -lyottadb
 arithmetic = yottadb.<span class="global">require</span>(<span class="string">'examples/arithmetic.ci'</span>)
 arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="number">2</span>, <span class="number">3</span>)
 <span class="comment">-- Sum is: 5
@@ -1676,24 +1519,28 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
     <strong>node (varname[, subsarray][, ...], node)</strong>
     </dt>
     <dd>
-    Creates object that represents a YottaDB node.
+
+<p>Creates an object that represents a YottaDB node.
  This node has all of the class methods defined below.
  Calling the returned node with one or more string parameters returns a new node further subscripted by those strings.
  Calling this on an existing node <code>yottadb.node(node)</code> creates an (immutable) copy of node.</p>
 
-<p> <strong>Note1:</strong> Although the syntax <code>node:method()</code> is pretty, be aware that it is slow. If you are concerned
- about speed, use <code>node:__method()</code> instead, which is equivalent but 15x faster.
- This is because Lua expands <code>node:method()</code> to <code>node.method(node)</code>, so lua-yottadb creates
- an intermediate object of database subnode <code>node.method</code>, thinking it is is a database subnode access.
- Then, when this object gets called with <code>()</code>, lua-yottadb discovers that its first parameter is of type <a href="yottadb.html#node">node</a> --
- at which point it finally knows invoke <code>node.__method()</code> instead of treating it as a database subnode access.</p>
+<p> <em>Notes:</em></p>
 
-<p> <strong>Note2:</strong> Because lua-yottadb's underlying method access is with the <code>__</code> prefix, database node names
- starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to
- access a database node named <code>__nodename</code>. In addition, Lua object methods starting with two underscores,
- like <code>__tostring</code>, are only accessible with an <em>additional</em> <code>__</code> prefix, for example, <code>node:____tostring()</code>.</p>
+<ul>
+    <li>Although the syntax <code>node:method()</code> is pretty, be aware that it is slow. If you are concerned
+    about speed, use <code>node:__method()</code> instead, which is equivalent but 15x faster.
+    This is because Lua expands <code>node:method()</code> to <code>node.method(node)</code>, so lua-yottadb creates
+    an intermediate object of database subnode <code>node.method</code>, assuming it is a database subnode access.
+    Then, when this object gets called with <code>()</code>, lua-yottadb discovers that its first parameter is of type <a href="yottadb.html#node">node</a>,
+    at which point it finally knows to invoke <code>node.__method()</code> instead of treating it as a database subnode access.</li>
+    <li>Because lua-yottadb's underlying method access is with the <code>__</code> prefix, database node names
+    starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to
+    access a database node named <code>__nodename</code>. In addition, Lua object methods starting with two underscores,
+    like <code>__tostring</code>, are only accessible with an <em>additional</em> <code>__</code> prefix; for example, <code>node:____tostring()</code>.</li>
+    <li>Several standard Lua operators work on nodes. These are: <code>+ - = pairs() tostring()</code></li>
+</ul>
 
-<p> <strong>Note3:</strong> Several standard Lua operators work on nodes. These are: <code>+ - = pairs() tostring()</code>
 
     </ul>
 
@@ -1703,7 +1550,7 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
          String variable name.
         </li>
         <li><span class="parameter">subsarray</span>
-         table of {subscripts}
+         table of subscripts
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -1718,7 +1565,7 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
     <h3>Returns:</h3>
     <ol>
 
-        node object with metatable yottadb.node
+        node object with metatable <a href="yottadb.html#node">yottadb.node</a>
     </ol>
 
 
@@ -1740,19 +1587,19 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:__ipairs ()</strong>
     </dt>
     <dd>
-    Not implemented - use <code>pairs(node)</code> or <code>node:__pairs()</code> instead.
+    Not implemented: use <code>pairs(node)</code> or <code>node:__pairs()</code> instead.
  See alternative usage below.
- The reason this is not implemented is that since
+ This is not implemented because
  Lua >=5.3 implements ipairs via <code>__index()</code>.
  This would mean that <code>__index()</code> would have to treat integer subscript lookup specially, so:</p>
 
 <ul>
-    <li>although <code>node[&apos;abc&apos;]</code>  => produces a new node so that <code>node.abc.def.ghi</code> works</li>
-    <li><code>node[1]</code>  => would have to produce value <code>node(1).__</code> so ipairs() works <br>
+    <li>Although <code>node[&apos;abc&apos;]</code>  => produces a new node so that <code>node.abc.def.ghi</code> works.</li>
+    <li><code>node[1]</code>  => would have to produce value <code>node(1).__</code> so ipairs() works. <br>
     Since ipairs() will be little used anyway, the consequent inconsistency discourages implementation.</li>
 </ul>
 
-<p> Alternatives using pairs() are as follows:
+<p> Alternatives using <code>pairs()</code> are as follows:
 
     </ul>
 
@@ -1763,7 +1610,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Examples:</h3>
     <ul>
         <li><pre class="example"><span class="keyword">for</span> k,v <span class="keyword">in</span> <span class="global">pairs</span>(node) <span class="keyword">do</span>   <span class="keyword">if</span> <span class="keyword">not</span> <span class="global">tonumber</span>(k) <span class="keyword">break</span> <span class="keyword">end</span>   &lt;do_your_stuff with k,v&gt;   <span class="keyword">end</span>
- <span class="comment">-- this works since standard M order is numbers first -- unless your db specified another collation</span></pre></li>
+ <span class="comment">-- this works since M sorts numbers first by default. The order may be changed by specifying a non-default collation on the database</span></pre></li>
         <li><pre class="example"><span class="keyword">for</span> i=<span class="number">1</span>,<span class="number">1</span>/<span class="number">0</span> <span class="keyword">do</span>   v=node[i].__  <span class="keyword">if</span> <span class="keyword">not</span> v <span class="keyword">break</span> <span class="keyword">then</span>   &lt;do_your_stuff with k,v&gt;   <span class="keyword">end</span>
  <span class="comment">-- alternative that ensures integer keys</span></pre></li>
     </ul>
@@ -1775,7 +1622,8 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     </dt>
     <dd>
 
-<p>Makes pairs() work - iterate over the child (subnode, subnode_value, subscript) of given node.
+<p>Implement <code>pairs()</code> by iterating over the children of a given node.
+ At each child, yielding the triplet: subnode, subnode value (or <code>nil</code>), and subscript
  You can use either <code>pairs(node)</code> or <code>node:pairs()</code>.
  If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).</p>
 
@@ -1783,15 +1631,15 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
  re-use the same node for each iteration by changing its last subscript, making it faster.
  But if your loop needs to retain a reference to the node after loop iteration, it should create
  an immutable copy of that node using <code>ydb.node(node)</code>.
- Mutability can be tested for using node:ismutable()</p>
+ Mutability can be tested for using <code>node:ismutable()</code></p>
 
-<p> Notes:</p>
+<p> <em>Notes:</em></p>
 
 <ul>
-    <li>pairs() order is guaranteed to equal the M collation sequence order
-    (even though pairs() order is not normally guaranteed for Lua tables).
-    This means that pairs() is a reasonable substitute for ipairs which is not implemented.</li>
-    <li>this is very slightly slower than node:subscripts() which only iterates subscript names without
+    <li><code>pairs()</code> order is guaranteed to equal the M collation sequence order
+    (even though <code>pairs()</code> order is not normally guaranteed for Lua tables).
+    This means that <code>pairs()</code> is a reasonable substitute for ipairs which is not implemented.</li>
+    <li>This is very slightly slower than <code>node:subscripts()</code> which only iterates subscript names without
     fetching the node value.</li>
 </ul>
 
@@ -1809,7 +1657,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Returns:</h3>
     <ol>
 
-        subnode, subnode<em>value</em>or_nil, subscript
+        3 value: subnode<em>object, subnode</em>value<em>or</em>nil, subscript
     </ol>
 
 
@@ -1820,8 +1668,8 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example"><span class="keyword">for</span> subnode,value[,subscript] <span class="keyword">in</span> <span class="global">pairs</span>(node) <span class="keyword">do</span> ...
- <span class="comment">-- where subnode is a node/key object.</span></pre>
+        <pre class="example"><span class="keyword">for</span> subnode,value[,subscript] <span class="keyword">in</span> <span class="global">pairs</span>(node) <span class="keyword">do</span>  subnode:incr(value)  <span class="keyword">end</span>
+ <span class="comment">-- to double the values of all subnodes of node</span></pre>
     </ul>
 
 </dd>
@@ -1830,7 +1678,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:delete_tree ()</strong>
     </dt>
     <dd>
-    Delete database tree pointed to by node object
+    Delete database tree pointed to by node object.
 
     </ul>
 
@@ -1845,19 +1693,46 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
 </dd>
     <dt>
+    <a name = "node:dump"></a>
+    <strong>node:dump ([maxlines=30])</strong>
+    </dt>
+    <dd>
+    Dump the specified node tree.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">maxlines</span>
+         Maximum number of lines to output before stopping dump
+         (<em>default</em> 30)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        dump as a string
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "node:get"></a>
     <strong>node:get ([default])</strong>
     </dt>
     <dd>
-    Get node's value.
- Equivalent to (but 2.5x slower than) <code>node.__</code>
+    Get <a href="yottadb.html#node">node</a>'s value.
+ Equivalent to <code>node.__</code>, but 2.5x slower.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">default</span>
-         return value if the node has no data; if not supplied, nil is the default
+         specify the value to return if the node has no data; if not supplied, <code>nil</code> is the default
          (<em>optional</em>)
         </li>
     </ul>
@@ -1877,11 +1752,93 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
 </dd>
     <dt>
+    <a name = "node:gettree"></a>
+    <strong>node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</strong>
+    </dt>
+    <dd>
+
+<p>Fetch database node and subtree and return a Lua table of it. </p>
+
+<p> <em>Notes:</em></p>
+
+<ul>
+    <li>special field name <code>__</code> in the returned table indicates the value of the node itself.</li>
+    <li>Lua tables do not preserve the order YDB subtrees.</li>
+</ul>
+
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">maxdepth</span>
+         subscript depth to fetch. (<code>nil</code>=infinite depth; 1 fetches first layer of subscript's values only)
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">filter</span>
+
+<p> is either <code>nil</code> or a function matching the prototype <code>function(node, node_top_subscript_name, value, recurse, depth)</code></p>
+
+<ul>
+    <li>If filter is <code>nil</code>, all values are fetched unfiltered.</li>
+    <li>If filter is a function it is invoked on every subscript
+    to allow it to cast/alter every value and recurse flag;
+    note that at node root (depth=0), subscript passed to filter is the empty string ""</li>
+    <li>Filter may optionally return two items: <code>value</code> and <code>recurse</code>, which must either be the input parameters <code>value</code> and <code>recurse</code> or may be altered:
+    <ul>
+        <li>If filter returns <code>value</code> then <code>gettree()</code> will store it in the table for that database subscript/value; or store nothing if <code>value=nil</code>.</li>
+        <li>If filter returns <code>recurse=false</code>, it will prevent recursion deeper into that particular subscript. If it returns <code>nil</code>, it will use the original value of recurse.</li>
+    </ul></li>
+</ul>
+
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">_value</span>
+         For internal use only (to avoid duplicate value fetches, for speed).
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">_depth</span>
+         For internal use only (to record depth of recursion) and must start unspecified (nil).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        Lua table containing data
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#node:settree">settree</a>
+    </ul>
+
+    <h3>Example:</h3>
+    <ul>
+        <pre class="example">n=ydb.node(<span class="string">'^oaks'</span>)
+n:settree({__=<span class="string">'treedata'</span>, {shadow=<span class="number">10</span>,angle=<span class="number">30</span>}, {shadow=<span class="number">13</span>,angle=<span class="number">30</span>}})
+n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
+<span class="comment">-- ^oaks		treedata	true	0
+</span><span class="comment">-- ^oaks(1)	1	nil	true	1
+</span><span class="comment">-- ^oaks(1,"angle")	angle	30	false	2
+</span><span class="comment">-- ^oaks(1,"shadow")	shadow	10	false	2
+</span><span class="comment">-- ^oaks(2)	2	nil	true	1
+</span><span class="comment">-- ^oaks(2,"angle")	angle	30	false	2
+</span><span class="comment">-- ^oaks(2,"shadow")	shadow	13	false	2
+</span>
+<span class="comment">-- now fetch the tree into a Lua table
+</span>tbl = n:gettree()</pre>
+    </ul>
+
+</dd>
+    <dt>
     <a name = "node:incr"></a>
     <strong>node:incr ([increment=1])</strong>
     </dt>
     <dd>
-    Increment node's value
+    Increment <a href="yottadb.html#node">node</a>'s value.
 
     </ul>
 
@@ -1912,7 +1869,8 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:lock ([timeout])</strong>
     </dt>
     <dd>
-    Releases all locks held and attempts to acquire a lock matching this node, waiting if requested.
+    Releases all locks held and attempts to acquire a lock matching this node.
+ Returns after <code>timeout</code>, if specified.
 
     </ul>
 
@@ -1957,7 +1915,8 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:lock_incr ([timeout])</strong>
     </dt>
     <dd>
-    Attempts to acquire or increment a lock matching this node, waiting if requested.
+    Attempts to acquire or increment a lock matching this node.
+ Returns after <code>timeout</code>, if specified.
 
     </ul>
 
@@ -1983,15 +1942,15 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:set (value)</strong>
     </dt>
     <dd>
-    Set node's value.
- Equivalent to (but 4x slower than) <code>node.__ = x</code>
+    Set <a href="yottadb.html#node">node</a>'s value.
+ Equivalent to <code>node.__ = x</code>, but 4x slower.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">value</span>
-         New value or nil to delete node
+         New value or <code>nil</code> to delete node
         </li>
     </ul>
 
@@ -2005,6 +1964,72 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
 </dd>
     <dt>
+    <a name = "node:settree"></a>
+    <strong>node:settree (tbl[, filter[, _seen]])</strong>
+    </dt>
+    <dd>
+
+<p>Populate database from a table.
+ In its simplest form:</p>
+<pre><code>n=ydb.node('var')
+n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
+</code></pre>
+
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">tbl</span>
+
+<p> The table to store into the database:</p>
+
+<ul>
+    <li>Special field name <code>tbl.__</code> sets the value of the node itself, as opposed to a subnode.</li>
+    <li>Set any table value to <code>yottadb.DELETE</code> to have <code>settree()</code> delete the value of the associated database node. You cannot delete the whole subtree.</li>
+</ul>
+
+        </li>
+        <li><span class="parameter">filter</span>
+
+<p> Function of the form function(node, key, value) or <code>nil</code></p>
+
+<ul>
+    <li>If filter is <code>nil</code>, all values are set unfiltered.</li>
+    <li>If filter is a function(node, key, value) it is invoked on every node
+    to allow it to cast/alter every key name and value.</li>
+    <li>Filter must return the same or altered: key, value.</li>
+    <li>Type errors can be handled (or ignored) using this function, too.</li>
+    <li>If filter returns <code>yottadb.DELETE</code> as value, the key is deleted.</li>
+    <li>If filter returns <code>nil</code> as key or value, <code>settree()</code> will simply not update the current database value.</li>
+</ul>
+
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">_seen</span>
+         For internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed).
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+
+
+
+    <h3>Examples:</h3>
+    <ul>
+        <li><pre class="example">n=ydb.node(<span class="string">'^oaks'</span>)
+n:settree({__=<span class="string">'treedata'</span>, {shadow=<span class="number">10</span>,angle=<span class="number">30</span>}, {shadow=<span class="number">13</span>,angle=<span class="number">30</span>}})
+n:dump()</pre></li>
+        <li><pre class="example"><span class="comment">-- outputs:
+</span>^oaks=<span class="string">"treedata"</span>
+^oaks(<span class="string">"1"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
+^oaks(<span class="string">"1"</span>,<span class="string">"shadow"</span>)=<span class="string">"10"</span>
+^oaks(<span class="string">"2"</span>,<span class="string">"angle"</span>)=<span class="string">"30"</span>
+^oaks(<span class="string">"2"</span>,<span class="string">"shadow"</span>)=<span class="string">"13"</span></pre></li>
+    </ul>
+
+</dd>
+    <dt>
     <a name = "node:subscripts"></a>
     <strong>node:subscripts ([reverse])</strong>
     </dt>
@@ -2012,7 +2037,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     Return iterator over the <em>child</em> subscript names of a node (in M terms, collate from "" to "").
  Unlike <code>yottadb.subscripts()</code>, <code>node:subscripts()</code> returns all <em>child</em> subscripts, not subsequent <em>sibling</em> subscripts in the same level. <br>
  Very slightly faster than node:__pairs() because it iterates subscript names without fetching the node value. <br>
- Note that subscripts() order is guaranteed to equal the M collation sequence.
+ Note that <code>subscripts()</code> order is guaranteed to equal the M collation sequence.
 
     </ul>
 
@@ -2027,7 +2052,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Returns:</h3>
     <ol>
 
-        iterator over <em>child</em> subscript names of a node, returning a sequence of subscript name strings
+        iterator over <em>child</em> subscript names of a node, which returns a sequence of subscript name strings
     </ol>
 
 
@@ -2038,7 +2063,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example"><span class="keyword">for</span> subscript <span class="keyword">in</span> node:subscripts() <span class="keyword">do</span> ...</pre>
+        <pre class="example"><span class="keyword">for</span> subscript <span class="keyword">in</span> node:subscripts() <span class="keyword">do</span>  <span class="global">print</span> subscript  <span class="keyword">end</span></pre>
     </ul>
 
 </dd>
@@ -2051,7 +2076,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:data ()</strong>
     </dt>
     <dd>
-    Fetch the 'data' flags of the node @see data
+    Fetch the 'data' flags of the node @see data.
 
     </ul>
 
@@ -2066,7 +2091,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:depth ()</strong>
     </dt>
     <dd>
-    Fetch the depth of the node, i.e.  how many subscripts it has
+    Fetch the depth of the node, i.e.  how many subscripts it has.
 
     </ul>
 
@@ -2081,7 +2106,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:has_tree ()</strong>
     </dt>
     <dd>
-    Return true if the node has a tree; otherwise false
+    Return true if the node has a tree; otherwise false.
 
     </ul>
 
@@ -2096,7 +2121,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:has_value ()</strong>
     </dt>
     <dd>
-    Return true if the node has a value; otherwise false
+    Return true if the node has a value; otherwise false.
 
     </ul>
 
@@ -2111,7 +2136,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:ismutable ()</strong>
     </dt>
     <dd>
-    Return true if the node is mutable; otherwise false
+    Return true if the node is mutable; otherwise false.
 
     </ul>
 
@@ -2126,7 +2151,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:name ()</strong>
     </dt>
     <dd>
-    Fetch the name of the node, i.e.  the rightmost subscript
+    Fetch the name of the node, i.e.  the rightmost subscript.
 
     </ul>
 
@@ -2141,7 +2166,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:subsarray ()</strong>
     </dt>
     <dd>
-    Return node's subsarray of subscript strings as a table
+    Return <a href="yottadb.html#node">node</a>'s subsarray of subscript strings as a table.
 
     </ul>
 
@@ -2156,7 +2181,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:varname ()</strong>
     </dt>
     <dd>
-    Fetch the varname of the node, i.e.  the leftmost subscript
+    Fetch the varname of the node, i.e.  the leftmost subscript.
 
     </ul>
 
@@ -2176,19 +2201,19 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     </dt>
     <dd>
 
-<p>Creates deprecated object that represents a YDB node.
+<p>Creates an object that represents a YDB node; deprecated after v0.1.  <br>
  <code>key()</code> is a subclass of <code>node()</code> designed to implement deprecated
  property names for backward compatibility, as follows:</p>
 
 <ul>
     <li><a href="yottadb.html#node:name">name</a> (this node's subscript or variable name)</li>
     <li><code>value</code> (this node's value in the YottaDB database)</li>
-    <li><a href="yottadb.html#data">data</a> (see data())</li>
+    <li><a href="yottadb.html#data">data</a> (see <code>data()</code>)</li>
     <li><a href="yottadb.html#node:has_value">has_value</a> (whether or not this node has a value)</li>
     <li><a href="yottadb.html#node:has_tree">has_tree</a> (whether or not this node has a subtree)</li>
     <li><code>__varname</code> database variable name string -- for compatibility with a previous version</li>
     <li><code>__subsarray</code> table array of database subscript name strings -- for compatibility with a previous version
-    and deprecated definitions of <code>key:subscript()</code>, <code>key:subscript_next()</code>, <code>key:subscript_previous()</code>. <br></li>
+    and deprecated definitions of <code>key:subscript()</code>, <code>key:subscript_next()</code>, <code>key:subscript_previous()</code> <br></li>
 </ul>
 
 
@@ -2200,7 +2225,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
          String variable name.
         </li>
         <li><span class="parameter">subsarray</span>
-         list of subscripts or table {subscripts}
+         list of subscripts or table subscripts
          (<em>optional</em>)
         </li>
     </ul>
@@ -2208,7 +2233,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Returns:</h3>
     <ol>
 
-        key object of the specified node with metatable yottadb._key
+        key object of the specified node with metatable <code>yottadb._key</code>
     </ol>
 
 
@@ -2267,7 +2292,8 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>key:delete_node ()</strong>
     </dt>
     <dd>
-    Deprecated way to delete database node value pointed to by node object.  Prefer node:set(nil)
+    Deprecated way to delete database node value pointed to by node object.
+ Prefer <code>node:set(nil)</code>
 
     </ul>
 
@@ -2288,15 +2314,16 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     </dt>
     <dd>
 
-<p>Deprecated way to get next <em>sibling</em> subscript.
- Note: this starts from the given location and gives the next <em>sibling</em> subscript in the M collation sequence.
+<p>Deprecated way to get next <em>sibling</em> subscript. </p>
+
+<p> <em>Note:</em> this starts from the given location and gives the next <em>sibling</em> subscript in the M collation sequence.
  It operates differently than <code>node:subscipts()</code> which yields all subscripts that are <em>children</em> of the given node.
  Deprecated because:</p>
 
 <ul>
-    <li>it keeps dangerous state in the object: causes bugs where old references to it think it's still original</li>
-    <li>it is more Lua-esque to iterate all subscripts in the node (think table) using pairs()</li>
-    <li>if sibling access becomes a common use-case, it should be reimplemented as an iterator.</li>
+    <li>It keeps dangerous state in the object: causes bugs where old references to it think it's still original.</li>
+    <li>It is more Lua-esque to iterate all subscripts in the node (think table) using <code>pairs()</code>.</li>
+    <li>If sibling access becomes a common use-case, it should be reimplemented as an iterator.</li>
 </ul>
 
 
@@ -2305,12 +2332,11 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">reset</span>
-         If <code>true</code>, resets to the original subscript before any calls to subscript_next()
+         If <code>true</code>, resets to the original subscript before any calls to <code>subscript_next()</code>
          (<em>optional</em>)
         </li>
         <li><span class="parameter">reverse</span>
          If <code>true</code> then get previous instead of next
- or subscript_previous()
          (<em>optional</em>)
         </li>
     </ul>
@@ -2331,15 +2357,15 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     </dt>
     <dd>
     Deprecated way to get previous <em>sibling</em> subscript.
- See notes for subscript_previous()
+ See notes for <code>subscript_previous()</code>
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">reset</span>
-         If <code>true</code>, resets to the original subscript before any calls to subscript<em>next()
- or subscript</em>previous()
+         If <code>true</code>, resets to the original subscript before any calls to <code>subscript_next()</code>
+ or <code>subscript_previous()</code>
          (<em>optional</em>)
         </li>
     </ul>
@@ -2364,8 +2390,8 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
  Deprecated because:</p>
 
 <ul>
-    <li>pairs() is more Lua-esque</li>
-    <li>it was is non-intuitive that k:subscripts() iterates only subsequent subscripts, not all child subscripts</li>
+    <li><code>pairs()</code> is more Lua-esque.</li>
+    <li>It was non-intuitive that <code>key:subscripts()</code> iterates only subsequent subscripts, not all child subscripts.</li>
 </ul>
 
 
@@ -2374,7 +2400,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">reverse</span>
-         boolean
+         When set to <code>true</code>, iterates in reverse
          (<em>optional</em>)
         </li>
     </ul>
@@ -2395,7 +2421,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-07-07 09:32:34 </i>
+<i style="float:right;">Last updated 2023-07-11 14:41:46 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
