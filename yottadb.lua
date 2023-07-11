@@ -275,7 +275,7 @@ M.incr = _yottadb.incr
 
 --- Releases all locks held and attempts to acquire all requested locks.
 -- Returns after `timeout`, if specified.
--- Raises an error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
+-- Raises an error `yottadb.YDB_LOCK_TIMEOUT` if a lock could not be acquired.
 -- @param[opt] nodes Table array containing {varname[, subs]} or node objects that specify the lock names to lock.
 -- @param[opt] timeout Integer timeout in seconds to wait for the lock.
 -- @return 0 (always)
@@ -300,7 +300,7 @@ end
 
 --- Attempts to acquire or increment a lock named {varname, subsarray}.
 -- Returns after `timeout`, if specified.
--- Raises a yottadb.YDB_LOCK_TIMEOUT error if lock could not be acquired.
+-- Raises a `yottadb.YDB_LOCK_TIMEOUT` error if lock could not be acquired.
 --
 -- *Caution:* timeout is *not* optional if `...` list of subscripts is provided.
 -- Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
@@ -337,7 +337,6 @@ M.lock_decr = _yottadb.lock_decr
 -- @param varname String of the database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
--- @return 0 (always)
 -- @return list of subscripts for the node, or `nil` if there isn't a next node
 -- @example
 -- <include setup from example at ydb.set()>
@@ -374,7 +373,6 @@ M.node_next = _yottadb.node_next
 -- @param varname String of the database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
--- @return 0 (always)
 -- @return list of subscripts for the node, or `nil` if there isn't a previous node
 -- @example
 -- <include setup from example at ydb.set()>
@@ -947,7 +945,7 @@ M.DELETE = {}
 
 --- Populate database from a table.
 -- In its simplest form:
---    n=ydb.node('var')
+--    n = ydb.node('var')
 --    n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
 -- @param tbl The table to store into the database:
 --
@@ -964,7 +962,7 @@ M.DELETE = {}
 -- * If filter returns `nil` as key or value, `settree()` will simply not update the current database value.
 -- @param[opt] _seen For internal use only (to prevent accidental duplicate sets: bad because order setting is not guaranteed).
 -- @example
--- n=ydb.node('^oaks')
+-- n = ydb.node('^oaks')
 -- n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
 -- n:dump()
 -- @example
@@ -1008,7 +1006,7 @@ end
 -- * special field name `__` in the returned table indicates the value of the node itself.
 -- * Lua tables do not preserve the order YDB subtrees.
 -- @param[opt] maxdepth subscript depth to fetch. (`nil`=infinite depth; 1 fetches first layer of subscript's values only)
--- @param[opt] filter is either `nil` or a function matching the prototype `function(node, node_top_subscript_name, value, recurse, depth)`
+-- @param[opt] filter Either `nil` or a function matching the prototype `function(node, node_top_subscript_name, value, recurse, depth)`
 --
 -- * If filter is `nil`, all values are fetched unfiltered.
 -- * If filter is a function it is invoked on every subscript
@@ -1021,7 +1019,7 @@ end
 -- @param[opt] _depth For internal use only (to record depth of recursion) and must start unspecified (nil).
 -- @return Lua table containing data
 -- @example
--- n=ydb.node('^oaks')
+-- n = ydb.node('^oaks')
 -- n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
 -- n:gettree(nil, print)
 -- -- ^oaks		treedata	true	0
@@ -1070,7 +1068,7 @@ function node:dump(maxlines)
 end
 
 --- Implement `pairs()` by iterating over the children of a given node.
--- At each child, yielding the triplet: subnode, subnode value (or `nil`), and subscript
+-- At each child, yielding the triplet: subnode, subnode value (or `nil`), and subscript.
 -- You can use either `pairs(node)` or `node:pairs()`.
 -- If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).
 --
@@ -1091,7 +1089,7 @@ end
 -- @param[opt] reverse Boolean flag iterates in reverse if true
 -- @example for subnode,value[,subscript] in pairs(node) do  subnode:incr(value)  end
 -- -- to double the values of all subnodes of node
--- @return 3 value: subnode_object, subnode_value_or_nil, subscript
+-- @return 3 values: `subnode_object`, `subnode_value_or_nil`, `subscript`
 -- @see node:subscripts
 function node:__pairs(reverse)
   local actuator = reverse and _yottadb.subscript_previous or _yottadb.subscript_next

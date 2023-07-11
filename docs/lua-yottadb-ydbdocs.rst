@@ -324,7 +324,7 @@ lock ([nodes[, timeout]])
 
 Releases all locks held and attempts to acquire all requested locks.
 Returns after ``timeout``, if specified.
-Raises an error yottadb.YDB_LOCK_TIMEOUT if a lock could not be acquired.
+Raises an error ``yottadb.YDB_LOCK_TIMEOUT`` if a lock could not be acquired.
 
 
 
@@ -378,7 +378,7 @@ lock_incr (varname[, subsarray[, ...[, timeout]]])
 
 Attempts to acquire or increment a lock named {varname, subsarray}.
 Returns after ``timeout``, if specified.
-Raises a yottadb.YDB_LOCK_TIMEOUT error if lock could not be acquired.
+Raises a ``yottadb.YDB_LOCK_TIMEOUT`` error if lock could not be acquired.
 
 *Caution:* timeout is *not* optional if ``...`` list of subscripts is provided.
 Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
@@ -433,9 +433,7 @@ A next node chain started from varname will eventually reach all nodes under tha
 
 
 :Returns:
-  #. 0 (always)
-
-  #. list of subscripts for the node, or ``nil`` if there isn't a next node
+    list of subscripts for the node, or ``nil`` if there isn't a next node
 
 
 
@@ -500,9 +498,7 @@ A previous node chain started from varname will eventually reach all nodes under
 
 
 :Returns:
-  #. 0 (always)
-
-  #. list of subscripts for the node, or ``nil`` if there isn't a previous node
+    list of subscripts for the node, or ``nil`` if there isn't a previous node
 
 
 
@@ -1198,7 +1194,7 @@ node:__pairs ([reverse])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Implement ``pairs()`` by iterating over the children of a given node.
-At each child, yielding the triplet: subnode, subnode value (or ``nil``), and subscript
+At each child, yielding the triplet: subnode, subnode value (or ``nil``), and subscript.
 You can use either ``pairs(node)`` or ``node:pairs()``.
 If you need to iterate in reverse (or in Lua 5.1), use node:pairs(reverse) instead of pairs(node).
 
@@ -1224,7 +1220,7 @@ Mutability can be tested for using ``node:ismutable()``
 
 
 :Returns:
-    3 value: subnode_object, subnode_value_or_nil, subscript
+    3 values: ``subnode_object``, ``subnode_value_or_nil``, ``subscript``
 
 
 
@@ -1312,7 +1308,7 @@ Fetch database node and subtree and return a Lua table of it.
 
 * ``filter``:
   (*optional*)
-  is either ``nil`` or a function matching the prototype ``function(node, node_top_subscript_name, value, recurse, depth)``
+  Either ``nil`` or a function matching the prototype ``function(node, node_top_subscript_name, value, recurse, depth)``
 
  * If filter is ``nil``, all values are fetched unfiltered.
  * If filter is a function it is invoked on every subscript
@@ -1343,7 +1339,7 @@ Fetch database node and subtree and return a Lua table of it.
     :dedent: 2
     :force:
 
-      n=ydb.node('^oaks')
+      n = ydb.node('^oaks')
       n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
       n:gettree(nil, print)
       -- ^oaks		treedata	true	0
@@ -1452,7 +1448,7 @@ Populate database from a table.
 In its simplest form:
 ::
 
-    n=ydb.node('var')
+    n = ydb.node('var')
     n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
 
 
@@ -1489,7 +1485,7 @@ In its simplest form:
     :dedent: 2
     :force:
 
-      n=ydb.node('^oaks')
+      n = ydb.node('^oaks')
       n:settree({__='treedata', {shadow=10,angle=30}, {shadow=13,angle=30}})
       n:dump()
 
