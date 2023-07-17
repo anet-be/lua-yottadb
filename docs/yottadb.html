@@ -292,11 +292,11 @@
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#node:data">node:data ()</a></td>
-	<td class="summary">Fetch the 'data' flags of the node @see data.</td>
+	<td class="summary">Fetch the 'data' bitfield of the node that describes whether the node has a data value or subtrees.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:depth">node:depth ()</a></td>
-	<td class="summary">Fetch the depth of the node, i.e.</td>
+	<td class="summary">Fetch the depth of the node: how many subscripts it has.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:has_tree">node:has_tree ()</a></td>
@@ -312,7 +312,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:name">node:name ()</a></td>
-	<td class="summary">Fetch the name of the node, i.e.</td>
+	<td class="summary">Fetch the name of the node: the rightmost subscript.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:subsarray">node:subsarray ()</a></td>
@@ -320,7 +320,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:varname">node:varname ()</a></td>
-	<td class="summary">Fetch the varname of the node, i.e.</td>
+	<td class="summary">Fetch the varname of the node: the leftmost subscript.</td>
 	</tr>
 </table>
 <h2><a href="#Class_key">Class key </a></h2>
@@ -440,8 +440,8 @@
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&lt;include setup from example at ydb.set()&gt;
-ydb.data(<span class="string">'^Population'</span>)
+        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span>ydb.data(<span class="string">'^Population'</span>)
 <span class="comment">-- 10.0
 </span>ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
 <span class="comment">-- 11.0</span></pre>
@@ -514,8 +514,8 @@ ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgiu
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&lt;include setup from example at ydb.set()&gt;
-ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
 <span class="comment">-- 325737000
 </span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
 <span class="comment">-- 3929326
@@ -561,8 +561,8 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&lt;include setup from example at ydb.set()&gt;
-ydb.get(<span class="string">'^Population'</span>)
+        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span>ydb.get(<span class="string">'^Population'</span>)
 <span class="comment">-- nil
 </span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
 <span class="comment">-- 1367000
@@ -846,8 +846,8 @@ ydb.get(<span class="string">'num'</span>)
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">&lt;include setup from example at ydb.set()&gt;
-<span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>), <span class="string">', '</span>))
+        <li><pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>), <span class="string">', '</span>))
 <span class="comment">-- Belgium
 </span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}), <span class="string">', '</span>))
 <span class="comment">-- Thailand
@@ -907,8 +907,8 @@ ydb.get(<span class="string">'num'</span>)
 
     <h3>Examples:</h3>
     <ul>
-        <li><pre class="example">&lt;include setup from example at ydb.set()&gt;
-<span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}), <span class="string">', '</span>))
+        <li><pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>}), <span class="string">', '</span>))
 <span class="comment">-- USA, 17900802
 </span><span class="global">print</span>(<span class="global">table</span>.concat(ydb.node_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>}), <span class="string">', '</span>))
 <span class="comment">-- USA
@@ -1035,8 +1035,8 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&lt;include setup from example at ydb.set()&gt;
-ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">''</span>})
+        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span>ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">''</span>})
 <span class="comment">-- Belgium
 </span>ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
 <span class="comment">-- Thailand
@@ -1079,8 +1079,8 @@ ydb.subscript_next(<span class="string">'^Population'</span>, {<span class="stri
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example">&lt;include setup from example at ydb.set()&gt;
-ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">''</span>})
+        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span>ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">''</span>})
 <span class="comment">-- 18000804
 </span>ydb.subscript_previous(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
 <span class="comment">-- 17900802
@@ -1317,7 +1317,7 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
     </dt>
     <dd>
     Returns a high-level transaction-safe version of the given function.
- It will be called within a yottadb transaction and the dbase globals restored on error or <code>yottadb.trollback()</code>
+ It will be called within a YottaDB transaction and the database globals restored on error or <code>yottadb.trollback()</code>
 
     </ul>
 
@@ -1768,7 +1768,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">maxdepth</span>
-         subscript depth to fetch. (<code>nil</code>=infinite depth; 1 fetches first layer of subscript's values only)
+         Subscript depth to fetch. A value of nil fetches subscripts of arbitrary depth, i.e. all levels in the tree. A value of 1 fetches the first layer of subscript values only.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">filter</span>
@@ -1779,11 +1779,11 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <li>If filter is <code>nil</code>, all values are fetched unfiltered.</li>
     <li>If filter is a function it is invoked on every subscript
     to allow it to cast/alter every value and recurse flag;
-    note that at node root (depth=0), subscript passed to filter is the empty string ""</li>
+    note that at node root (depth=0), subscript passed to filter is the empty string "".</li>
     <li>Filter may optionally return two items: <code>value</code> and <code>recurse</code>, which must either be the input parameters <code>value</code> and <code>recurse</code> or may be altered:
     <ul>
         <li>If filter returns <code>value</code> then <code>gettree()</code> will store it in the table for that database subscript/value; or store nothing if <code>value=nil</code>.</li>
-        <li>If filter returns <code>recurse=false</code>, it will prevent recursion deeper into that particular subscript. If it returns <code>nil</code>, it will use the original value of recurse.</li>
+        <li>If filter returns <code>recurse=false</code>, it will prevent recursion deeper into that particular subscript. If it returns <code>nil</code>, it will use the original value of <code>recurse</code>.</li>
     </ul></li>
 </ul>
 
@@ -1968,7 +1968,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
 <p>Populate database from a table.
  In its simplest form:</p>
 <pre><code>n = ydb.node('var')
-n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
+n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=ydb.DELETE})
 </code></pre>
 
 
@@ -1988,7 +1988,7 @@ n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', e
         </li>
         <li><span class="parameter">filter</span>
 
-<p> Function of the form function(node, key, value) or <code>nil</code></p>
+<p> Function of the form <code>function(node, key, value)</code> or <code>nil</code></p>
 
 <ul>
     <li>If filter is <code>nil</code>, all values are set unfiltered.</li>
@@ -2059,7 +2059,9 @@ n:dump()</pre></li>
 
     <h3>Example:</h3>
     <ul>
-        <pre class="example"><span class="keyword">for</span> subscript <span class="keyword">in</span> node:subscripts() <span class="keyword">do</span>  <span class="global">print</span> subscript  <span class="keyword">end</span></pre>
+        <pre class="example">ydb = <span class="global">require</span> <span class="string">'yottadb'</span>
+node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs1'</span>)
+<span class="keyword">for</span> subscript <span class="keyword">in</span> node:subscripts() <span class="keyword">do</span>  <span class="global">print</span> subscript  <span class="keyword">end</span></pre>
     </ul>
 
 </dd>
@@ -2072,11 +2074,19 @@ n:dump()</pre></li>
     <strong>node:data ()</strong>
     </dt>
     <dd>
-    Fetch the 'data' flags of the node @see data.
+    Fetch the 'data' bitfield of the node that describes whether the node has a data value or subtrees.
 
     </ul>
 
 
+    <h3>Returns:</h3>
+    <ol>
+
+         <code>yottadb.YDB_DATA_UNDEF</code> (no value or subtree) or <br>
+   <code>yottadb.YDB_DATA_VALUE_NODESC</code> (value, no subtree) or <br>
+   <code>yottadb.YDB_DATA_NOVALUE_DESC</code> (no value, subtree) or <br>
+   <code>yottadb.YDB_DATA_VALUE_DESC</code> (value and subtree)
+    </ol>
 
 
 
@@ -2087,7 +2097,7 @@ n:dump()</pre></li>
     <strong>node:depth ()</strong>
     </dt>
     <dd>
-    Fetch the depth of the node, i.e.  how many subscripts it has.
+    Fetch the depth of the node: how many subscripts it has.
 
     </ul>
 
@@ -2147,7 +2157,7 @@ n:dump()</pre></li>
     <strong>node:name ()</strong>
     </dt>
     <dd>
-    Fetch the name of the node, i.e.  the rightmost subscript.
+    Fetch the name of the node: the rightmost subscript.
 
     </ul>
 
@@ -2177,7 +2187,7 @@ n:dump()</pre></li>
     <strong>node:varname ()</strong>
     </dt>
     <dd>
-    Fetch the varname of the node, i.e.  the leftmost subscript.
+    Fetch the varname of the node: the leftmost subscript.
 
     </ul>
 
@@ -2417,7 +2427,7 @@ n:dump()</pre></li>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-07-11 15:02:58 </i>
+<i style="float:right;">Last updated 2023-07-17 13:32:44 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

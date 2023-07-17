@@ -187,7 +187,7 @@ local key = {}
 -- @return 10: node has no value, but does have a subtree
 -- @return 11: node has both value and subtree
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- ydb.data('^Population')
 -- -- 10.0
 -- ydb.data('^Population', {'USA'})
@@ -217,7 +217,7 @@ M.delete_node = _yottadb.delete
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- ydb.get('^Population', {'USA'})
 -- -- 325737000
 -- ydb.get('^Population', {'USA', '17900802'})
@@ -240,7 +240,7 @@ end
 -- @param[opt] ... List of subscripts or table subscripts
 -- @return string value or `nil`
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- ydb.get('^Population')
 -- -- nil
 -- ydb.get('^Population', {'Belgium'})
@@ -339,7 +339,7 @@ M.lock_decr = _yottadb.lock_decr
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return list of subscripts for the node, or `nil` if there isn't a next node
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- print(table.concat(ydb.node_next('^Population'), ', '))
 -- -- Belgium
 -- print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
@@ -375,7 +375,7 @@ M.node_next = _yottadb.node_next
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return list of subscripts for the node, or `nil` if there isn't a previous node
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
 -- -- USA, 17900802
 -- print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
@@ -415,7 +415,7 @@ M.set = _yottadb.set
 -- @param[opt] ... List of subscripts or table subscripts
 -- @return string subscript name, or `nil` if there are no more subscripts
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- ydb.subscript_next('^Population', {''})
 -- -- Belgium
 -- ydb.subscript_next('^Population', {'Belgium'})
@@ -433,7 +433,7 @@ M.subscript_next = _yottadb.subscript_next
 -- @param[opt] ... List of subscripts or table subscripts
 -- @return string subscript name, or `nil` if there are no previous subscripts
 -- @example
--- <include setup from example at ydb.set()>
+-- -- include setup from example at yottadb.set()
 -- ydb.subscript_previous('^Population', {'USA', ''})
 -- -- 18000804
 -- ydb.subscript_previous('^Population', {'USA', '18000804'})
@@ -612,7 +612,7 @@ function M.tp(id, varnames, f, ...)
 end
 
 --- Returns a high-level transaction-safe version of the given function.
--- It will be called within a yottadb transaction and the dbase globals restored on error or `yottadb.trollback()`
+-- It will be called within a YottaDB transaction and the database globals restored on error or `yottadb.trollback()`
 -- @param[opt] id optional string transaction id. For special ids `BA` or `BATCH`, see [Transaction Processing](https://docs.yottadb.com/ProgrammersGuide/langfeat.html#transaction-processing).
 -- @param[opt] varnames optional table of local M variable names to restore on transaction `trestart()`
 -- (or `{'*'}` for all locals). Restoration applies to rollback.
@@ -923,7 +923,10 @@ function node:lock_decr()  return M.lock_decr(self)  end
 -- Very slightly faster than node:__pairs() because it iterates subscript names without fetching the node value. <br>
 -- Note that `subscripts()` order is guaranteed to equal the M collation sequence.
 -- @param[opt] reverse set to true to iterate in reverse order
--- @example for subscript in node:subscripts() do  print subscript  end
+-- @example
+-- ydb = require 'yottadb'
+-- node = ydb.node('^myvar', 'subs1')
+-- for subscript in node:subscripts() do  print subscript  end
 -- @return iterator over *child* subscript names of a node, which returns a sequence of subscript name strings
 -- @see node:__pairs
 function node:subscripts(reverse)
@@ -946,12 +949,12 @@ M.DELETE = {}
 --- Populate database from a table.
 -- In its simplest form:
 --    n = ydb.node('var')
---    n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
+--    n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=ydb.DELETE})
 -- @param tbl The table to store into the database:
 --
 -- * Special field name `tbl.__` sets the value of the node itself, as opposed to a subnode.
 -- * Set any table value to `yottadb.DELETE` to have `settree()` delete the value of the associated database node. You cannot delete the whole subtree.
--- @param[opt] filter Function of the form function(node, key, value) or `nil`
+-- @param[opt] filter Function of the form `function(node, key, value)` or `nil`
 -- 
 -- * If filter is `nil`, all values are set unfiltered.
 -- * If filter is a function(node, key, value) it is invoked on every node
@@ -1005,16 +1008,16 @@ end
 --
 -- * special field name `__` in the returned table indicates the value of the node itself.
 -- * Lua tables do not preserve the order YDB subtrees.
--- @param[opt] maxdepth subscript depth to fetch. (`nil`=infinite depth; 1 fetches first layer of subscript's values only)
+-- @param[opt] maxdepth Subscript depth to fetch. A value of nil fetches subscripts of arbitrary depth, i.e. all levels in the tree. A value of 1 fetches the first layer of subscript values only.
 -- @param[opt] filter Either `nil` or a function matching the prototype `function(node, node_top_subscript_name, value, recurse, depth)`
 --
 -- * If filter is `nil`, all values are fetched unfiltered.
 -- * If filter is a function it is invoked on every subscript
 -- to allow it to cast/alter every value and recurse flag;
--- note that at node root (depth=0), subscript passed to filter is the empty string ""
+-- note that at node root (depth=0), subscript passed to filter is the empty string "".
 -- * Filter may optionally return two items: `value` and `recurse`, which must either be the input parameters `value` and `recurse` or may be altered:
 --    * If filter returns `value` then `gettree()` will store it in the table for that database subscript/value; or store nothing if `value=nil`.
---    * If filter returns `recurse=false`, it will prevent recursion deeper into that particular subscript. If it returns `nil`, it will use the original value of recurse.
+--    * If filter returns `recurse=false`, it will prevent recursion deeper into that particular subscript. If it returns `nil`, it will use the original value of `recurse`.
 -- @param[opt] _value For internal use only (to avoid duplicate value fetches, for speed).
 -- @param[opt] _depth For internal use only (to record depth of recursion) and must start unspecified (nil).
 -- @return Lua table containing data
@@ -1214,14 +1217,19 @@ end
 --- Node properties
 -- @section
 
---- Fetch the varname of the node, i.e. the leftmost subscript.
+--- Fetch the varname of the node: the leftmost subscript.
 function node:varname()  return _yottadb.cachearray_subscript(self, 0)  end
---- Fetch the name of the node, i.e. the rightmost subscript.
+--- Fetch the name of the node: the rightmost subscript.
 function node:name()  return _yottadb.cachearray_subscript(self, -1)  end
---- Fetch the depth of the node, i.e. how many subscripts it has.
+--- Fetch the depth of the node: how many subscripts it has.
 -- @function node:depth
 node.depth = _yottadb.cachearray_depth
---- Fetch the 'data' flags of the node @see data.
+--- Fetch the 'data' bitfield of the node that describes whether the node has a data value or subtrees.
+-- @return
+-- `yottadb.YDB_DATA_UNDEF` (no value or subtree) or <br>
+--   `yottadb.YDB_DATA_VALUE_NODESC` (value, no subtree) or <br>
+--   `yottadb.YDB_DATA_NOVALUE_DESC` (no value, subtree) or <br>
+--   `yottadb.YDB_DATA_VALUE_DESC` (value and subtree)
 -- @function node:data
 node.data = M.data
 --- Return true if the node has a value; otherwise false.

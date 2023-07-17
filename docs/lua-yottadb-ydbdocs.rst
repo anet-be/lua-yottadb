@@ -78,7 +78,7 @@ Return whether a node has a value or subtree.
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       ydb.data('^Population')
       -- 10.0
       ydb.data('^Population', {'USA'})
@@ -152,7 +152,7 @@ Deletes a database variable tree or node subtree.
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       ydb.get('^Population', {'USA'})
       -- 325737000
       ydb.get('^Population', {'USA', '17900802'})
@@ -197,7 +197,7 @@ Gets and returns the value of a database variable or node; or ``nil`` if the var
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       ydb.get('^Population')
       -- nil
       ydb.get('^Population', {'Belgium'})
@@ -444,7 +444,7 @@ A next node chain started from varname will eventually reach all nodes under tha
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       print(table.concat(ydb.node_next('^Population'), ', '))
       -- Belgium
       print(table.concat(ydb.node_next('^Population', {'Belgium'}), ', '))
@@ -509,7 +509,7 @@ A previous node chain started from varname will eventually reach all nodes under
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       print(table.concat(ydb.node_previous('^Population', {'USA', '18000804'}), ', '))
       -- USA, 17900802
       print(table.concat(ydb.node_previous('^Population', {'USA', '17900802'}), ', '))
@@ -637,7 +637,7 @@ Returns the next subscript for a database variable or node; or ``nil`` if there 
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       ydb.subscript_next('^Population', {''})
       -- Belgium
       ydb.subscript_next('^Population', {'Belgium'})
@@ -679,7 +679,7 @@ Returns the previous subscript for a database variable or node; or ``nil`` if th
     :dedent: 2
     :force:
 
-      <include setup from example at ydb.set()>
+      -- include setup from example at yottadb.set()
       ydb.subscript_previous('^Population', {'USA', ''})
       -- 18000804
       ydb.subscript_previous('^Population', {'USA', '18000804'})
@@ -899,7 +899,7 @@ transaction ([id][, varnames], f)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Returns a high-level transaction-safe version of the given function.
-It will be called within a yottadb transaction and the dbase globals restored on error or ``yottadb.trollback()``
+It will be called within a YottaDB transaction and the database globals restored on error or ``yottadb.trollback()``
 
 
 
@@ -1304,7 +1304,7 @@ Fetch database node and subtree and return a Lua table of it.
 
 * ``maxdepth``:
   (*optional*)
-  subscript depth to fetch. (``nil``=infinite depth; 1 fetches first layer of subscript's values only)
+  Subscript depth to fetch. A value of nil fetches subscripts of arbitrary depth, i.e. all levels in the tree. A value of 1 fetches the first layer of subscript values only.
 
 * ``filter``:
   (*optional*)
@@ -1313,10 +1313,10 @@ Fetch database node and subtree and return a Lua table of it.
  * If filter is ``nil``, all values are fetched unfiltered.
  * If filter is a function it is invoked on every subscript
    to allow it to cast/alter every value and recurse flag;
-   note that at node root (depth=0), subscript passed to filter is the empty string ""
+   note that at node root (depth=0), subscript passed to filter is the empty string "".
  * Filter may optionally return two items: ``value`` and ``recurse``, which must either be the input parameters ``value`` and ``recurse`` or may be altered:
     * If filter returns ``value`` then ``gettree()`` will store it in the table for that database subscript/value; or store nothing if ``value=nil``.
-    * If filter returns ``recurse=false``, it will prevent recursion deeper into that particular subscript. If it returns ``nil``, it will use the original value of recurse.
+    * If filter returns ``recurse=false``, it will prevent recursion deeper into that particular subscript. If it returns ``nil``, it will use the original value of ``recurse``.
 
 * ``_value``:
   (*optional*)
@@ -1449,7 +1449,7 @@ In its simplest form:
 ::
 
     n = ydb.node('var')
-    n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.DELETE})
+    n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=ydb.DELETE})
 
 
 
@@ -1461,7 +1461,7 @@ In its simplest form:
 
 * ``filter``:
   (*optional*)
-  Function of the form function(node, key, value) or ``nil``
+  Function of the form ``function(node, key, value)`` or ``nil``
 
  * If filter is ``nil``, all values are set unfiltered.
  * If filter is a function(node, key, value) it is invoked on every node
@@ -1533,6 +1533,8 @@ Note that ``subscripts()`` order is guaranteed to equal the M collation sequence
     :dedent: 2
     :force:
 
+      ydb = require 'yottadb'
+      node = ydb.node('^myvar', 'subs1')
       for subscript in node:subscripts() do  print subscript  end
 
 
@@ -1548,9 +1550,19 @@ Node properties
 node:data ()
 ~~~~~~~~~~~~~~
 
-Fetch the 'data' flags of the node @see data.
+Fetch the 'data' bitfield of the node that describes whether the node has a data value or subtrees.
 
 
+
+:Returns:
+
+    ``yottadb.YDB_DATA_UNDEF`` (no value or subtree) or
+
+     ``yottadb.YDB_DATA_VALUE_NODESC`` (value, no subtree) or
+
+     ``yottadb.YDB_DATA_NOVALUE_DESC`` (no value, subtree) or
+
+     ``yottadb.YDB_DATA_VALUE_DESC`` (value and subtree)
 
 
 
@@ -1560,7 +1572,7 @@ Fetch the 'data' flags of the node @see data.
 node:depth ()
 ~~~~~~~~~~~~~~~
 
-Fetch the depth of the node, i.e.  how many subscripts it has.
+Fetch the depth of the node: how many subscripts it has.
 
 
 
@@ -1608,7 +1620,7 @@ Return true if the node is mutable; otherwise false.
 node:name ()
 ~~~~~~~~~~~~~~
 
-Fetch the name of the node, i.e.  the rightmost subscript.
+Fetch the name of the node: the rightmost subscript.
 
 
 
@@ -1632,7 +1644,7 @@ Return ``node``'s subsarray of subscript strings as a table.
 node:varname ()
 ~~~~~~~~~~~~~~~~~
 
-Fetch the varname of the node, i.e.  the leftmost subscript.
+Fetch the varname of the node: the leftmost subscript.
 
 
 
