@@ -61,14 +61,16 @@ static int init_sigmask() {
 }
 
 /// Initialize ydb and set blocking of M signals.
-// If `signal_blocker` is specified, block M signals which could otherwise interrupt slow IO operations like reading from user/pipe.
-// Assert any errors.
+// If `signal_blocker` callback is specified, it will be called with `true` on every subsequent entry into Lua and called
+// with `false` on exits from Lua. When `true` is suppiled, callback must block M signals which could otherwise interrupt slow IO
+// operations like reading from the stdin or a pipe. The function `block_M_signals()` is a suitable `signal_blocker` callback.
+// Raise any errors.
 // Also read the notes on signals in the README.
 // Note: any calls to the YDB API also initialize YDB; any subsequent call here will set `signal_blocker` but not re-init YDB.
 // @function init
 // @usage _yottadb.init(signal_blocker)
 // @param[opt] signal_blocker specifies a Lua callback CFunction (e.g. `yottadb.block_M_signals()`) which will be
-// called with parameter false on entry to M, and with true on exit from M, so as to unblock YDB signals while M is in use.
+// called with parameter `false` on entry to M, and with `true` on exit from M, so as to unblock YDB signals while M is in use.
 // Setting `signal_blocker` to nil switches off signal blocking.
 //
 // Note: Changing this to support a generic Lua function as callback would be possible but slow, as it would require

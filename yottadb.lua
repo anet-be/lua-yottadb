@@ -188,8 +188,6 @@ local key = {}
 -- @return 1: node has value, not subtree
 -- @return 10: node has no value, but does have a subtree
 -- @return 11: node has both value and subtree
--- @return 110: node has both value and subtree
--- @return 111: node has both value and subtree
 -- @example
 -- -- include setup from example at yottadb.set()
 -- ydb.data('^Population')
@@ -728,7 +726,7 @@ local function pack_type(type_str, param_id)
 end
 
 --- Parse one-line string of the ydb call-in file format.
--- Assert any errors.
+-- Raise any errors.
 -- @param line is the text in the current line of the call-in file
 -- @param ci_handle handle of call-in table
 -- @return C name for the M routine

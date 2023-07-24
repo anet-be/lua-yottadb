@@ -215,7 +215,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#trollback">trollback ()</a></td>
-	<td class="summary">Make the currently running transaction function rollback immediately and produce rollback error YDB<em>TP</em>ROLLBACK</td>
+	<td class="summary">Make the currently running transaction function rollback immediately with a YDB<em>TP</em>ROLLBACK error.</td>
 	</tr>
 </table>
 <h2><a href="#High_level_functions">High level functions </a></h2>
@@ -226,7 +226,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#require">require (Mprototypes)</a></td>
-	<td class="summary">Import Mumps routines as Lua functions specified in ydb 'call-in' file.</td>
+	<td class="summary">Import M routines as Lua functions specified in ydb 'call-in' file.</td>
 	</tr>
 </table>
 <h2><a href="#Class_node">Class node </a></h2>
@@ -364,25 +364,29 @@
     </dt>
     <dd>
     Block or unblock YDB signals while M code is running.
- This function is designed to be passed to yottadb.init() as the <code>signal_blocker</code> parameter.
- Most signals (listed in <code>BLOCKED_SIGNALS</code> in callins.c) are blocked using sigprocmask()
- but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
- in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are
- interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
- handler does actually run, allowing YDB to flush the database or IO as necessary without
- your M code needing to call the M command <code>VIEW &quot;FLUSH&quot;</code>.</p>
+ This function is designed to be passed as a callback to yottadb.init() as the <code>signal_blocker</code> parameter.
+ The function accepts one boolean parameter: <code>true</code> for entering Lua and <code>false</code> for exiting Lua.</p>
 
-<p> <em>Note:</em> This function does take time, as OS calls are slow. Using it will increase the M calling
- overhead by about 1.4 microseconds, or 2-5x the bare calling overhead (see <code>make benchmarks</code>)
- The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
- OS calls and make it as fast as possible.
+<ul>
+    <li>When <code>true</code> is passed to this function it blocks all the signals listed in <code>BLOCKED_SIGNALS</code> in <code>callins.c</code>
+    using OS call <code>sigprocmask()</code>. <code>SIGALRM</code> is treated specially: instead of being blocked OS call sigaction()
+    is used to set the <code>SA_RESTART</code> flag for <code>SIGALRM</code>. This makes the OS automatically restart IO calls that are
+    interrupted by <code>SIGALRM</code>. The benefit of this over blocking is that the YottaDB <code>SIGALRM</code> handler does
+    actually run, even during Lua code, allowing YottaDB to flush the database or IO as necessary (otherwise
+    M code would need to run the M command <code>VIEW &quot;FLUSH&quot;</code> after calling Lua code).</li>
+    <li>When <code>false</code> is passed to this function it will reverse the effect, unblocking and clearing <code>SA_RESTART</code> for
+    the same signals manipulated when <code>true</code> is passed.</li>
+</ul>
+
+<p> <em>Note:</em> This function does take time, as OS calls are slow. Using it will increase the M calling overhead
+ by a factor of 2-5 times the bare calling overhead (on the order of 1.4 microseconds, see <code>make benchmarks</code>)
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">bool</span>
-         true to block; false to unblock all YDB signals
+         true to block; false to unblock YottaDB signals
         </li>
     </ul>
 
@@ -663,7 +667,7 @@ ydb.get(<span class="string">'num'</span>)
     <dd>
     Initialize ydb and set blocking of M signals.
  If <code>signal_blocker</code> is specified, block M signals which could otherwise interrupt slow IO operations like reading from stdin or a pipe.
- Assert any errors.
+ Raise any errors.
  See also the notes on signals in the <a href="https://github.com/anet-be/lua-yottadb#signals--eintr-errors">README</a>.</p>
 
 <p> <em>Note:</em> any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
@@ -1139,8 +1143,8 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
     </dt>
     <dd>
     Lua function to call <code>ydb_eintr_handler()</code>.
- If users wish to handle EINTR errors themselves, instead of blocking signals, they should call
- <code>ydb_eintr_handler()</code> when they get an EINTR error, before restarting the erroring OS system call.
+ Code intended to handle EINTR errors, instead of blocking signals, should call <code>ydb_eintr_handler()</code>` when it gets an EINTR return code,
+ before re-issuing the interrupted system call.
 
     </ul>
 
@@ -1411,7 +1415,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     <strong>trollback ()</strong>
     </dt>
     <dd>
-    Make the currently running transaction function rollback immediately and produce rollback error YDB<em>TP</em>ROLLBACK
+    Make the currently running transaction function rollback immediately with a YDB<em>TP</em>ROLLBACK error.
 
     </ul>
 
@@ -1469,7 +1473,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     <strong>require (Mprototypes)</strong>
     </dt>
     <dd>
-    Import Mumps routines as Lua functions specified in ydb 'call-in' file.  <br>
+    Import M routines as Lua functions specified in ydb 'call-in' file.  <br>
  See example call-in file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci">arithmetic.ci</a>
  and matching M file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m">arithmetic.m</a>.
 
@@ -1528,10 +1532,10 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
     about speed, use <code>node:__method()</code> instead, which is equivalent but 15x faster.
     This is because Lua expands <code>node:method()</code> to <code>node.method(node)</code>, so lua-yottadb creates
     an intermediate object of database subnode <code>node.method</code>, assuming it is a database subnode access.
-    Then, when this object gets called with <code>()</code>, lua-yottadb discovers that its first parameter is of type <a href="yottadb.html#node">node</a>,
-    at which point it finally knows to invoke <code>node.__method()</code> instead of treating it as a database subnode access.</li>
+    When this object gets called with <code>()</code>, the first parameter is of type <a href="yottadb.html#node">node</a>, such that
+    lua-yottadb invokes <code>node.__method()</code> instead of treating the operation as a database subnode access.</li>
     <li>Because lua-yottadb's underlying method access is with the <code>__</code> prefix, database node names
-    starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to
+    starting with two underscores are not accessible using dot notation: instead use mynode('__nodename') to
     access a database node named <code>__nodename</code>. In addition, Lua object methods starting with two underscores,
     like <code>__tostring</code>, are only accessible with an <em>additional</em> <code>__</code> prefix; for example, <code>node:____tostring()</code>.</li>
     <li>Several standard Lua operators work on nodes. These are: <code>+ - = pairs() tostring()</code></li>
@@ -2323,11 +2327,11 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 <p>Deprecated way to get next <em>sibling</em> subscript. </p>
 
 <p> <em>Note:</em> this starts from the given location and gives the next <em>sibling</em> subscript in the M collation sequence.
- It operates differently than <code>node:subscipts()</code> which yields all subscripts that are <em>children</em> of the given node.
+ It operates differently than <code>node:subscripts()</code> which yields all subscripts that are <em>children</em> of the given node.
  Deprecated because:</p>
 
 <ul>
-    <li>It keeps dangerous state in the object: causes bugs where old references to it think it's still original.</li>
+    <li>It keeps dangerous state in the object, causing bugs when stale references attempt to access defunct state.</li>
     <li>It is more Lua-esque to iterate all subscripts in the node (think table) using <code>pairs()</code>.</li>
     <li>If sibling access becomes a common use-case, it should be reimplemented as an iterator.</li>
 </ul>
@@ -2427,7 +2431,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2023-07-17 13:32:44 </i>
+<i style="float:right;">Last updated 2023-07-25 09:31:33 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
