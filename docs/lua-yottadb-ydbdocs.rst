@@ -27,7 +27,8 @@ The function accepts one boolean parameter: ``true`` for entering Lua and ``fals
    the same signals manipulated when ``true`` is passed.
 
 *Note:* This function does take time, as OS calls are slow. Using it will increase the M calling overhead
-by a factor of 2-5 times the bare calling overhead (on the order of 1.4 microseconds, see ``make benchmarks``)
+by a factor of 2-5 times the bare calling overhead (on the order of 1.4 microseconds on a typical
+ 2020s x86_64 CPU; see ``make benchmarks``)
 
 
 
