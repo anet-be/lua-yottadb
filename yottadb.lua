@@ -22,27 +22,29 @@ local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]
 -- @section
 
 --- Block or unblock YDB signals while M code is running.
--- This function is designed to be passed to yottadb.init() as the `signal_blocker` parameter.
--- Most signals (listed in `BLOCKED_SIGNALS` in callins.c) are blocked using sigprocmask()
--- but SIGLARM is not blocked; instead, sigaction() is used to set its SA_RESTART flag while
--- in Lua, and cleared while in M. This makes the OS automatically restart IO calls that are 
--- interrupted by SIGALRM. The benefit of this over blocking is that the YDB SIGALRM
--- handler does actually run, allowing YDB to flush the database or IO as necessary without
--- your M code needing to call the M command `VIEW "FLUSH"`.
+-- This function is designed to be passed as a callback to yottadb.init() as the `signal_blocker` parameter.
+-- The function accepts one boolean parameter: `true` for entering Lua and `false` for exiting Lua.
 --
--- *Note:* This function does take time, as OS calls are slow. Using it will increase the M calling
--- overhead by about 1.4 microseconds, or 2-5x the bare calling overhead (see `make benchmarks`)
--- The call to init() already saves initial values of SIGALRM flags and Sigmask to reduce
--- OS calls and make it as fast as possible.
+-- * When `true` is passed to this function it blocks all the signals listed in `BLOCKED_SIGNALS` in `callins.c`
+-- using OS call `sigprocmask()`. `SIGALRM` is treated specially: instead of being blocked OS call sigaction()
+-- is used to set the `SA_RESTART` flag for `SIGALRM`. This makes the OS automatically restart IO calls that are
+-- interrupted by `SIGALRM`. The benefit of this over blocking is that the YottaDB `SIGALRM` handler does
+-- actually run, even during Lua code, allowing YottaDB to flush the database or IO as necessary (otherwise
+-- M code would need to run the M command `VIEW "FLUSH"` after calling Lua code).
+-- * When `false` is passed to this function it will reverse the effect, unblocking and clearing `SA_RESTART` for
+-- the same signals manipulated when `true` is passed.
+--
+-- *Note:* This function does take time, as OS calls are slow. Using it will increase the M calling overhead
+-- by a factor of 2-5 times the bare calling overhead (on the order of 1.4 microseconds, see `make benchmarks`)
 -- @function block_M_signals
--- @param bool true to block; false to unblock all YDB signals
+-- @param bool true to block; false to unblock YottaDB signals
 -- @return nothing
 -- @see init
 M.block_M_signals = _yottadb.block_M_signals
 
 --- Initialize ydb and set blocking of M signals.
 -- If `signal_blocker` is specified, block M signals which could otherwise interrupt slow IO operations like reading from stdin or a pipe.
--- Assert any errors.
+-- Raise any errors.
 -- See also the notes on signals in the [README](https://github.com/anet-be/lua-yottadb#signals--eintr-errors).
 --
 -- *Note:* any calls to the YDB API also initialize YDB; any subsequent call here will set `signal_blocker` but not re-init YDB.
@@ -58,8 +60,8 @@ M.block_M_signals = _yottadb.block_M_signals
 M.init = _yottadb.init
 
 --- Lua function to call `ydb_eintr_handler()`.
--- If users wish to handle EINTR errors themselves, instead of blocking signals, they should call
--- `ydb_eintr_handler()` when they get an EINTR error, before restarting the erroring OS system call.
+-- Code intended to handle EINTR errors, instead of blocking signals, should call `ydb_eintr_handler()`` when it gets an EINTR return code,
+-- before re-issuing the interrupted system call.
 -- @function ydb_eintr_handler
 -- @return YDB_OK on success, and greater than zero on error (with message in ZSTATUS)
 -- @see block_M_signals
@@ -80,8 +82,8 @@ local _table_string_number_nil = {table=true, string=true, number=true, ['nil']=
 local _function_nil = {['function']=true, ['nil']=true}
 
 --- Verify type of v.
--- Asserts that type(`v`) is equal to expected_types (string) or is in `expected_types` (table) 
--- and returns `v`, or calls `error()` with an error message that implicates function argument 
+-- Asserts that type(`v`) is equal to expected_types (string) or is in `expected_types` (table)
+-- and returns `v`, or calls `error()` with an error message that implicates function argument
 -- number `narg`.
 -- Used with API function arguments so users receive more helpful error messages.
 -- @invocation assert_type(value, _string_nil, 1)
@@ -186,6 +188,8 @@ local key = {}
 -- @return 1: node has value, not subtree
 -- @return 10: node has no value, but does have a subtree
 -- @return 11: node has both value and subtree
+-- @return 110: node has both value and subtree
+-- @return 111: node has both value and subtree
 -- @example
 -- -- include setup from example at yottadb.set()
 -- ydb.data('^Population')
@@ -682,7 +686,7 @@ function M.trestart()
   error(_yottadb.message(_yottadb.YDB_TP_RESTART))
 end
 
---- Make the currently running transaction function rollback immediately and produce rollback error YDB_TP_ROLLBACK
+--- Make the currently running transaction function rollback immediately with a YDB_TP_ROLLBACK error.
 function M.trollback()
   error(_yottadb.message(_yottadb.YDB_TP_ROLLBACK))
 end
@@ -758,7 +762,7 @@ local function parse_prototype(line, ci_handle)
   return routine_name, func
 end
 
---- Import Mumps routines as Lua functions specified in ydb 'call-in' file. <br>
+--- Import M routines as Lua functions specified in ydb 'call-in' file. <br>
 -- See example call-in file [arithmetic.ci](https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci)
 -- and matching M file [arithmetic.m](https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m).
 -- @param Mprototypes A list of lines in the format of ydb 'call-in' files required by `ydb_ci()`.
@@ -836,10 +840,10 @@ end
 -- about speed, use `node:__method()` instead, which is equivalent but 15x faster.
 -- This is because Lua expands `node:method()` to `node.method(node)`, so lua-yottadb creates
 -- an intermediate object of database subnode `node.method`, assuming it is a database subnode access.
--- Then, when this object gets called with `()`, lua-yottadb discovers that its first parameter is of type `node`,
--- at which point it finally knows to invoke `node.__method()` instead of treating it as a database subnode access.
+-- When this object gets called with `()`, the first parameter is of type `node`, such that
+-- lua-yottadb invokes `node.__method()` instead of treating the operation as a database subnode access.
 -- * Because lua-yottadb's underlying method access is with the `__` prefix, database node names
--- starting with two underscores are not accessable using dot notation: instead use mynode('__nodename') to 
+-- starting with two underscores are not accessible using dot notation: instead use mynode('__nodename') to
 -- access a database node named `__nodename`. In addition, Lua object methods starting with two underscores,
 -- like `__tostring`, are only accessible with an *additional* `__` prefix; for example, `node:____tostring()`.
 -- * Several standard Lua operators work on nodes. These are: `+ - = pairs() tostring()`
@@ -955,7 +959,7 @@ M.DELETE = {}
 -- * Special field name `tbl.__` sets the value of the node itself, as opposed to a subnode.
 -- * Set any table value to `yottadb.DELETE` to have `settree()` delete the value of the associated database node. You cannot delete the whole subtree.
 -- @param[opt] filter Function of the form `function(node, key, value)` or `nil`
--- 
+--
 -- * If filter is `nil`, all values are set unfiltered.
 -- * If filter is a function(node, key, value) it is invoked on every node
 -- to allow it to cast/alter every key name and value.
@@ -1347,10 +1351,10 @@ function key:delete_node() M.delete_node(self) end
 --- Deprecated way to get next *sibling* subscript.
 --
 -- *Note:* this starts from the given location and gives the next *sibling* subscript in the M collation sequence.
--- It operates differently than `node:subscipts()` which yields all subscripts that are *children* of the given node.
+-- It operates differently than `node:subscripts()` which yields all subscripts that are *children* of the given node.
 -- Deprecated because:
 --
--- * It keeps dangerous state in the object: causes bugs where old references to it think it's still original.
+-- * It keeps dangerous state in the object, causing bugs when stale references attempt to access defunct state.
 -- * It is more Lua-esque to iterate all subscripts in the node (think table) using `pairs()`.
 -- * If sibling access becomes a common use-case, it should be reimplemented as an iterator.
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to `subscript_next()`
