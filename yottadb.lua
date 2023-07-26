@@ -23,7 +23,7 @@ local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]
 
 --- Block or unblock YDB signals while M code is running.
 -- This function is designed to be passed as a callback to yottadb.init() as the `signal_blocker` parameter.
--- The function accepts one boolean parameter: `true` for entering Lua and `false` for exiting Lua.
+-- The function accepts one boolean parameter: `true` for entering Lua and `false` for exiting Lua:
 --
 -- * When `true` is passed to this function it blocks all the signals listed in `BLOCKED_SIGNALS` in `callins.c`
 -- using OS call `sigprocmask()`. `SIGALRM` is treated specially: instead of being blocked OS call sigaction()
@@ -835,17 +835,17 @@ end
 --
 -- *Notes:*
 --
--- * Although the syntax `node:method()` is pretty, be aware that it is slow. If you are concerned
--- about speed, use `node:__method()` instead, which is equivalent but 15x faster.
--- This is because Lua expands `node:method()` to `node.method(node)`, so lua-yottadb creates
--- an intermediate object of database subnode `node.method`, assuming it is a database subnode access.
--- When this object gets called with `()`, the first parameter is of type `node`, such that
--- lua-yottadb invokes `node.__method()` instead of treating the operation as a database subnode access.
--- * Because lua-yottadb's underlying method access is with the `__` prefix, database node names
--- starting with two underscores are not accessible using dot notation: instead use mynode('__nodename') to
--- access a database node named `__nodename`. In addition, Lua object methods starting with two underscores,
--- like `__tostring`, are only accessible with an *additional* `__` prefix; for example, `node:____tostring()`.
--- * Several standard Lua operators work on nodes. These are: `+ - = pairs() tostring()`
+-- * Several standard Lua operators work on nodes. These are: `+` `-` `=` `pairs()` `tostring()`
+-- * Although the syntax `node:method()` is pretty, be aware that it is slow. If you need speed, prefix the node method
+-- with two underscores, `node:__method()`, which is equivalent, but 15x faster. 
+-- The former is slow because in Lua, `node:method()` is syntactic sugar which expands to `node.method(node)`,
+-- causing lua-yottadb to create an intermediate node object `node.method`. It is only when this new object gets called
+-- with `()`, and the first parameter is of type `node`, that lua-yottadb detects it was supposed to be a method access
+-- and invokes `node.__method()`, discarding the intermediate subnode object it created.
+-- * Because the `__` prefix accesses *methods* names (as above), it cannot access *node* names.
+-- Instead, use mynode('__nodename') to access a database node named `__nodename`.
+-- * This `__` prefix handling also means that object method names that start with two underscores, like `__tostring`,
+-- are only accessible with an *additional* `__` prefix; for example, `node:____tostring()`.
 -- @param varname String variable name.
 -- @param[opt] subsarray table of subscripts
 -- @param[opt] ... list of subscripts to append after any elements in optional subsarray table
@@ -1229,7 +1229,7 @@ function node:name()  return _yottadb.cachearray_subscript(self, -1)  end
 node.depth = _yottadb.cachearray_depth
 --- Fetch the 'data' bitfield of the node that describes whether the node has a data value or subtrees.
 -- @return
--- `yottadb.YDB_DATA_UNDEF` (no value or subtree) or <br>
+--   `yottadb.YDB_DATA_UNDEF` (no value or subtree) or <br>
 --   `yottadb.YDB_DATA_VALUE_NODESC` (value, no subtree) or <br>
 --   `yottadb.YDB_DATA_NOVALUE_DESC` (no value, subtree) or <br>
 --   `yottadb.YDB_DATA_VALUE_DESC` (value and subtree)

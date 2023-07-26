@@ -4,20 +4,22 @@
 > local function no_spaces(s) return s:gsub('%s*$',''):gsub('%W','-') end
 > local function heading(char,name) return char:rep(#name+2) .. '\n' .. name .. '\n' .. char:rep(#name+2) end
 > local function indentby(n,text) return (' '):rep(n)..text:gsub('\n', '\n'..(' '):rep(n)) end
+> print = ldoc.print
 
 > -- Reformat paragraphs to allow 0-1 space indent == required-indent
 > local prev_indent = 0
 > local function indenter(spaces, bullet, line, ending)
 >  -- ensure bullet ends with a space and number ends with dot
->  if bullet=='*' or bullet:match('[#0-9]+([^.])')=='.' then
->   bullet, line = '', bullet..line
+>  local num_with_dot = (bullet:match('[#0-9]+[^.]()') or 0) > 0
+>  if bullet=='*' or num_with_dot then
+>   bullet, line = '', bullet..line  -- ignore, as '*' has no space or number has no dot
 >  end
 >  local indentation = spaces..bullet
 >  local prefix = ''
 >  -- auto-indent lines without any indent
 >  if indentation=='' or indentation==' ' then  indentation = (' '):rep(prev_indent)  end
 >  if prev_indent==0 and indentation=='    ' then  prefix = '::\n\n' end
->  if prev_indent>0 and #indentation < prev_indent then  ldoc.print(("***WARNING***: Indentation should be %d in text: '%s'"):format(prev_indent, indentation..line..ending))  end
+>  if prev_indent>0 and #indentation < prev_indent then  print(("***WARNING***: Indentation should be %d in text: '%s'"):format(prev_indent, indentation..line..ending))  end
 >  prev_indent = #ending>1 and 0 or #indentation
 >  return ("%s%s%s%s"):format(prefix, indentation, line, ending)
 > end

@@ -58,8 +58,16 @@ docs/lua-yottadb-ydbdocs.rst: $(DOC_DEPS)
 	@echo
 	@echo "Making docs for YDB manual yottadb_ydb.rst"
 	ldoc . -c docs/config/ydb.ld
-	@echo "Alert: Be sure to test lua-yottadb-ydbdocs.rst by cloning YDBDoc and running 'make html': it is included by YDBDoc/MultiLangProgGuide/luaprogram.rst"
+	@echo "Alert: Be sure to test lua-yottadb-ydbdocs.rst using 'make ydbdocs'"
 	@echo
+
+# Test that YDBDoc can use the docs -- requires you to clone YDBDoc into YDBDOC_PATH
+YDBDOC_PATH:=~/projects/anet/YDBDoc
+ydbdocs: docs/lua-yottadb-ydbdocs.rst
+	@test -d $(YDBDOC_PATH) || { echo "Could not find a clone of YDBDoc. Run 'make ydbdocs YDBDOC_PATH=<path_to_YDBDoc_clone>'"; exit 1; }
+	cp $< $(YDBDOC_PATH)
+	make -C $(YDBDOC_PATH) html
+
 
 # ~~~ Release a new version and create luarock
 
@@ -100,6 +108,7 @@ listing: _yottadb.so
 
 clean:
 	rm -f *.so *.o *.lst lua-yottadb-*.rock
+	rm -f docs/*.html docs/*.rst
 
 share_dir=$(PREFIX)/share/lua/$(lua_version)
 lib_dir=$(PREFIX)/lib/lua/$(lua_version)
@@ -115,5 +124,5 @@ benchmarks:
 test: _yottadb.so
 	source $(ydb_dist)/ydb_env_set && $(lua) tests/test.lua $(TESTS)
 
-.PHONY: all docs listing clean install benchmark benchmarks test
+.PHONY: all docs ydbdocs listing clean install benchmark benchmarks test
 .PHONY: rockspec release untag
