@@ -108,7 +108,6 @@ listing: _yottadb.so
 
 clean:
 	rm -f *.so *.o *.lst lua-yottadb-*.rock
-	rm -f docs/*.html docs/*.rst
 
 share_dir=$(PREFIX)/share/lua/$(lua_version)
 lib_dir=$(PREFIX)/lib/lua/$(lua_version)
