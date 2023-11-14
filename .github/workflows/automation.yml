@@ -26,7 +26,7 @@ jobs:
             && chmod +x ydbinstall.sh \
             && sudo ./ydbinstall.sh
       - name: Install Lua version for this test
-        run: sudo apt-get install -y --no-install-recommends liblua$lua_version-dev
+        run: sudo apt-get install -y --no-install-recommends lua$lua_version liblua$lua_version-dev
 
       - name: Testing
         run: make test
