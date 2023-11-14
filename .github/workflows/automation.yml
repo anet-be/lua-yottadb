@@ -35,4 +35,4 @@ jobs:
             && sudo ./ydbinstall.sh
 
       - name: Testing
-        run: make test
+        run: make test lua=lua$lua_version
