@@ -1,0 +1,32 @@
+name: automation
+run-name: ${{github.actor}} activity triggered automation workflow
+
+# Handy linter: https://rhysd.github.io/actionlint/
+
+on:
+  push:
+    branches: [master,test_automation]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      lua_version: 5.4
+    steps:
+      - name: Checkout lua-yottadb
+        uses: actions/checkout@v4
+      - name: Install YottaDB
+        run: |
+          mkdir -p ydb_setup
+          cd ydb_setup
+          wget https://download.yottadb.com/ydbinstall.sh \
+            && chmod +x ydbinstall.sh \
+            && sudo ./ydbinstall.sh
+      - name: Install Lua version for this test
+        run: sudo apt-get install -y --no-install-recommends liblua$lua_version-dev
+
+      - name: Testing
+        run: make test
