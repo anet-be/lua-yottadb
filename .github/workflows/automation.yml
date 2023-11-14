@@ -17,7 +17,7 @@ jobs:
         lua_version: [5.1, 5.2, 5.3, 5.4]
     runs-on: ubuntu-latest
     env:
-      lua_dev_package: ${{ matrix.lua_version }} == '5.1' && 'liblua5.1-0-dev' || liblua${{ matrix.lua_version }}-dev
+      lua_dev_package: liblua${{ matrix.lua_version == '5.1' && '5.1-0' || matrix.lua_version }}-dev
       lua_version: ${{ matrix.lua_version }}
     steps:
       - name: Checkout lua-yottadb
