@@ -17,13 +17,14 @@ jobs:
         lua_version: [5.1, 5.2, 5.3, 5.4]
     runs-on: ubuntu-latest
     env:
+      lua_dev_package: ${{ matrix.lua_version }} == '5.1' && 'liblua5.1-0-dev' || liblua${{ matrix.lua_version }}-dev
       lua_version: ${{ matrix.lua_version }}
     steps:
       - name: Checkout lua-yottadb
         uses: actions/checkout@v4
       - uses: tecolicom/actions-use-apt-tools@v1
         with:
-          tools: lua$lua_version liblua$lua_version-dev
+          tools: lua${{ lua_version }} ${{ lua_dev_package }}
           key: apt-cache-lua${{ env.lua_version }}
       - name: Install YottaDB
         run: |
