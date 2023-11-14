@@ -242,7 +242,7 @@ If you need more detail on signals, here is a discussion in the MLua repository 
 
 * YottaDB 1.34 or later.
 * Lua 5.1 or greater. The Makefile will use your system's Lua version by default. To override this, run `make lua=/path/to/lua`.
-  * Lua-yottadb has been built and tested with every major Lua version from 5.1 onward ([MLua](https://github.com/anet-be/mlua) does this with `make testall`)
+  * Lua-yottadb gets automatically tested against every major Lua version from 5.1 onward using its github actions [workflow here](.github/workflows/automation.yml).
 
 If more specifics are needed, build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install* is the path to your installation of YottaDB that contains its header and shared library files.
 
