@@ -8,7 +8,9 @@ This project provides a shared library that lets the [Lua](https://lua.org/) lan
 
 ## Quickstart
 
-If you do not already have it, install [YottaDB here](https://yottadb.com/product/get-started/). Then install lua-yottadb as follows:
+- If you do not already have it, install [YottaDB here](https://yottadb.com/product/get-started/).
+- Install Lua, including C include files, e.g. for Ubuntu: `apt install liblua5.4-dev`.
+- Finally, install lua-yottadb itself as follows:
 
 ```bash
 git clone https://github.com/anet-be/lua-yottadb.git
