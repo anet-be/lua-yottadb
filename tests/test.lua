@@ -69,7 +69,7 @@ end
 
 -- Sub-second timing
 function _get_ticks()
-  return tonumber(assert(assert(io.popen'date +%s.%N'):read'a'))  -- or socket.gettime()
+  return tonumber(assert(assert(io.popen'date +%s.%N'):read'*a'))  -- *a is for Lua <5.3
 end
 _ticks = _get_ticks()
 function ticks(reset)
