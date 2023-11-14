@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
       - uses: tecolicom/actions-use-apt-tools@v1
         with:
-          tools: lua${{ lua_version }} ${{ lua_dev_package }}
+          tools: lua${{ env.lua_version }} ${{ env.lua_dev_package }}
           key: apt-cache-lua${{ env.lua_version }}
       - name: Install YottaDB
         run: |
