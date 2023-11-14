@@ -67,6 +67,19 @@ local function background_execute(command)
   return env_execute("bash -c '"..command.." &'")
 end
 
+-- Sub-second timing
+function _get_ticks()
+  return tonumber(assert(assert(io.popen'date +%s.%N'):read'a'))  -- or socket.gettime()
+end
+_ticks = _get_ticks()
+function ticks(reset)
+  -- Return time elapsed real time to sub-second resolution
+  -- `reset` zeros the counter if it is not nil/false
+  local t = _get_ticks()
+  if reset then  _ticks = t  end
+  return string.format("%.4f", t-_ticks)
+end
+
 -- Create database in temporary directories using GDE
 -- unique_name specifies a filename suffix for the global directory and datafile
 local function setup(unique_name)
@@ -1012,8 +1025,10 @@ end
 function _test_incr(increment_tests, name)
   for i = 1, #increment_keys do
     local key = increment_keys[i]
+    local var = key[1]
     for j = 1, #increment_tests do
-      setup('test_incr_' .. name .. tostring(i) .. '_' .. tostring(j))
+      -- append j to ensure there is no loop interferes with the next
+      key[1] = var .. j
       local t = increment_tests[j]
       local initial, increment, result = t[1], t[2], t[3]
       local args = {table.unpack(key)}
@@ -1025,7 +1040,6 @@ function _test_incr(increment_tests, name)
       asserteq(_yottadb.get(table.unpack(key)), result)
       args[#args] = _yottadb.YDB_DEL_TREE
       _yottadb.delete(table.unpack(args))
-      teardown()
     end
   end
 
