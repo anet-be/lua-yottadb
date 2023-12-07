@@ -32,7 +32,7 @@ jobs:
           cd ydb_setup
           wget https://download.yottadb.com/ydbinstall.sh \
             && chmod +x ydbinstall.sh \
-            && sudo ./ydbinstall.sh
+            && sudo ./ydbinstall.sh --utf8
 
       - name: Testing
         run: make test lua=lua$lua_version
