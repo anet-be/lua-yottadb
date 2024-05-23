@@ -734,7 +734,7 @@ ydb_eintr_handler ()
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Lua function to call ``ydb_eintr_handler()``.
-Code intended to handle EINTR errors, instead of blocking signals, should call ``ydb_eintr_handler()```` when it gets an EINTR return code,
+Code intended to handle EINTR errors, instead of blocking signals, should call ``ydb_eintr_handler()`` when it gets an EINTR return code,
 before re-issuing the interrupted system call.
 
 
