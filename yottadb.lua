@@ -61,7 +61,7 @@ M.block_M_signals = _yottadb.block_M_signals
 M.init = _yottadb.init
 
 --- Lua function to call `ydb_eintr_handler()`.
--- Code intended to handle EINTR errors, instead of blocking signals, should call `ydb_eintr_handler()`` when it gets an EINTR return code,
+-- Code intended to handle EINTR errors, instead of blocking signals, should call `ydb_eintr_handler()` when it gets an EINTR return code,
 -- before re-issuing the interrupted system call.
 -- @function ydb_eintr_handler
 -- @return YDB_OK on success, and greater than zero on error (with message in ZSTATUS)
