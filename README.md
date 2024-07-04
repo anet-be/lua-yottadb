@@ -156,6 +156,7 @@ The Lua wrapper for M is designed for both speed and simple usage. The following
 ```lua
 $ export ydb_routines=examples   # put arithmetic.m into ydb path
 $ lua
+> ydb=require'yottadb'
 > arithmetic = ydb.require('examples/arithmetic.ci')
 > arithmetic.add_verbose("Sum is:", 2, 3)
 Sum is: 5
