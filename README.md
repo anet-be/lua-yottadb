@@ -93,7 +93,7 @@ n:dump()  -- the values of the child node are still in the database
 -- hello("chinese")="你好世界!!"
 -- hello("cowboy")="Howdy partner!"
 
-n:delete_tree() -- delete both the value at the '^hello' node and all of its children
+n:kill() -- delete both the value at the '^hello' node and all of its children
 n:dump()
 -- nil
 ```

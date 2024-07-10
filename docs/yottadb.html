@@ -35,20 +35,23 @@
 <ul>
 <li><a href=""><b>Summary</b></a></li>
 <br/>
-<li><a href="#Low_level_wrapper_functions"><b>Low level wrapper functions </b></a></li>
+<li><a href="#Basic_low_level_functions"><b>Basic low level functions </b></a></li>
     <li><a href="#block_M_signals">block_M_signals (bool)</a></li>
     <li><a href="#data">data (varname[, subsarray[, ...]])</a></li>
     <li><a href="#delete_node">delete_node (varname[, subsarray[, ...]])</a></li>
     <li><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])</a></li>
     <li><a href="#get">get (varname[, subsarray[, ...]])</a></li>
     <li><a href="#get_error_code">get_error_code (message)</a></li>
+    <li><a href="#grab">grab (varname[, subsarray[, ...[, timeout]]])</a></li>
     <li><a href="#incr">incr (varname[, subsarray][, ...], increment)</a></li>
     <li><a href="#init">init ([signal_blocker])</a></li>
+    <li><a href="#kill">kill (varname[, subsarray[, ...]])</a></li>
     <li><a href="#lock">lock ([nodes[, timeout]])</a></li>
     <li><a href="#lock_decr">lock_decr (varname[, subsarray[, ...]])</a></li>
     <li><a href="#lock_incr">lock_incr (varname[, subsarray[, ...[, timeout]]])</a></li>
     <li><a href="#node_next">node_next (varname[, subsarray[, ...]])</a></li>
     <li><a href="#node_previous">node_previous (varname[, subsarray[, ...]])</a></li>
+    <li><a href="#release">release (varname[, subsarray[, ...]])</a></li>
     <li><a href="#set">set (varname[, subsarray][, ...], value)</a></li>
     <li><a href="#str2zwr">str2zwr (s)</a></li>
     <li><a href="#subscript_next">subscript_next (varname[, subsarray[, ...]])</a></li>
@@ -75,10 +78,13 @@
     <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
     <li><a href="#node:get">node:get ([default])</a></li>
     <li><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></li>
+    <li><a href="#node:grab">node:grab ([timeout])</a></li>
     <li><a href="#node:incr">node:incr ([increment=1])</a></li>
+    <li><a href="#node:kill">node:kill ()</a></li>
     <li><a href="#node:lock">node:lock ([timeout])</a></li>
     <li><a href="#node:lock_decr">node:lock_decr ()</a></li>
     <li><a href="#node:lock_incr">node:lock_incr ([timeout])</a></li>
+    <li><a href="#node:release">node:release ()</a></li>
     <li><a href="#node:set">node:set (value)</a></li>
     <li><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></li>
     <li><a href="#node:subscripts">node:subscripts ([reverse])</a></li>
@@ -116,7 +122,7 @@
  Home page: <a href="https://github.com/anet-be/lua-yottadb/">https://github.com/anet-be/lua-yottadb/</a></p>
 
 
-<h2><a href="#Low_level_wrapper_functions">Low level wrapper functions </a></h2>
+<h2><a href="#Basic_low_level_functions">Basic low level functions </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#block_M_signals">block_M_signals (bool)</a></td>
@@ -128,11 +134,11 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#delete_node">delete_node (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Deletes the value of a single database variable or node.</td>
+	<td class="summary">Deprecated and replaced by <code>set(varname[, subsarray[, ...]], nil)</code>.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Deletes a database variable tree or node subtree.</td>
+	<td class="summary">Deprecated and replaced by kill.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#get">get (varname[, subsarray[, ...]])</a></td>
@@ -143,6 +149,10 @@
 	<td class="summary">Get the YDB error code (if any) contained in the given error message.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#grab">grab (varname[, subsarray[, ...[, timeout]]])</a></td>
+	<td class="summary">Alias for lock_incr to acquire or increment a lock named varname[(subsarray)].</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#incr">incr (varname[, subsarray][, ...], increment)</a></td>
 	<td class="summary">Increments the numeric value of a database variable or node.</td>
 	</tr>
@@ -151,16 +161,20 @@
 	<td class="summary">Initialize ydb and set blocking of M signals.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#kill">kill (varname[, subsarray[, ...]])</a></td>
+	<td class="summary">Deletes a database variable tree (node and subnodes) or a node subtree.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#lock">lock ([nodes[, timeout]])</a></td>
 	<td class="summary">Releases all locks held and attempts to acquire all requested locks.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lock_decr">lock_decr (varname[, subsarray[, ...]])</a></td>
-	<td class="summary">Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.</td>
+	<td class="summary">Decrements a lock of the same name as varname[(subsarray)], releasing it if zero.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#lock_incr">lock_incr (varname[, subsarray[, ...[, timeout]]])</a></td>
-	<td class="summary">Attempts to acquire or increment a lock named {varname, subsarray}.</td>
+	<td class="summary">Attempts to acquire or increment a lock named varname[(subsarray)].</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node_next">node_next (varname[, subsarray[, ...]])</a></td>
@@ -169,6 +183,10 @@
 	<tr>
 	<td class="name" nowrap><a href="#node_previous">node_previous (varname[, subsarray[, ...]])</a></td>
 	<td class="summary">Returns the full subscript list of the previous node after a database variable or node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#release">release (varname[, subsarray[, ...]])</a></td>
+	<td class="summary">Alias for lock_decr to decrement a lock of the same name as varname[(subsarray)], releasing it if zero.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#set">set (varname[, subsarray][, ...], value)</a></td>
@@ -245,7 +263,7 @@
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:delete_tree">node:delete_tree ()</a></td>
-	<td class="summary">Delete database tree pointed to by node object.</td>
+	<td class="summary">Deprecated and replaced by kill.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:dump">node:dump ([maxlines=30])</a></td>
@@ -260,20 +278,32 @@
 	<td class="summary">Fetch database node and subtree and return a Lua table of it.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#node:grab">node:grab ([timeout])</a></td>
+	<td class="summary">Alias for node:lock_incr to acquire or increment a lock matching this node.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#node:incr">node:incr ([increment=1])</a></td>
 	<td class="summary">Increment <a href="yottadb.html#node">node</a>'s value.</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#node:kill">node:kill ()</a></td>
+	<td class="summary">Delete database tree (node and subnodes) pointed to by node object.</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#node:lock">node:lock ([timeout])</a></td>
-	<td class="summary">Releases all locks held and attempts to acquire a lock matching this node.</td>
+	<td class="summary">Releases all locks held and attempts to acquire a lock matching only this node.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:lock_decr">node:lock_decr ()</a></td>
-	<td class="summary">Decrements a lock matching this node, releasing it if possible.</td>
+	<td class="summary">Decrements a lock matching this node, releasing it if zero.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:lock_incr">node:lock_incr ([timeout])</a></td>
 	<td class="summary">Attempts to acquire or increment a lock matching this node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:release">node:release ()</a></td>
+	<td class="summary">Alias for node:lock_decr to decrement a lock matching this node, releasing it if zero.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:set">node:set (value)</a></td>
@@ -355,7 +385,7 @@
 <br/>
 
 
-    <h2 class="section-header "><a name="Low_level_wrapper_functions"></a>Low level wrapper functions </h2>
+    <h2 class="section-header "><a name="Basic_low_level_functions"></a>Basic low level functions </h2>
 
     <dl class="function">
     <dt>
@@ -458,7 +488,7 @@
     <strong>delete_node (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Deletes the value of a single database variable or node.
+    Deprecated and replaced by <code>set(varname[, subsarray[, ...]], nil)</code>.
 
     </ul>
 
@@ -484,8 +514,8 @@
     <ul>
         <pre class="example">ydb = <span class="global">require</span>(<span class="string">'yottadb'</span>)
 ydb.set(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>}, <span class="number">1367000</span>)
-ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
-ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
+ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})  <span class="comment">-- or ydb.set('^Population', {'Belgium'}, nil)
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgium'</span>})
 <span class="comment">-- nil</span></pre>
     </ul>
 
@@ -495,7 +525,7 @@ ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgiu
     <strong>delete_tree (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Deletes a database variable tree or node subtree.
+    Deprecated and replaced by kill.
 
     </ul>
 
@@ -516,20 +546,11 @@ ydb.get(<span class="string">'^Population'</span>, {<span class="string">'Belgiu
 
 
 
-
-    <h3>Example:</h3>
+    <h3>See also:</h3>
     <ul>
-        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
-</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-<span class="comment">-- 325737000
-</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
-<span class="comment">-- 3929326
-</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
-<span class="comment">-- 5308483
-</span>ydb.delete_tree(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
-<span class="comment">-- 0.0</span></pre>
+         <a href="yottadb.html#kill">kill</a>
     </ul>
+
 
 </dd>
     <dt>
@@ -608,6 +629,56 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
 ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.'</span>)
 <span class="comment">-- -150374122</span></pre>
     </ul>
+
+</dd>
+    <dt>
+    <a name = "grab"></a>
+    <strong>grab (varname[, subsarray[, ...[, timeout]]])</strong>
+    </dt>
+    <dd>
+    Alias for lock_incr to acquire or increment a lock named varname[(subsarray)].
+ Returns after <code>timeout</code>, if specified.
+ Raises a <code>yottadb.YDB_LOCK_TIMEOUT</code> error if lock could not be acquired.</p>
+
+<p> If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
+ <em>Caution:</em> timeout is <em>not</em> optional if <code>...</code> list of subscripts is provided, but it may be <code>nil</code>.
+ Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         of database node (this can also be replaced by cachearray)
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Table of subscripts
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">...</span>
+         List of subscripts or table subscripts
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">timeout</span>
+         Number timeout in seconds to wait for the lock.
+  Optional only if subscripts is a table.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        0 (always)
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#lock_incr">lock_incr</a></li>
+         <li><a href="yottadb.html#release">release</a></li>
+    </ul>
+
 
 </dd>
     <dt>
@@ -703,12 +774,55 @@ ydb.get(<span class="string">'num'</span>)
 
 </dd>
     <dt>
+    <a name = "kill"></a>
+    <strong>kill (varname[, subsarray[, ...]])</strong>
+    </dt>
+    <dd>
+    Deletes a database variable tree (node and subnodes) or a node subtree.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String of the database node (this can also be replaced by cachearray)
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Table of subscripts
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">...</span>
+         List of subscripts to append after any elements in optional subsarray table
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+
+
+
+    <h3>Example:</h3>
+    <ul>
+        <pre class="example"><span class="comment">-- include setup from example at yottadb.set()
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+<span class="comment">-- 325737000
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'17900802'</span>})
+<span class="comment">-- 3929326
+</span>ydb.get(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>, <span class="string">'18000804'</span>})
+<span class="comment">-- 5308483
+</span>ydb.kill(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'</span>})
+<span class="comment">-- 0.0</span></pre>
+    </ul>
+
+</dd>
+    <dt>
     <a name = "lock"></a>
     <strong>lock ([nodes[, timeout]])</strong>
     </dt>
     <dd>
     Releases all locks held and attempts to acquire all requested locks.
  Returns after <code>timeout</code>, if specified.
+ If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
  Raises an error <code>yottadb.YDB_LOCK_TIMEOUT</code> if a lock could not be acquired.
 
     </ul>
@@ -716,11 +830,11 @@ ydb.get(<span class="string">'num'</span>)
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">nodes</span>
-         Table array containing {varname[, subs]} or node objects that specify the lock names to lock.
+         Table array of {varname[, subs]} elements or node objects that specify the lock names to lock.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">timeout</span>
-         Integer timeout in seconds to wait for the lock.
+         Number timeout in seconds to wait for the lock.
          (<em>optional</em>)
         </li>
     </ul>
@@ -740,7 +854,7 @@ ydb.get(<span class="string">'num'</span>)
     <strong>lock_decr (varname[, subsarray[, ...]])</strong>
     </dt>
     <dd>
-    Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
+    Decrements a lock of the same name as varname[(subsarray)], releasing it if zero.
  Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 
     </ul>
@@ -767,6 +881,11 @@ ydb.get(<span class="string">'num'</span>)
     </ol>
 
 
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#release">release</a></li>
+         <li><a href="yottadb.html#lock_incr">lock_incr</a></li>
+    </ul>
 
 
 </dd>
@@ -775,11 +894,12 @@ ydb.get(<span class="string">'num'</span>)
     <strong>lock_incr (varname[, subsarray[, ...[, timeout]]])</strong>
     </dt>
     <dd>
-    Attempts to acquire or increment a lock named {varname, subsarray}.
+    Attempts to acquire or increment a lock named varname[(subsarray)].
  Returns after <code>timeout</code>, if specified.
  Raises a <code>yottadb.YDB_LOCK_TIMEOUT</code> error if lock could not be acquired.</p>
 
-<p> <em>Caution:</em> timeout is <em>not</em> optional if <code>...</code> list of subscripts is provided.
+<p> If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
+ <em>Caution:</em> timeout is <em>not</em> optional if <code>...</code> list of subscripts is provided, but it may be <code>nil</code>.
  Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
     </ul>
@@ -798,7 +918,7 @@ ydb.get(<span class="string">'num'</span>)
          (<em>optional</em>)
         </li>
         <li><span class="parameter">timeout</span>
-         Integer timeout in seconds to wait for the lock.
+         Number timeout in seconds to wait for the lock.
   Optional only if subscripts is a table.
          (<em>optional</em>)
         </li>
@@ -811,6 +931,11 @@ ydb.get(<span class="string">'num'</span>)
     </ol>
 
 
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#grab">grab</a></li>
+         <li><a href="yottadb.html#lock_decr">lock_decr</a></li>
+    </ul>
 
 
 </dd>
@@ -923,6 +1048,46 @@ ydb.get(<span class="string">'num'</span>)
 <span class="comment">-- Belgium</span></pre></li>
         <li><pre class="example"><span class="comment">-- Note: See the note on handling nil return values in node_next() which applies to node_previous() as well.</span></pre></li>
     </ul>
+
+</dd>
+    <dt>
+    <a name = "release"></a>
+    <strong>release (varname[, subsarray[, ...]])</strong>
+    </dt>
+    <dd>
+    Alias for lock_decr to decrement a lock of the same name as varname[(subsarray)], releasing it if zero.
+ Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">varname</span>
+         String of the database node (this can also be replaced by cachearray)
+        </li>
+        <li><span class="parameter">subsarray</span>
+         Table of subscripts
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">...</span>
+         List of subscripts to append after any elements in optional subsarray table
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        0 (always)
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#lock_decr">lock_decr</a></li>
+         <li><a href="yottadb.html#grab">grab</a></li>
+    </ul>
+
 
 </dd>
     <dt>
@@ -1679,7 +1844,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <strong>node:delete_tree ()</strong>
     </dt>
     <dd>
-    Delete database tree pointed to by node object.
+    Deprecated and replaced by kill.
 
     </ul>
 
@@ -1688,7 +1853,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
     <h3>See also:</h3>
     <ul>
-         <a href="yottadb.html#delete_tree">delete_tree</a>
+         <a href="yottadb.html#node:kill">node:kill</a>
     </ul>
 
 
@@ -1835,6 +2000,36 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
 
 </dd>
     <dt>
+    <a name = "node:grab"></a>
+    <strong>node:grab ([timeout])</strong>
+    </dt>
+    <dd>
+    Alias for node:lock_incr to acquire or increment a lock matching this node.
+ Returns after <code>timeout</code>, if specified.
+ If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+         Number timeout in seconds to wait for the lock.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#grab">grab</a></li>
+         <li><a href="yottadb.html#node:lock_incr">node:lock_incr</a></li>
+         <li><a href="yottadb.html#node:release">node:release</a></li>
+    </ul>
+
+
+</dd>
+    <dt>
     <a name = "node:incr"></a>
     <strong>node:incr ([increment=1])</strong>
     </dt>
@@ -1866,19 +2061,39 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
 
 </dd>
     <dt>
+    <a name = "node:kill"></a>
+    <strong>node:kill ()</strong>
+    </dt>
+    <dd>
+    Delete database tree (node and subnodes) pointed to by node object.
+
+    </ul>
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="yottadb.html#kill">kill</a>
+    </ul>
+
+
+</dd>
+    <dt>
     <a name = "node:lock"></a>
     <strong>node:lock ([timeout])</strong>
     </dt>
     <dd>
-    Releases all locks held and attempts to acquire a lock matching this node.
+    Releases all locks held and attempts to acquire a lock matching only this node.
  Returns after <code>timeout</code>, if specified.
+ If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">timeout</span>
-         Integer timeout in seconds to wait for the lock.
+         Number timeout in seconds to wait for the lock.
          (<em>optional</em>)
         </li>
     </ul>
@@ -1897,7 +2112,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     <strong>node:lock_decr ()</strong>
     </dt>
     <dd>
-    Decrements a lock matching this node, releasing it if possible.
+    Decrements a lock matching this node, releasing it if zero.
 
     </ul>
 
@@ -1906,7 +2121,9 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
 
     <h3>See also:</h3>
     <ul>
-         <a href="yottadb.html#lock_decr">lock_decr</a>
+         <li><a href="yottadb.html#lock_decr">lock_decr</a></li>
+         <li><a href="yottadb.html#node:release">node:release</a></li>
+         <li><a href="yottadb.html#node:lock_incr">node:lock_incr</a></li>
     </ul>
 
 
@@ -1918,13 +2135,14 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     <dd>
     Attempts to acquire or increment a lock matching this node.
  Returns after <code>timeout</code>, if specified.
+ If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
 
     </ul>
 
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">timeout</span>
-         Integer timeout in seconds to wait for the lock.
+         Number timeout in seconds to wait for the lock.
          (<em>optional</em>)
         </li>
     </ul>
@@ -1933,7 +2151,30 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
 
     <h3>See also:</h3>
     <ul>
-         <a href="yottadb.html#lock_incr">lock_incr</a>
+         <li><a href="yottadb.html#lock_incr">lock_incr</a></li>
+         <li><a href="yottadb.html#node:grab">node:grab</a></li>
+         <li><a href="yottadb.html#node:lock_decr">node:lock_decr</a></li>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "node:release"></a>
+    <strong>node:release ()</strong>
+    </dt>
+    <dd>
+    Alias for node:lock_decr to decrement a lock matching this node, releasing it if zero.
+
+    </ul>
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="yottadb.html#release">release</a></li>
+         <li><a href="yottadb.html#node:lock_decr">node:lock_decr</a></li>
+         <li><a href="yottadb.html#node:grab">node:grab</a></li>
     </ul>
 
 
@@ -2313,7 +2554,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 
     <h3>See also:</h3>
     <ul>
-         <li><a href="yottadb.html#delete_node">delete_node</a></li>
+         <li><a href="yottadb.html#kill">kill</a></li>
          <li><a href="yottadb.html#set">set</a></li>
     </ul>
 
@@ -2432,7 +2673,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2024-05-30 09:11:57 </i>
+<i style="float:right;">Last updated 2024-07-10 23:51:42 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
