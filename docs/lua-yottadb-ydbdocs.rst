@@ -2,9 +2,9 @@
 
 
 
-+++++++++++++++++++++++++++++
-Low level wrapper functions
-+++++++++++++++++++++++++++++
++++++++++++++++++++++++++++
+Basic low level functions
++++++++++++++++++++++++++++
 
 
 
@@ -93,7 +93,7 @@ Return whether a node has a value or subtree.
 delete_node (varname[, subsarray[, ...]])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Deletes the value of a single database variable or node.
+Deprecated and replaced by ``set(varname[, subsarray[, ...]], nil)``.
 
 
 
@@ -120,7 +120,7 @@ Deletes the value of a single database variable or node.
 
       ydb = require('yottadb')
       ydb.set('^Population', {'Belgium'}, 1367000)
-      ydb.delete_node('^Population', {'Belgium'})
+      ydb.delete_node('^Population', {'Belgium'})  -- or ydb.set('^Population', {'Belgium'}, nil)
       ydb.get('^Population', {'Belgium'})
       -- nil
 
@@ -130,7 +130,7 @@ Deletes the value of a single database variable or node.
 delete_tree (varname[, subsarray[, ...]])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Deletes a database variable tree or node subtree.
+Deprecated and replaced by kill.
 
 
 
@@ -147,24 +147,6 @@ Deletes a database variable tree or node subtree.
 
 
 
-
-
-:Example:
-
-  .. code-block:: lua
-    :dedent: 2
-    :force:
-
-      -- include setup from example at yottadb.set()
-      ydb.get('^Population', {'USA'})
-      -- 325737000
-      ydb.get('^Population', {'USA', '17900802'})
-      -- 3929326
-      ydb.get('^Population', {'USA', '18000804'})
-      -- 5308483
-      ydb.delete_tree('^Population', {'USA'})
-      ydb.data('^Population', {'USA'})
-      -- 0.0
 
 
 
@@ -239,6 +221,44 @@ Get the YDB error code (if any) contained in the given error message.
       ydb = require('yottadb')
       ydb.get_error_code('YDB Error: -150374122: %YDB-E-ZGBLDIRACC, Cannot access global directory !AD!AD!AD.')
       -- -150374122
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+grab (varname[, subsarray[, ...[, timeout]]])
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Alias for lock_incr to acquire or increment a lock named varname[(subsarray)].
+Returns after ``timeout``, if specified.
+Raises a ``yottadb.YDB_LOCK_TIMEOUT`` error if lock could not be acquired.
+
+If timeout is not supplied or is ``nil``, wait forever; timeout of zero means try only once.
+*Caution:* timeout is *not* optional if ``...`` list of subscripts is provided, but it may be ``nil``.
+Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
+
+
+
+* ``varname``:
+  of database node (this can also be replaced by cachearray)
+
+* ``subsarray``:
+  (*optional*)
+  Table of subscripts
+
+* ``...``:
+  (*optional*)
+  List of subscripts or table subscripts
+
+* ``timeout``:
+  (*optional*)
+  Number timeout in seconds to wait for the lock.
+  Optional only if subscripts is a table.
+
+
+:Returns:
+    0 (always)
+
+
 
 
 
@@ -321,23 +341,66 @@ fetching the function pointer from a C closure, and using ``lua_call()``.
 
 
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+kill (varname[, subsarray[, ...]])
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deletes a database variable tree (node and subnodes) or a node subtree.
+
+
+
+* ``varname``:
+  String of the database node (this can also be replaced by cachearray)
+
+* ``subsarray``:
+  (*optional*)
+  Table of subscripts
+
+* ``...``:
+  (*optional*)
+  List of subscripts to append after any elements in optional subsarray table
+
+
+
+
+
+:Example:
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      -- include setup from example at yottadb.set()
+      ydb.get('^Population', {'USA'})
+      -- 325737000
+      ydb.get('^Population', {'USA', '17900802'})
+      -- 3929326
+      ydb.get('^Population', {'USA', '18000804'})
+      -- 5308483
+      ydb.kill('^Population', {'USA'})
+      ydb.data('^Population', {'USA'})
+      -- 0.0
+
+
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 lock ([nodes[, timeout]])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Releases all locks held and attempts to acquire all requested locks.
 Returns after ``timeout``, if specified.
+If timeout is not supplied or is ``nil``, wait forever; timeout of zero means try only once.
 Raises an error ``yottadb.YDB_LOCK_TIMEOUT`` if a lock could not be acquired.
 
 
 
 * ``nodes``:
   (*optional*)
-  Table array containing {varname[, subs]} or node objects that specify the lock names to lock.
+  Table array of {varname[, subs]} elements or node objects that specify the lock names to lock.
 
 * ``timeout``:
   (*optional*)
-  Integer timeout in seconds to wait for the lock.
+  Number timeout in seconds to wait for the lock.
 
 
 :Returns:
@@ -351,7 +414,7 @@ Raises an error ``yottadb.YDB_LOCK_TIMEOUT`` if a lock could not be acquired.
 lock_decr (varname[, subsarray[, ...]])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
+Decrements a lock of the same name as varname[(subsarray)], releasing it if zero.
 Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 
 
@@ -379,11 +442,12 @@ Releasing a lock cannot create an error unless the varname/subsarray names are i
 lock_incr (varname[, subsarray[, ...[, timeout]]])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Attempts to acquire or increment a lock named {varname, subsarray}.
+Attempts to acquire or increment a lock named varname[(subsarray)].
 Returns after ``timeout``, if specified.
 Raises a ``yottadb.YDB_LOCK_TIMEOUT`` error if lock could not be acquired.
 
-*Caution:* timeout is *not* optional if ``...`` list of subscripts is provided.
+If timeout is not supplied or is ``nil``, wait forever; timeout of zero means try only once.
+*Caution:* timeout is *not* optional if ``...`` list of subscripts is provided, but it may be ``nil``.
 Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
 
@@ -401,7 +465,7 @@ Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
 * ``timeout``:
   (*optional*)
-  Integer timeout in seconds to wait for the lock.
+  Number timeout in seconds to wait for the lock.
   Optional only if subscripts is a table.
 
 
@@ -528,6 +592,34 @@ A previous node chain started from varname will eventually reach all nodes under
     :force:
 
       -- Note: See the note on handling nil return values in node_next() which applies to node_previous() as well.
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+release (varname[, subsarray[, ...]])
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Alias for lock_decr to decrement a lock of the same name as varname[(subsarray)], releasing it if zero.
+Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
+
+
+
+* ``varname``:
+  String of the database node (this can also be replaced by cachearray)
+
+* ``subsarray``:
+  (*optional*)
+  Table of subscripts
+
+* ``...``:
+  (*optional*)
+  List of subscripts to append after any elements in optional subsarray table
+
+
+:Returns:
+    0 (always)
+
+
 
 
 
@@ -1243,7 +1335,7 @@ Mutability can be tested for using ``node:ismutable()``
 node:delete_tree ()
 ~~~~~~~~~~~~~~~~~~~~~
 
-Delete database tree pointed to by node object.
+Deprecated and replaced by kill.
 
 
 
@@ -1358,6 +1450,25 @@ Fetch database node and subtree and return a Lua table of it.
 
 
 
+~~~~~~~~~~~~~~~~~~~~~~~
+node:grab ([timeout])
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Alias for node:lock_incr to acquire or increment a lock matching this node.
+Returns after ``timeout``, if specified.
+If timeout is not supplied or is ``nil``, wait forever; timeout of zero means try only once.
+
+
+
+* ``timeout``:
+  (*optional*)
+  Number timeout in seconds to wait for the lock.
+
+
+
+
+
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 node:incr ([increment=1])
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1378,18 +1489,31 @@ Increment ``node``'s value.
 
 
 
+~~~~~~~~~~~~~~
+node:kill ()
+~~~~~~~~~~~~~~
+
+Delete database tree (node and subnodes) pointed to by node object.
+
+
+
+
+
+
+
 ~~~~~~~~~~~~~~~~~~~~~~~
 node:lock ([timeout])
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Releases all locks held and attempts to acquire a lock matching this node.
+Releases all locks held and attempts to acquire a lock matching only this node.
 Returns after ``timeout``, if specified.
+If timeout is not supplied or is ``nil``, wait forever; timeout of zero means try only once.
 
 
 
 * ``timeout``:
   (*optional*)
-  Integer timeout in seconds to wait for the lock.
+  Number timeout in seconds to wait for the lock.
 
 
 
@@ -1400,7 +1524,7 @@ Returns after ``timeout``, if specified.
 node:lock_decr ()
 ~~~~~~~~~~~~~~~~~~~
 
-Decrements a lock matching this node, releasing it if possible.
+Decrements a lock matching this node, releasing it if zero.
 
 
 
@@ -1414,12 +1538,25 @@ node:lock_incr ([timeout])
 
 Attempts to acquire or increment a lock matching this node.
 Returns after ``timeout``, if specified.
+If timeout is not supplied or is ``nil``, wait forever; timeout of zero means try only once.
 
 
 
 * ``timeout``:
   (*optional*)
-  Integer timeout in seconds to wait for the lock.
+  Number timeout in seconds to wait for the lock.
+
+
+
+
+
+
+~~~~~~~~~~~~~~~~~
+node:release ()
+~~~~~~~~~~~~~~~~~
+
+Alias for node:lock_decr to decrement a lock matching this node, releasing it if zero.
+
 
 
 

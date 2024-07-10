@@ -105,14 +105,14 @@ static int _ydb_eintr_handler(lua_State *L) {
 }
 
 
-/// Gets the value of a variable/node or nil if it has no data.
+/// Gets the value of a variable/node or `nil` if it has no data.
 // @function get
 // @usage _yottadb.get(varname[, {subs} | ...]),  or:
 // @usage _yottadb.get(cachearray)
 // @param varname string
 // @param[opt] subs table of subscripts
 // @param[opt] ... is a list of subscripts
-// @return string or nil if node has no data
+// @return string or `nil` if node has no data
 static int get(lua_State *L) {
   int subs_used;
   ydb_buffer_t *varname, *subsarray;
@@ -138,7 +138,7 @@ static int get(lua_State *L) {
 // `_yottadb.YDB_DEL_xxxx` are boolean constants and must be supplied as actual boolean
 // (not merely convertable to boolean), so that delete() can distinguish them from subscripts.
 // Note: `_yottadb.YDB_DEL_xxxx` values differ from the values in `libyottadb.h`, but they work the same.
-// Specifying type=nil or not supplied is the same as _yottadb.YDB_DEL_NODE
+// Specifying type as `nil`, or not supplied, is the same as _yottadb.YDB_DEL_NODE
 // @function delete
 // @usage _yottadb.delete(varname[, {subs} | ...][, type=_yottadb.YDB_DEL_xxxx])
 // @usage _yottadb.delete(cachearray[, type=_yottadb.YDB_DEL_xxxx])
@@ -164,7 +164,7 @@ static int delete(lua_State *L) {
 
 /// Sets the value of a variable/node.
 // Raises an error of no such intrinsic variable exists.
-// if value = nil then perform delete(node) instead
+// if value = `nil` then perform delete(node) instead
 // @function set
 // @usage _yottadb.set(varname[, {subs} | ...], value),  or:
 // @usage _yottadb.set(cachearray, value)
@@ -218,9 +218,10 @@ static int data(lua_State *L) {
   return 1;
 }
 
-/// Attempts to acquire or increment a lock on a variable/node, waiting if requested.
+/// Attempts to acquire or increment a lock on a variable/node, waiting as requested.
 // Raises an error if a lock could not be acquired.
-// Caution: timeout is *not* optional if `...` list of subscript is provided.
+// If no timeout is supplied or is `nil`, wait forever; timeout of zero means try only once.
+// Caution: timeout is *not* optional if `...` list of subscript is provided, but may be `nil`.
 // Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 // @function lock_incr
 // @usage _yottadb.lock_incr(varname[, {subs}][, timeout=0])
@@ -231,20 +232,29 @@ static int data(lua_State *L) {
 // @param[opt] ... list of subscripts
 // @param[opt] timeout timeout in seconds to wait for lock
 static int lock_incr(lua_State *L) {
-  int argpos=-1;
+  int argpos=-1;  // default argument position from which to fetch timeout
   if (lua_gettop(L) < 2 || lua_type(L, 1)==LUA_TUSERDATA)
+    // Usage1/3: if only one argument is supplied or cachearray supplied, get timeout from arg2 (which may be unsupplied => nil)
     argpos = 2;
   else
+    // if 2 or more arguments are supplied and no cachearray is supplied,
+    // then Usage1: get timeout from arg3 if a subscript table is supplied,
+    // otherwise Usage2: default to getting timeout from arg position -1 (top of stack)
     if (lua_type(L, 2)==LUA_TTABLE)
       argpos = 3;
+  bool forever = lua_gettop(L) < 2 || lua_isnil(L, argpos);
   unsigned long long timeout_nsec = luaL_optnumber(L, argpos, 0) * 1000000000;
+  if (forever) timeout_nsec = YDB_MAX_TIME_NSEC;
   lua_settop(L, argpos-1);  // pop timeout if it was supplied
 
   int subs_used;
   ydb_buffer_t *varname, *subsarray;
   getsubs(L, subs_used, varname, subsarray);
 
-  ydb_assert(L, ydb_lock_incr_s(timeout_nsec, varname, subs_used, subsarray));
+  int status = YDB_LOCK_TIMEOUT;
+  do status = ydb_lock_incr_s(timeout_nsec, varname, subs_used, subsarray);
+  while (forever && status == YDB_LOCK_TIMEOUT);
+  ydb_assert(L, status);
   return 0;
 }
 
@@ -396,7 +406,7 @@ static int subscript_nexter(lua_State *L, subscript_actuator_t actuator) {
 // @param varname string
 // @param[opt] subs table of subscripts
 // @param[opt] ... is a list of subscripts
-// @return: string or nil if there are no more subscripts
+// @return: string or `nil` if there are no more subscripts
 static int subscript_next(lua_State *L) {
   return subscript_nexter(L, ydb_subscript_next_s);
 }
@@ -408,7 +418,7 @@ static int subscript_next(lua_State *L) {
 // @param varname string
 // @param[opt] subs table of subscripts
 // @param[opt] ... is a list of subscripts
-// @return string or nil if there are not any previous subscripts
+// @return string or `nil` if there are not any previous subscripts
 static int subscript_previous(lua_State *L) {
   return subscript_nexter(L, ydb_subscript_previous_s);
 }
@@ -461,7 +471,7 @@ static int node_nexter(lua_State *L, node_actuator_t actuator) {
 // @param varname string
 // @param[opt] subs table of subscripts
 // @param[opt] ... is a list of subscripts
-// @return table of subscripts for the node or nil if there are no next nodes
+// @return table of subscripts for the node or `nil` if there are no next nodes
 static int node_next(lua_State *L) {
   return node_nexter(L, ydb_node_next_s);
 }
@@ -472,13 +482,14 @@ static int node_next(lua_State *L) {
 // @usage _yottadb.node_previous(varname[, {subs}])
 // @param varname string
 // @param[opt] subs table of subscripts
-// @return table of subscripts for the node or nil if there are no previous nodes
+// @return table of subscripts for the node or `nil` if there are no previous nodes
 static int node_previous(lua_State *L) {
   return node_nexter(L, ydb_node_previous_s);
 }
 
-/// Releases all locks held and attempts to acquire all requested locks, waiting if requested.
+/// Releases all locks held and attempts to acquire all requested locks, waiting as requested.
 // Raises an error if a lock could not be acquired.
+// If no timeout is supplied or is `nil`, wait forever; timeout of zero means try only once.
 // @function lock
 // @usage _yottadb.lock([{node_specifiers}[, timeout=0]])
 // @param[opt] {node_specifiers} table of cachearrays of variables/nodes to lock
@@ -494,12 +505,14 @@ static int lock(lua_State *L) {
       lua_pop(L, 1); // pop cachearray
     }
   }
-  unsigned long long timeout = luaL_optnumber(L, 2, 0) * 1000000000;
+  bool forever = lua_gettop(L) < 2 || lua_isnil(L, 2);
+  unsigned long long timeout_nsec = luaL_optnumber(L, 2, 0) * 1000000000;
+  if (forever) timeout_nsec = YDB_MAX_TIME_NSEC;
   int num_args = 2 + (num_nodes * 3); // timeout, num_nodes, [varname, subs_used, subsarray]*n
   gparam_list params;
   params.n = num_args;
   int arg_i = 0;
-  params.arg[arg_i++] = (void *)timeout;
+  params.arg[arg_i++] = (void *)timeout_nsec;
   params.arg[arg_i++] = (void *)(uintptr_t)num_nodes;
   for (int i = 0; i < num_nodes && i < MAX_ACTUALS; i++) {
     lua_geti(L, 1, i + 1);
@@ -511,7 +524,9 @@ static int lock(lua_State *L) {
     params.arg[arg_i++] = (void *)(uintptr_t)depth;
     params.arg[arg_i++] = (void *)array->subs;
   }
-  int status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, &params);
+  int status = YDB_LOCK_TIMEOUT;
+  do status = ydb_call_variadic_plist_func((ydb_vplist_func)&ydb_lock_s, &params);
+  while (forever && status == YDB_LOCK_TIMEOUT);
   ydb_assert(L, status);
   return 0;
 }

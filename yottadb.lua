@@ -18,7 +18,7 @@ local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]
 
 -- The following renames documentation section title "Functions" to "Low level functions". Blank line necessary:
 
---- Low level wrapper functions
+--- Basic low level functions
 -- @section
 
 --- Block or unblock YDB signals while M code is running.
@@ -197,7 +197,7 @@ local key = {}
 -- -- 11.0
 M.data = _yottadb.data
 
---- Deletes the value of a single database variable or node.
+--- Deprecated and replaced by `set(varname[, subsarray[, ...]], nil)`.
 -- @function delete_node
 -- @invocation yottadb.delete_node('varname'[, {subsarray}][, ...])
 -- @invocation yottadb.delete_node(cachearray)
@@ -207,15 +207,15 @@ M.data = _yottadb.data
 -- @example
 -- ydb = require('yottadb')
 -- ydb.set('^Population', {'Belgium'}, 1367000)
--- ydb.delete_node('^Population', {'Belgium'})
+-- ydb.delete_node('^Population', {'Belgium'})  -- or ydb.set('^Population', {'Belgium'}, nil)
 -- ydb.get('^Population', {'Belgium'})
 -- -- nil
 M.delete_node = _yottadb.delete
 
---- Deletes a database variable tree or node subtree.
--- @function delete_tree
--- @invocation yottadb.delete_tree('varname'[, {subsarray}][, ...])
--- @invocation yottadb.delete_tree(cachearray)
+--- Deletes a database variable tree (node and subnodes) or a node subtree.
+-- @function kill
+-- @invocation yottadb.kill('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.kill(cachearray)
 -- @param varname String of the database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
@@ -227,12 +227,20 @@ M.delete_node = _yottadb.delete
 -- -- 3929326
 -- ydb.get('^Population', {'USA', '18000804'})
 -- -- 5308483
--- ydb.delete_tree('^Population', {'USA'})
+-- ydb.kill('^Population', {'USA'})
 -- ydb.data('^Population', {'USA'})
 -- -- 0.0
-function M.delete_tree(varname, ...)
+function M.kill(varname, ...)
   return _yottadb.delete(varname, ..., true)
 end
+
+--- Deprecated and replaced by kill.
+-- @function delete_tree
+-- @param varname String of the database node (this can also be replaced by cachearray)
+-- @param[opt] subsarray Table of subscripts
+-- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
+-- @see kill
+M.delete_tree = M.kill
 
 --- Gets and returns the value of a database variable or node; or `nil` if the variable or node does not exist.
 -- @function get
@@ -278,9 +286,10 @@ M.incr = _yottadb.incr
 
 --- Releases all locks held and attempts to acquire all requested locks.
 -- Returns after `timeout`, if specified.
+-- If timeout is not supplied or is `nil`, wait forever; timeout of zero means try only once.
 -- Raises an error `yottadb.YDB_LOCK_TIMEOUT` if a lock could not be acquired.
--- @param[opt] nodes Table array containing {varname[, subs]} or node objects that specify the lock names to lock.
--- @param[opt] timeout Integer timeout in seconds to wait for the lock.
+-- @param[opt] nodes Table array of {varname[, subs]} elements or node objects that specify the lock names to lock.
+-- @param[opt] timeout Number timeout in seconds to wait for the lock.
 -- @return 0 (always)
 function M.lock(nodes, timeout)
   if not timeout then
@@ -301,11 +310,12 @@ function M.lock(nodes, timeout)
   _yottadb.lock(nodes_copy, timeout)
 end
 
---- Attempts to acquire or increment a lock named {varname, subsarray}.
+--- Attempts to acquire or increment a lock named varname[(subsarray)].
 -- Returns after `timeout`, if specified.
 -- Raises a `yottadb.YDB_LOCK_TIMEOUT` error if lock could not be acquired.
 --
--- *Caution:* timeout is *not* optional if `...` list of subscripts is provided.
+-- If timeout is not supplied or is `nil`, wait forever; timeout of zero means try only once.
+-- *Caution:* timeout is *not* optional if `...` list of subscripts is provided, but it may be `nil`.
 -- Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 -- @function lock_incr
 -- @invocation yottadb.lock_incr(varname[, {subs}][, ...][, timeout=0])
@@ -314,12 +324,35 @@ end
 -- @param varname of database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts or table subscripts
--- @param[opt] timeout Integer timeout in seconds to wait for the lock.
+-- @param[opt] timeout Number timeout in seconds to wait for the lock.
 --  Optional only if subscripts is a table.
 -- @return 0 (always)
+-- @see grab
+-- @see lock_decr
 M.lock_incr = _yottadb.lock_incr
 
---- Decrements a lock of the same name as {varname, subsarray}, releasing it if possible.
+--- Alias for lock_incr to acquire or increment a lock named varname[(subsarray)].
+-- Returns after `timeout`, if specified.
+-- Raises a `yottadb.YDB_LOCK_TIMEOUT` error if lock could not be acquired.
+--
+-- If timeout is not supplied or is `nil`, wait forever; timeout of zero means try only once.
+-- *Caution:* timeout is *not* optional if `...` list of subscripts is provided, but it may be `nil`.
+-- Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
+-- @function grab
+-- @invocation yottadb.grab(varname[, {subs}][, ...][, timeout=0])
+-- @invocation yottadb.grab(varname[, {subs}], ..., timeout=0)
+-- @invocation yottadb.grab(cachearray[, timeout=0])
+-- @param varname of database node (this can also be replaced by cachearray)
+-- @param[opt] subsarray Table of subscripts
+-- @param[opt] ... List of subscripts or table subscripts
+-- @param[opt] timeout Number timeout in seconds to wait for the lock.
+--  Optional only if subscripts is a table.
+-- @return 0 (always)
+-- @see lock_incr
+-- @see release
+M.grab = M.lock_incr
+
+--- Decrements a lock of the same name as varname[(subsarray)], releasing it if zero.
 -- Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 -- @function lock_decr
 -- @invocation yottadb.lock_decr('varname'[, {subsarray}][, ...])
@@ -328,7 +361,22 @@ M.lock_incr = _yottadb.lock_incr
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @return 0 (always)
+-- @see release
+-- @see lock_incr
 M.lock_decr = _yottadb.lock_decr
+
+--- Alias for lock_decr to decrement a lock of the same name as varname[(subsarray)], releasing it if zero.
+-- Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
+-- @function release
+-- @invocation yottadb.release('varname'[, {subsarray}][, ...])
+-- @invocation yottadb.release(cachearray)
+-- @param varname String of the database node (this can also be replaced by cachearray)
+-- @param[opt] subsarray Table of subscripts
+-- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
+-- @return 0 (always)
+-- @see lock_decr
+-- @see grab
+M.release = M.lock_decr
 
 --- Returns the full subscript list of the next node after a database variable or node.
 -- A next node chain started from varname will eventually reach all nodes under that varname in order.
@@ -895,9 +943,14 @@ function node:get(default)  return M.get(self) or default  end
 -- @see set
 function node:set(value)  assert_type(value, _string_number_nil, 1)  return M.set(self, value)  end
 
---- Delete database tree pointed to by node object.
--- @see delete_tree
+--- Deprecated and replaced by kill.
+-- @see node:kill
 function node:delete_tree()  return M.delete_tree(self)  end
+
+--- Delete database tree (node and subnodes) pointed to by node object.
+-- @function node:kill
+-- @see kill
+node.kill = node.delete_tree
 
 --- Increment `node`'s value.
 -- @param[opt=1] increment Amount to increment by (negative to decrement)
@@ -905,21 +958,44 @@ function node:delete_tree()  return M.delete_tree(self)  end
 -- @see incr
 function node:incr(...)  assert_type(..., _string_number_nil, 1, ":incr")  return M.incr(self, ...)  end
 
---- Releases all locks held and attempts to acquire a lock matching this node.
+--- Releases all locks held and attempts to acquire a lock matching only this node.
 -- Returns after `timeout`, if specified.
--- @param[opt] timeout Integer timeout in seconds to wait for the lock.
+-- If timeout is not supplied or is `nil`, wait forever; timeout of zero means try only once.
+-- @param[opt] timeout Number timeout in seconds to wait for the lock.
 -- @see lock
 function node:lock(...)  assert_type(..., _number_nil, 1, ":lock")  return M.lock({self}, ...)  end
 
 --- Attempts to acquire or increment a lock matching this node.
 -- Returns after `timeout`, if specified.
--- @param[opt] timeout Integer timeout in seconds to wait for the lock.
+-- If timeout is not supplied or is `nil`, wait forever; timeout of zero means try only once.
+-- @param[opt] timeout Number timeout in seconds to wait for the lock.
 -- @see lock_incr
+-- @see node:grab
+-- @see node:lock_decr
 function node:lock_incr(...)  assert_type(..., _string_number_nil, 1, ":lock_incr")  return M.lock_incr(self, ...)  end
 
---- Decrements a lock matching this node, releasing it if possible.
+--- Alias for node:lock_incr to acquire or increment a lock matching this node.
+-- Returns after `timeout`, if specified.
+-- If timeout is not supplied or is `nil`, wait forever; timeout of zero means try only once.
+-- @function node:grab
+-- @param[opt] timeout Number timeout in seconds to wait for the lock.
+-- @see grab
+-- @see node:lock_incr
+-- @see node:release
+node.grab = node.lock_incr
+
+--- Decrements a lock matching this node, releasing it if zero.
 -- @see lock_decr
+-- @see node:release
+-- @see node:lock_incr
 function node:lock_decr()  return M.lock_decr(self)  end
+
+--- Alias for node:lock_decr to decrement a lock matching this node, releasing it if zero.
+-- @function node:release
+-- @see release
+-- @see node:lock_decr
+-- @see node:grab
+node.release = node.lock_decr
 
 --- Return iterator over the *child* subscript names of a node (in M terms, collate from "" to "").
 -- Unlike `yottadb.subscripts()`, `node:subscripts()` returns all *child* subscripts, not subsequent *sibling* subscripts in the same level. <br>
@@ -1344,7 +1420,7 @@ end
 
 --- Deprecated way to delete database node value pointed to by node object.
 -- Prefer `node:set(nil)`
--- @see delete_node, set
+-- @see kill, set
 function key:delete_node() M.delete_node(self) end
 
 --- Deprecated way to get next *sibling* subscript.
@@ -1428,7 +1504,8 @@ function M.dump(node, ...)
   end
   local ok, err = pcall(node.gettree, node, nil, print_func)
   if not ok then
-    if err==too_many_lines_error then
+    -- note: use of sub() is for lua5.1 which returns not err, but err with a prefix containing line number
+    if err:sub(-#too_many_lines_error)==too_many_lines_error then
       table.insert(output, string.format("...etc.   -- stopped at %s lines; to show more use yottadb.dump(node, subscripts, maxlines)", maxlines))
     else  error(err)  end
   end

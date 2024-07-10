@@ -5,8 +5,8 @@ require('tests.strict')
 local table_dump = require('examples.startup')
 local _yottadb = require('_yottadb')
 local yottadb = require('yottadb')
-local lua_version = tonumber( string.match(_VERSION, " ([0-9]+[.][0-9]+)") )
-local ydb_release = tonumber( string.match(_yottadb.get('$ZYRELEASE'), "[A-Za-z]+ r([0-9]+[.][0-9]+)") )
+local lua_version = tonumber( _VERSION:match(" (%d+[.]%d+)") )
+local ydb_release = tonumber( _yottadb.get('$ZYRELEASE'):match("[A-Za-z]+ r([0-9]+[.][0-9]+)") )
 
 local lua_exec = 'lua'
 local i=0  while arg[i] do lua_exec = arg[i]  i=i-1  end
@@ -54,6 +54,8 @@ local function env_execute(command)
   command = 'env '..env..' '..command
   if lua_version <= 5.1 then
     -- simulate behaviour of os.execute in later Lua versions
+    local code = os.execute(command)/256
+    if code>0 and code<256 then  return true, 'signal', code  end
     return true, 'exit', os.execute(command)/256
   end
   local ok, typ, result = os.execute(command)
@@ -67,17 +69,27 @@ local function background_execute(command)
   return env_execute("bash -c '"..command.." &'")
 end
 
--- Sub-second timing
+-- Real-time sub-second timing to resolution of linux 'jiffies' (typically 0.01s)
 function _get_ticks()
-  return tonumber(assert(assert(io.popen'date +%s.%N'):read'*a'))  -- *a is for Lua <5.3
+    -- note: this function takes on the order of 6us to run on an a 1.8GHz x86 linux laptop
+    local f = assert(io.open('/proc/uptime'))
+    local time = tonumber(f:read('*n'))  -- *n is for Lua <5.3
+    f:close()
+    return time
 end
 _ticks = _get_ticks()
-function ticks(reset)
-  -- Return time elapsed real time to sub-second resolution
-  -- `reset` zeros the counter if it is not nil/false
+function elapsed(reset)
+  -- Return time elapsed real time since last call to sub-second resolution
+  -- If reset is anything other than nil and false, then reset counter to zero and still return elapsed time
   local t = _get_ticks()
+  local elapsed = t - _ticks
   if reset then  _ticks = t  end
-  return string.format("%.4f", t-_ticks)
+  return elapsed
+end
+
+function sleep(seconds)  -- sleep and handles ^C properly if pressed
+  local ok, type, code = env_execute("sleep " .. seconds)
+  assert(ok, string.format("Sleep failure with %s %s", type, code))
 end
 
 -- Create database in temporary directories using GDE
@@ -314,47 +326,44 @@ end
 
 -- Note: for some reason, this test must be run first to pass.
 function test_lock_incr()
+  local diff
   -- Varname only.
-  local t1 = os.clock()
+  elapsed(0)
   _yottadb.lock_incr('test1')
-  local t2 = os.clock()
-  assert(t2 - t1 < 0.1)
+  assert(elapsed() < 0.1, "Took " .. elapsed() .. "s to grab a free lock. Should be <0.1s.")
   _yottadb.lock_decr('test1')
 
   -- Varname and subscript.
-  t1 = os.clock()
+  elapsed(0)
   _yottadb.lock_incr('test2', {'sub1'})
-  t2 = os.clock()
-  assert(t2 - t1 < 0.1)
+  assert(elapsed() < 0.1, "Took " .. elapsed() .. "s to grab a free lock with subscript. Should be <0.1s.")
   _yottadb.lock_decr('test2', {'sub1'})
 
   -- Timeout, varname only.
   background_execute(lua_exec .. ' tests/lock.lua "^test1"')
-  os.execute('sleep 0.1')
-  local t1 = os.time()
-  local ok, e = pcall(_yottadb.lock_incr, '^test1', 1)
+  sleep(0.1)
+  elapsed(0)
+  local ok, e = pcall(_yottadb.lock_incr, '^test1', 0.2)
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_LOCK_TIMEOUT)
-  local t2 = os.time()
-  assert(t2 - t1 >= 1)
+  diff = elapsed()
+  assert(diff >= 0.1, "Took "..diff.."s to timeout rather than >=0.1s")
   -- Varname and subscript
   background_execute(lua_exec .. ' tests/lock.lua "^test2" "sub1"')
-  os.execute('sleep 0.1')
-  t1 = os.time()
-  ok, e = pcall(_yottadb.lock_incr, '^test2', {'sub1'}, 1)
+  sleep(0.1)
+  elapsed(0)
+  ok, e = pcall(_yottadb.lock_incr, '^test2', {'sub1'}, 0.2)
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_LOCK_TIMEOUT)
-  t2 = os.time()
-  assert(t2 - t1 >= 1)
-  os.execute('sleep 1')
+  diff = elapsed() assert(diff >= 0.1, "Took "..diff.."s to timeout rather than >=0.1s")
+  sleep(0.5)  -- make sure lock.lua finishes and releases the lock
 
-  -- No timeout.
+  -- Zero timeout.
   background_execute(lua_exec .. ' tests/lock.lua "^test2" "sub1"')
-  os.execute('sleep 2')
-  local t1 = os.clock()
-  _yottadb.lock_incr('^test2', {'sub1'})
-  local t2 = os.clock()
-  assert(t2 - t1 < 0.1)
+  sleep(0.6)  -- sleep long enough to be sure that lock.lua has released the lock
+  elapsed(0)
+  _yottadb.lock_incr('^test2', {'sub1'}, 0)
+  assert(elapsed() < 0.1)
 
   -- Test blocking other.
   local nodes_text = {
@@ -382,8 +391,8 @@ function test_lock_incr()
 
   -- Test lock being blocked.
   background_execute(lua_exec .. ' tests/lock.lua "^test1"')
-  os.execute('sleep 0.1')
-  local ok, e = pcall(_yottadb.lock, {_yottadb.cachearray_create("^test1")})
+  sleep(0.1)
+  local ok, e = pcall(_yottadb.lock, {_yottadb.cachearray_create("^test1")}, 0)
   assert(not ok)
   asserteq(yottadb.get_error_code(e), _yottadb.YDB_LOCK_TIMEOUT)
 
@@ -582,12 +591,12 @@ function test_tp_return_YDB_TP_RESTART_reset_all()
   local tracker = {'tptests', {'test_tp_return_YDB_TP_RESTART_reset_all', 'resetcount'}}
   _yottadb.delete(table.unpack(key))
 
-  local timeout = os.time() + 1
+  elapsed(0)
 
   _yottadb.tp({'*'}, function()
     _yottadb.incr(key[1], key[2])
-    if os.time() < timeout then return _yottadb.YDB_TP_RESTART end
-    os.execute('sleep 0.1')
+    if elapsed() < 1 then return _yottadb.YDB_TP_RESTART end
+    sleep(0.1)
   end)
 
   asserteq(_yottadb.get(table.unpack(key)), '1')
@@ -729,12 +738,12 @@ end
 function test_tp_reset_some()
   _yottadb.set('resetattempt', '0')
   _yottadb.set('resetvalue', '0')
-  local timeout = os.time() + 1
+  elapsed(0)
   _yottadb.tp({'resetvalue'}, function()
     _yottadb.incr('resetattempt', '1')
     _yottadb.incr('resetvalue', 1)
-    if not (_yottadb.get('resetattempt') == '2' or os.time() >= timeout) then
-      os.execute('sleep 0.1')
+    if not (_yottadb.get('resetattempt') == '2' or elapsed() >= 1) then
+      sleep(0.1)
       return _yottadb.YDB_TP_RESTART
     end
   end)
@@ -1533,10 +1542,9 @@ end
 
 function test_key_lock()
   local key = yottadb.key('test1')('sub1')('sub2')
-  local t1 = os.clock()
-  key:lock_incr()
-  local t2 = os.clock()
-  assert(t2 - t1 < 0.1)
+  elapsed(0)
+  key:lock_incr(0)
+  assert(elapsed() < 0.1)
   key:lock_decr()
 end
 
@@ -1745,18 +1753,16 @@ function test_node_lock()
   local command = lua_exec .. [[ -e "yottadb=require'yottadb' pcall(yottadb.lock_incr, 'testlock', 'sub1', 1)"]]
   local start, diff
   -- lock and make sure a subprocess can't access it
-  node:lock_incr()
-  start = os.time()
+  node:lock_incr(0)
+  elapsed(0)
   env_execute(command)
-  diff = os.difftime(os.time(), start)
-  assert(diff >= 1)
+  assert(elapsed() >= 1)
   -- unlock and test again
   node:lock_decr()
-  start = os.time()
+  elapsed(0)
   env_execute(command)
-  diff = os.difftime(os.time(), start)
-  if not (diff < 3) then  print("difftime=" .. diff)  end  -- help debugging next time since this is an occasional error
-  assert(diff < 3)
+  diff = elapsed()
+  assert(diff < 3, "Error: elapsed_time=" .. diff .. " but should be <3")
 end
 
 function test_module_transactions()
