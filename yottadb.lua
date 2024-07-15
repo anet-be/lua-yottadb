@@ -966,7 +966,7 @@ end
 -- @param[opt] default specify the value to return if the node has no data; if not supplied, `nil` is the default
 -- @return value of the node
 -- @see get
-function node:get(default)  return M.get(self) or default  end
+function node:get(default)  return _yottadb.get(self) or default  end
 
 --- Set `node`'s value.
 -- Equivalent to `node.__ = x`, but 4x slower.
@@ -974,7 +974,7 @@ function node:get(default)  return M.get(self) or default  end
 -- @param value New value or `nil` to delete node
 -- @return value
 -- @see set
-function node:set(value)  assert_type(value, _string_number_nil, 1)  return M.set(self, value)  end
+function node:set(value)  return _yottadb.set(self, value)  end
 
 --- Delete database tree (node and subnodes) pointed to by node object.
 -- @see node:kill
@@ -1215,7 +1215,7 @@ function node:__pairs(reverse)
     local subscript = actuator(subnode)
     subnode = _yottadb.cachearray_subst(subnode, subscript or '')
     if subscript==nil then return  nil  end
-    local value = M.get(subnode)
+    local value = _yottadb.get(subnode)
     return subnode, value, subscript
   end
   return iterator, nil, ''  -- iterate using child from ''
@@ -1313,9 +1313,7 @@ end
 --      and if so, invokes the method itself if self is a member of metatable 'node'
 -- @param k Node attribute to look up
 function node:__index(k)
--- todo: replace table ref M.get with a local function get() for 40% faster
--- this will prevent substituting M.get with another function, but that is better done with inheritance anyway
-  if k == '__' then  return M.get(self)  end  -- fast but only works if metatable is top-level superclass node
+  if k == '__' then  return _yottadb.get(self)  end  -- fast but only works if metatable is top-level superclass node, cf. subclass_index alternate
   local __end = '__\xff'
   if type(k)=='string' and k < __end and k >= '__' then  -- fastest way to check if k:startswith('__') -- with majority case (lowercase key values) falling through fastest
     return node[string.sub(k, 3)]  -- remove leading '__' to return node:method
@@ -1338,7 +1336,7 @@ end
 -- but that would not work consistently, e.g. node = 3 would set Lua local
 function node:__newindex(k, v)
   if k == '__' then
-    M.set(self, v)  -- fast but only works if metatable is top-level superclass node
+    _yottadb.set(self, v)  -- fast but only works if metatable is top-level superclass node, cf. subclass_newindex alternate
   else
     error(string.format("Tried to set node object %s. Did you mean to set %s.__ instead?", self[k], self[k]), 2)
   end
@@ -1434,7 +1432,7 @@ node.depth = _yottadb.cachearray_depth
 --   `yottadb.YDB_DATA_NOVALUE_DESC` (no value, subtree) or <br>
 --   `yottadb.YDB_DATA_VALUE_DESC` (value and subtree)
 -- @function node:data
-node.data = M.data
+node.data = _yottadb.data
 --- Return true if the node has a value; otherwise false.
 function node:has_value()  return node.data(self)%2 == 1  end
 --- Return true if the node has a tree; otherwise false.
