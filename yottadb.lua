@@ -133,6 +133,15 @@ local function assert_strings(t, name, narg)
   return t
 end
 
+local function rawtostring(value)
+  local setmeta = type(value)=='userdata' and _yottadb.cachearray_setmetatable or setmetatable
+  local metatable = getmetatable(value)
+  setmeta(value, nil)
+  local result = tostring(value)
+  setmeta(value, metatable)
+  return result
+end
+
 -- ~~~ Support for Lua versions prior to 5.4 ~~~
 
 --- Create isinteger(n) that also works in Lua < 5.3 but is fast in Lua >=5.3.
@@ -171,7 +180,7 @@ function M.get_error_code(message)
   return tonumber(assert_type(message, 'string', 1):match('YDB Error: (%-?%d+):'))
 end
 
--- Object that represents a YDB node.
+-- Class metatable for an object that represents a YDB node.
 local node = {}
 
 -- Deprecated object that represents a YDB node.
@@ -873,7 +882,7 @@ end
 --- @section end
 
 
---- Class node
+--- Node class operations
 -- @section
 
 --- Creates an object that represents a YottaDB node.
@@ -886,11 +895,11 @@ end
 -- * Several standard Lua operators work on nodes. These are: `+` `-` `=` `pairs()` `tostring()`
 -- * Although the syntax `node:method()` is pretty, be aware that it is slow. If you need speed, prefix the node method
 -- with two underscores, `node:__method()`, which is equivalent, but 15x faster. 
--- The former is slow because in Lua, `node:method()` is syntactic sugar which expands to `node.method(node)`,
+-- The former is slow because in Lua, `node:method(...)` is syntactic sugar which expands to `node.method(node, ...)`,
 -- causing lua-yottadb to create an intermediate node object `node.method`. It is only when this new object gets called
--- with `()`, and the first parameter is of type `node`, that lua-yottadb detects it was supposed to be a method access
--- and invokes `node.__method()`, discarding the intermediate subnode object it created.
--- * Because the `__` prefix accesses *methods* names (as above), it cannot access *node* names.
+-- with `(node, ...)`, and the first parameter is of type `node`, that the `__call` metamethod detects it was supposed to
+-- be a method access and invokes `node.__method()`, discarding the intermediate subnode object it created.
+-- * Because the `__` prefix accesses *method* names (as above), it cannot access database subnode names starting with `__`.
 -- Instead, use mynode('__nodename') to access a database node named `__nodename`.
 -- * This `__` prefix handling also means that object method names that start with two underscores, like `__tostring`,
 -- are only accessible with an *additional* `__` prefix; for example, `node:____tostring()`.
@@ -930,8 +939,27 @@ function M.node(varname, ...)
   return self
 end
 
+--- Tests whether object is a node object or inherits from a node object.
+-- @param object to test
+-- @return boolean true or false
+function M.isnode(object)
+  if type(object) ~= 'userdata' then  return false  end
+  local class = getmetatable(object)
+  while class do
+    if class == node then  return true  end
+    class = rawget(class, '__superclass')
+  end
+  return false
+end
+
+--- @section end
+
+--- Node class
+-- @section
+
 --- Get `node`'s value.
 -- Equivalent to `node.__`, but 2.5x slower.
+-- If node is subclassed, then `node.__` invokes the subclass's `node:__get()` if it exists.
 -- @param[opt] default specify the value to return if the node has no data; if not supplied, `nil` is the default
 -- @return value of the node
 -- @see get
@@ -939,18 +967,20 @@ function node:get(default)  return M.get(self) or default  end
 
 --- Set `node`'s value.
 -- Equivalent to `node.__ = x`, but 4x slower.
+-- If node is subclassed, then `node.__ = x` invokes the subclass's `node:__set(x)` if it exists.
 -- @param value New value or `nil` to delete node
+-- @return value
 -- @see set
 function node:set(value)  assert_type(value, _string_number_nil, 1)  return M.set(self, value)  end
 
---- Deprecated and replaced by kill.
--- @see node:kill
-function node:delete_tree()  return M.delete_tree(self)  end
-
 --- Delete database tree (node and subnodes) pointed to by node object.
--- @function node:kill
+-- @see node:kill
+function node:kill()  return M.kill(self)  end
+
+--- Deprecated and replaced by kill.
+-- @function node:delete_tree
 -- @see kill
-node.kill = node.delete_tree
+node.delete_tree = node.kill
 
 --- Increment `node`'s value.
 -- @param[opt=1] increment Amount to increment by (negative to decrement)
@@ -1121,7 +1151,7 @@ function node:gettree(maxdepth, filter, _value, _depth)
     assert_type(filter, _function_nil, 2, ":gettree")
     _depth = _depth or 0
     maxdepth = maxdepth or 1/0  -- or infinity
-    _value = node.get(self)
+    _value = self:__get()
     if filter then  _value = filter(self, '', _value, true, _depth)  end
   end
   local tbl = {}
@@ -1207,20 +1237,32 @@ node.pairs = node.__pairs
 
 -- Creates and returns a new node with the given subscript(s) ... added.
 -- If no subscripts supplied, return a copy of the node
--- @param ... string list of subscripts
+-- @param ... string/number list of subscripts
 function node:__call(...)
-  if getmetatable(...)==node then
-    local name = _yottadb.cachearray_subscript(self, -1)
-    local method = node[name]
-    assert(method, string.format("could not find node method '%s()' on node %s", node.name(self), ...))
-    return method(...) -- first parameter of '...' is parent, as the method call will expect
+  if ... and type(...)=='userdata' then  -- 'userdata' is a fast way to test parameters are not strings to append
+    -- This code is invoked when the user does node:method(x), which Lua translates to:
+    --      node.method(node, x)
+    -- Since we have redefined __index to create a subnode, the above first call index to create subnode node.method.
+    -- Then Lua sees the (node, x) part of the command, which invokes `__call`:
+    --      `node.__call(method_subnode, node, x)`
+    -- where method_subnode gets mapped onto this function's `self`.
+    -- Below we look up the name of method_subnode `self` to get the name of the method we are supposed to call.
+    local method_name = _yottadb.cachearray_subscript(self, -1)
+    local class = getmetatable(...)
+    local method_found
+    repeat
+      method_found = class[method_name]
+      class = class.__superclass
+    until method_found or not class
+    assert(method_found, string.format("could not find node method '%s' on node %s", method_name, ...))
+    return method_found(...) -- first parameter of '...' is parent, as the method call will expect
   end
   return _yottadb.cachearray_append(self, ...)
 end
 
 -- Returns whether this node is equal to the given object.
--- This is value equality, not reference equality;
---   equivalent to tostring(self)==tostring(other) but faster.
+-- This checks wither node A has the same varname and subscripts as node B:
+--   equivalent to tostring(self)==tostring(other), but faster.
 -- @param other Alternate node to compare self against
 function node:__eq(other)
   if type(other) ~= 'userdata' then  return false  end
@@ -1255,22 +1297,34 @@ function node:__tostring()
   return varname .. '(' .. subscripts .. ')'
 end
 
--- Returns indexes into the node
+-- Returns index `k` of the node
 -- Search order for node attribute k:
---   node value, if k=='__' (node property, not a method -- does not require invoking with ()
---   node method, if k starts with '__' (k:__method() is the same as k:method() but 15x faster at ~200ns)
+--   node value when k=='__' -- this is a node property, not a method, so does not require invoking with ()
+--   node method when k starts with '__' (k:__method() is the same as k:method() but 15x faster at ~200ns)
 --   if nothing found, returns a new dbase subnode with subscript k
 --   node:method() also works as a method as follows:
 --      lua translates the ':' to node.method(self)
---      so first as subnode called node.method is created
---      and when invoked with () it checks whether the first parameter is self
---      and if so, invokes the method itself if it is a member of metatable 'node'
+--      so first a subnode called node.method is created
+--      and when invoked with parameter (self), `__call` checks whether the first parameter is self
+--      and if so, invokes the method itself if self is a member of metatable 'node'
 -- @param k Node attribute to look up
 function node:__index(k)
-  if k == '__' then  return M.get(self)  end
+-- todo: replace table ref M.get with a local function get() for 40% faster
+-- this will prevent substituting M.get with another function, but that is better done with inheritance anyway
+  if k == '__' then  return M.get(self)  end  -- fast but only works if metatable is top-level superclass node
   local __end = '__\xff'
   if type(k)=='string' and k < __end and k >= '__' then  -- fastest way to check if k:startswith('__') -- with majority case (lowercase key values) falling through fastest
     return node[string.sub(k, 3)]  -- remove leading '__' to return node:method
+  end
+  return _yottadb.cachearray_append(self, k)
+end
+
+-- A generic version of `node:__index` for subclasses (slower, but works for subobject lookup)
+local function subclass__index(self, k)
+  if k == '__' then  return self:__get()  end  -- access subclass-overriden method if it exists
+  local __end = '__\xff'
+  if type(k)=='string' and k < __end and k >= '__' then  -- fastest way to check if k:startswith('__') -- with majority case (lowercase key values) falling through fastest
+    return getmetatable(self)[string.sub(k, 3)]  -- remove leading '__' to return node:method
   end
   return _yottadb.cachearray_append(self, k)
 end
@@ -1280,11 +1334,24 @@ end
 -- but that would not work consistently, e.g. node = 3 would set Lua local
 function node:__newindex(k, v)
   if k == '__' then
-    M.set(self, v)
+    M.set(self, v)  -- fast but only works if metatable is top-level superclass node
   else
     error(string.format("Tried to set node object %s. Did you mean to set %s.__ instead?", self[k], self[k]), 2)
   end
 end
+
+-- A generic version of `node:__newindex` for subclasses (slower but works for setting subobjects)
+local function subclass__newindex(self, k, v)
+  if k == '__' then
+    self:__set(v)  -- access subclass-overriden method if it exists
+  else
+    node.__newindex(self, k, v)  -- call original function to handle the identical error message
+  end
+end
+
+--- Return raw representation of node's unique memory address.
+-- @return string in hexadecimal format, starting with `0x`.
+function node:__repr()  return rawtostring(self):match(' ([x%x]+)') or rawtostring(self)  end
 
 -- Set up garbage collector for cachearrays when we're using our own implementation of lua_setuservalue()
 if lua_version < 5.3 then
@@ -1293,7 +1360,60 @@ end
 
 --- @section end
 
---- Node properties
+--- Node class operations
+-- @section
+
+--- Create a new node class that inherits from the yottadb.node superclass.
+-- The returned function will generate nodes of a new class (a new metatable). You may add or
+-- override class methods by adding them to `new_metatable` either before or after calling inherit.
+-- Any class method the user does not define in `new_metatable` will default to the class method of the superclass.
+-- If desired, the new class may be further subclassed, also using `inherit`. Refer to the example below, and further
+-- explanation in the [README](https://github.com/anet-be/lua-yottadb#class-inheritance).
+-- @function M.inherit
+-- @param node_func `yottadb.node` or a descendent that inherits from it using `inherit`
+-- @param[opt] metatable to use for the new node class. Defaults to `{}`.
+-- @return function that generates node of the new type
+-- @return subclass metatable (modified)
+-- @return superclass metatable used by the original node_func
+-- @example
+-- -- To average all data stored in a particular database node:
+-- averaged_node, class, superclass = ydb.inherit(ydb.node)
+-- function class:set(value)  sum=sum+value  writes=writes+1  return superclass.set(self, value)  end
+--
+-- -- Now use the new class
+-- sum, writes = 0, 0
+-- shoesize = averaged_node('shoesize')
+-- shoesize:set(5)
+-- shoesize:set(10)
+-- shoesize.__ = 15  -- overriding set() also changes the behaviour of: .__ =
+-- print('Average', sum/writes)
+-- -- Average 10.0
+function M.inherit(node_func, new_metatable)
+  assert_type(node_func, 'function', 1)
+  local super_object = node_func('tmp')  -- create an instance of the user's specified node() function to get its metatable
+  assert(M.isnode(super_object), "inherit() arg #1 must be a function that produces an instance of yottadb.node or something inherited from it")
+  local subclass = new_metatable or {}
+  subclass.__superclass = getmetatable(super_object)
+  subclass.__index = subclass.__index or subclass__index  -- don't use node.__index because it is only for super class (the sake of speed)
+  subclass.__newindex = subclass.__newindex or subclass__newindex  -- don't use node.__newindex because it is only for super class (the sake of speed)
+  -- Make heirs of node inherit all the __ methods of node except for those already in subclass.
+  -- Note that I considered making __index auto-search through parent's methods rather than
+  -- copying all the parent's methods. It would require setting the metatable's __index to the
+  -- parent metatable. But this would mean it would have to look up even the __index method
+  -- in every parent which is a speed-critical method. So it would be slower and more complicated.
+  for k,v in pairs(node) do  subclass[k] = subclass[k] or v  end
+  -- return a function that produces a node with above metatable
+  local newfunc = function(...)
+    local self = node_func(...)
+    _yottadb.cachearray_setmetatable(self, subclass)  -- change to new class type
+    return self
+  end
+  return newfunc, subclass, subclass.__superclass
+end
+
+-- @section end
+
+--- Node class properties
 -- @section
 
 --- Fetch the varname of the node: the leftmost subscript.
@@ -1326,7 +1446,7 @@ end
 
 -- ~~~ Deprecated object that represents a YDB node ~~~
 
---- Class key
+--- Key class
 -- @section
 
 --- Creates an object that represents a YDB node; deprecated after v0.1. <br>
@@ -1356,6 +1476,14 @@ end
 -- for backward compatibility, shown below.
 -- @type key
 
+-- @section end
+
+-- Ldoc seems to require the following section name re-statement to prevent class being called "Class Key" in the docs
+-- It also needs blank lines around it.
+
+--- Key class
+-- @section
+
 -- Inherit node methods/properties
 for k, v in pairs(node) do  key[k]=v  if string.sub(k,1,2)~='__' then key['__'..k]=v end  end
 
@@ -1382,7 +1510,7 @@ key_properties = {
   __subsarray = key.subsarray,  -- retained for backward compatibility
 }
 
-local key_values = {}
+local key_values = {}  -- Simulate node attribute storage using another table of tables since userdata can't store values
 
 -- Returns indexes into the key
 -- Search order for key attribute k:
@@ -1493,11 +1621,18 @@ function M.dump(node, ...)
   if select('#',...)>0 and type(...)=='table' then  subs, maxlines = ...
   else  subs, maxlines = {...}, nil  end
   maxlines = maxlines or 30
-  node = M.node(node, subs)  -- make sure it's a node object, not a varname
+  -- print node address if it is a userdata
+  local output = {}
+  local address = ''
+  if M.isnode(node) then
+    address = ' (cachearray ' .. node:____repr() .. ')'
+  else
+    node = M.node(node, subs)  -- make varname, subs into a node object
+  end
+  output[1] = tostring(node) .. address
 
   local too_many_lines_error = "Too many lines"
-  local output = {}
-  local function print_func(node, sub, val)
+  local function print_func(node, _sub, val)
     if not val then  return  end
     table.insert(output, string.format('%s=%s', node, q_number(val) or string.format('%q',val)))
     assert(#output < maxlines, too_many_lines_error)
@@ -1507,14 +1642,12 @@ function M.dump(node, ...)
     -- note: use of sub() is for lua5.1 which returns not err, but err with a prefix containing line number
     if err:sub(-#too_many_lines_error)==too_many_lines_error then
       table.insert(output, string.format("...etc.   -- stopped at %s lines; to show more use yottadb.dump(node, subscripts, maxlines)", maxlines))
-    else  error(err)  end
+    else  error(err .. ' in pcall above the stated line')  end
   end
-  if #output == 0 then  return tostring(node)  end
   return table.concat(output, '\n')
 end
 
-
--- Useful for user to check whether an object's metatable matches node type
+-- Useful for debugging to check whether an object's metatable matches node superclass type
 M._node = node
 M._key = key
 M._key_properties = key_properties

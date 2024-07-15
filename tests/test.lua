@@ -1765,6 +1765,23 @@ function test_node_lock()
   assert(diff < 3, "Error: elapsed_time=" .. diff .. " but should be <3")
 end
 
+function test_node_grab()
+  local node = yottadb.node('testlock2').sub1
+  local command = lua_exec .. [[ -e "yottadb=require'yottadb' pcall(yottadb.grab, 'testlock2', 'sub1', 1)"]]
+  local start, diff
+  -- lock and make sure a subprocess can't access it
+  node:grab(0)
+  elapsed(0)
+  env_execute(command)
+  assert(elapsed() >= 1)
+  -- unlock and test again
+  node:release()
+  elapsed(0)
+  env_execute(command)
+  diff = elapsed()
+  assert(diff < 3, "Error: elapsed_time=" .. diff .. " but should be <3")
+end
+
 function test_module_transactions()
   -- Simple transaction.
   local simple_transaction = yottadb.transaction(function(key1, value1, key2, value2, n)
@@ -1912,6 +1929,7 @@ end
 local inserted_tree = {__='berwyn', [0]='null', [-1]='negative', weight=78, ['!@#$']='junk', appearance={__='handsome', eyes='blue', hair='blond'}, age=yottadb.delete}
 
 local expected_tree_dump = [=[
+test("sub1")
 test("sub1")="berwyn"
 test("sub1",-1)="negative"
 test("sub1",0)="null"
@@ -1972,9 +1990,11 @@ function test_settree()
   -- check that set_tree() filter param works
   local function filter(node, key, value)  if key=='nogarble' then key,value='_nogarble','fixed' end  return key, value  end
   node = yottadb.node('test', 'sub1')
-  inserted_tree['!@#$'] = yottadb.DELETE    -- test that delete function works
-  inserted_tree['nogarble'] = '!@#$'
-  node:settree(inserted_tree, filter)
+  -- Duplicate table but with some keys changed (don't change in-place in case this test is re-run)
+  local reinsert={}  for k,v in pairs(inserted_tree) do  reinsert[k]=v  end
+  reinsert['!@#$'] = yottadb.DELETE    -- test that delete function works
+  reinsert['nogarble'] = '!@#$'
+  node:settree(reinsert, filter)
   local tree_dump2 = yottadb.dump('test', 'sub1')
   local expected_tree_dump2 = expected_tree_dump:gsub('%!%@%#%$', '_nogarble'):gsub('junk', 'fixed')
   asserteq(tree_dump2, expected_tree_dump2)
@@ -2060,7 +2080,7 @@ function test_deprecated_readme()
 
   key1.value = 'Hello World' -- reset the value of '^hello'
   asserteq(key1.value, 'Hello World')
-  key1:delete_tree() -- delete both the value at the '^hello' node and all of its children
+  key1:kill() -- delete both the value at the '^hello' node and all of its children
   assert(not key1.value)
   assert(not key1:subscripts()())
 end
@@ -2213,7 +2233,43 @@ function test_cachearray_garbage()
   asserteq(initial_ram, collectgarbage("count")*1024)
 end
 
+function test_inheritance()
+  local type2 = yottadb.inherit(yottadb.node)
+  local type3 = yottadb.inherit(type2)
+  local x, y, z = yottadb.node('x'), type2('y'), type3('z')
+  assert(not yottadb.isnode('abc'))
+  assert(not yottadb.isnode(1))
+  assert(yottadb.isnode(x))
+  assert(yottadb.isnode(y))
+  assert(yottadb.isnode(z))
+
+  -- The rest of this test works by re-testing several existing tests
+  -- but first setting yottadb.node to an inherited version of itself.
+  -- This makes sure that all these tests also work on inherited nodes.
+  local original_ydb_func, original_ydb_class = yottadb.node, yottadb._node
+
+  local to_retest = {'test_integer_subscripts', 'test_node', 'test_settree'}
+  yottadb.node, yottadb._node = yottadb.inherit(yottadb.node)
+  for _,test in ipairs(to_retest) do
+    run_test(test, test..'_inheritance')
+  end
+
+  yottadb.node, yottadb._node = original_ydb_func, original_ydb_class
+end
+
 -- Run tests.
+local failed = 0
+function run_test(test, dbase_name_override)
+  dbase_name_override = dbase_name_override or test
+  print(string.format('Running %s.', test))
+  setup(dbase_name_override)
+  local ok, e = xpcall(_G[test], function(e)
+    print(string.format('Failed!\n%s', debug.traceback(type(e) == 'string' and e or e.message, 4)))
+    failed = failed + 1
+  end)
+  teardown()
+end
+
 print('Starting test suite.')
 local tests = {}
 local skipped = 0
@@ -2236,17 +2292,10 @@ else
   end
 end
 table.sort(tests)
-local failed = 0
 cleanup()
 setup('test')   -- in case I remove subsequent setups for debugging, make sure there is at least one
 for i = 1, #tests do
-  print(string.format('Running %s.', tests[i]))
-  setup(tests[i])
-  local ok, e = xpcall(_G[tests[i]], function(e)
-    print(string.format('Failed!\n%s', debug.traceback(type(e) == 'string' and e or e.message, 3)))
-    failed = failed + 1
-  end)
-  teardown()
+  run_test(tests[i])
 end
 cleanup()
 print(string.format('%d/%d tests passed (%d skipped)', #tests - failed, #tests, skipped))

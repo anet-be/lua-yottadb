@@ -89,9 +89,9 @@ Return whether a node has a value or subtree.
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-delete_node (varname[, subsarray[, ...]])
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+delete_node (varname[, subsarray[, ...]])  [deprecated v3.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated and replaced by ``set(varname[, subsarray[, ...]], nil)``.
 
@@ -126,9 +126,9 @@ Deprecated and replaced by ``set(varname[, subsarray[, ...]], nil)``.
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-delete_tree (varname[, subsarray[, ...]])
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+delete_tree (varname[, subsarray[, ...]])  [deprecated v3.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated and replaced by kill.
 
@@ -1174,9 +1174,80 @@ and matching M file `arithmetic.m <https://github.com/anet-be/lua-yottadb/blob/m
 
 
 
-++++++++++++
-Class node
-++++++++++++
++++++++++++++++++++++++
+Node class operations
++++++++++++++++++++++++
+
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+inherit (node_func[, metatable])
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a new node class that inherits from the yottadb.node superclass.
+The returned function will generate nodes of a new class (a new metatable). You may add or
+override class methods by adding them to ``new_metatable`` either before or after calling inherit.
+Any class method the user does not define in ``new_metatable`` will default to the class method of the superclass.
+If desired, the new class may be further subclassed, also using ``inherit``. Refer to the example below, and further
+explanation in the `README <https://github.com/anet-be/lua-yottadb#class-inheritance>`_.
+
+
+
+* ``node_func``:
+  ``yottadb.node`` or a descendent that inherits from it using ``inherit``
+
+* ``metatable``:
+  (*optional*)
+  to use for the new node class. Defaults to ``{}``.
+
+
+:Returns:
+  #. function that generates node of the new type
+
+  #. subclass metatable (modified)
+
+  #. superclass metatable used by the original node_func
+
+
+
+
+:Example:
+
+  .. code-block:: lua
+    :dedent: 2
+    :force:
+
+      -- To average all data stored in a particular database node:
+      averaged_node, class, superclass = ydb.inherit(ydb.node)
+      function class:set(value)  sum=sum+value  writes=writes+1  return superclass.set(self, value)  end
+
+      -- Now use the new class
+      sum, writes = 0, 0
+      shoesize = averaged_node('shoesize')
+      shoesize:set(5)
+      shoesize:set(10)
+      shoesize.__ = 15  -- overriding set() also changes the behaviour of: .__ =
+      print('Average', sum/writes)
+      -- Average 10.0
+
+
+
+~~~~~~~~~~~~~~~~~
+isnode (object)
+~~~~~~~~~~~~~~~~~
+
+Tests whether object is a node object or inherits from a node object.
+
+
+
+* ``object``:
+  to test
+
+
+:Returns:
+    boolean true or false
+
 
 
 
@@ -1195,11 +1266,11 @@ Calling this on an existing node ``yottadb.node(node)`` creates an (immutable) c
  * Several standard Lua operators work on nodes. These are: ``+`` ``-`` ``=`` ``pairs()`` ``tostring()``
  * Although the syntax ``node:method()`` is pretty, be aware that it is slow. If you need speed, prefix the node method
    with two underscores, ``node:__method()``, which is equivalent, but 15x faster.
-   The former is slow because in Lua, ``node:method()`` is syntactic sugar which expands to ``node.method(node)``,
+   The former is slow because in Lua, ``node:method(...)`` is syntactic sugar which expands to ``node.method(node, ...)``,
    causing lua-yottadb to create an intermediate node object ``node.method``. It is only when this new object gets called
-   with ``()``, and the first parameter is of type ``node``, that lua-yottadb detects it was supposed to be a method access
-   and invokes ``node.__method()``, discarding the intermediate subnode object it created.
- * Because the ``__`` prefix accesses *methods* names (as above), it cannot access *node* names.
+   with ``(node, ...)``, and the first parameter is of type ``node``, that the ``__call`` metamethod detects it was supposed to
+   be a method access and invokes ``node.__method()``, discarding the intermediate subnode object it created.
+ * Because the ``__`` prefix accesses *method* names (as above), it cannot access database subnode names starting with ``__``.
    Instead, use mynode('__nodename') to access a database node named ``__nodename``.
  * This ``__`` prefix handling also means that object method names that start with two underscores, like ``__tostring``,
    are only accessible with an *additional* ``__`` prefix; for example, ``node:____tostring()``.
@@ -1240,6 +1311,13 @@ Calling this on an existing node ``yottadb.node(node)`` creates an (immutable) c
       yottadb.node('varname', {'sub1', 'sub2'})
       yottadb.node('varname').sub1.sub2
       yottadb.node('varname')['sub1']['sub2']
+
+
+
+++++++++++++
+Node class
+++++++++++++
+
 
 
 
@@ -1331,9 +1409,24 @@ Mutability can be tested for using ``node:ismutable()``
 
 
 
-~~~~~~~~~~~~~~~~~~~~~
-node:delete_tree ()
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
+node:__repr ()
+~~~~~~~~~~~~~~~~
+
+Return raw representation of node's unique memory address.
+
+
+
+:Returns:
+    string in hexadecimal format, starting with ``0x``.
+
+
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+node:delete_tree ()  [deprecated v3.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated and replaced by kill.
 
@@ -1369,6 +1462,7 @@ node:get ([default])
 
 Get ``node``'s value.
 Equivalent to ``node.__``, but 2.5x slower.
+If node is subclassed, then ``node.__`` invokes the subclass's ``node:__get()`` if it exists.
 
 
 
@@ -1569,12 +1663,16 @@ node:set (value)
 
 Set ``node``'s value.
 Equivalent to ``node.__ = x``, but 4x slower.
+If node is subclassed, then ``node.__ = x`` invokes the subclass's ``node:__set(x)`` if it exists.
 
 
 
 * ``value``:
   New value or ``nil`` to delete node
 
+
+:Returns:
+    value
 
 
 
@@ -1679,9 +1777,9 @@ Note that ``subscripts()`` order is guaranteed to equal the M collation sequence
 
 
 
-+++++++++++++++++
-Node properties
-+++++++++++++++++
++++++++++++++++++++++++
+Node class properties
++++++++++++++++++++++++
 
 
 
@@ -1793,51 +1891,15 @@ Fetch the varname of the node: the leftmost subscript.
 
 
 +++++++++++
-Class key
+Key class
 +++++++++++
 
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-key (varname[, subsarray])
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Creates an object that represents a YDB node; deprecated after v0.1.
-
-``key()`` is a subclass of ``node()`` designed to implement deprecated
-property names for backward compatibility, as follows:
-
- * ``name`` (this node's subscript or variable name)
- * ``value`` (this node's value in the YottaDB database)
- * ``data`` (see ``data()``)
- * ``has_value`` (whether or not this node has a value)
- * ``has_tree`` (whether or not this node has a subtree)
- * ``__varname`` database variable name string -- for compatibility with a previous version
- * ``__subsarray`` table array of database subscript name strings -- for compatibility with a previous version
-   and deprecated definitions of ``key:subscript()``, ``key:subscript_next()``, ``key:subscript_previous()``
-
-
-
-
-* ``varname``:
-  String variable name.
-
-* ``subsarray``:
-  (*optional*)
-  list of subscripts or table subscripts
-
-
-:Returns:
-    key object of the specified node with metatable ``yottadb._key``
-
-
-
-
-
-~~~~~~~~~~~~~~~~
-key._property_
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+_property_  [deprecated v1.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Properties of key object that are accessed with a dot.
 These properties, listed below, are unlike object methods, which are accessed with a colon.
@@ -1873,9 +1935,45 @@ For example, access data property with: ``key.data``
 
 
 
-~~~~~~~~~~~~~~~~~~~~
-key:delete_node ()
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+key (varname[, subsarray])  [deprecated v1.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Creates an object that represents a YDB node; deprecated after v0.1.
+
+``key()`` is a subclass of ``node()`` designed to implement deprecated
+property names for backward compatibility, as follows:
+
+ * ``name`` (this node's subscript or variable name)
+ * ``value`` (this node's value in the YottaDB database)
+ * ``data`` (see ``data()``)
+ * ``has_value`` (whether or not this node has a value)
+ * ``has_tree`` (whether or not this node has a subtree)
+ * ``__varname`` database variable name string -- for compatibility with a previous version
+ * ``__subsarray`` table array of database subscript name strings -- for compatibility with a previous version
+   and deprecated definitions of ``key:subscript()``, ``key:subscript_next()``, ``key:subscript_previous()``
+
+
+
+
+* ``varname``:
+  String variable name.
+
+* ``subsarray``:
+  (*optional*)
+  list of subscripts or table subscripts
+
+
+:Returns:
+    key object of the specified node with metatable ``yottadb._key``
+
+
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+key:delete_node ()  [deprecated v1.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated way to delete database node value pointed to by node object.
 Prefer ``node:set(nil)``
@@ -1886,9 +1984,9 @@ Prefer ``node:set(nil)``
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-key:subscript_next ([reset[, reverse]])
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+key:subscript_next ([reset[, reverse]])  [deprecated v1.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated way to get next *sibling* subscript.
 
@@ -1915,9 +2013,9 @@ Deprecated because:
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-key:subscript_previous ([reset])
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+key:subscript_previous ([reset])  [deprecated v1.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated way to get previous *sibling* subscript.
 See notes for ``subscript_previous()``
@@ -1934,9 +2032,9 @@ See notes for ``subscript_previous()``
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-key:subscripts ([reverse])
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+key:subscripts ([reverse])  [deprecated v1.0]:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deprecated way to get same-level subscripts from this node onward.
 Deprecated because:

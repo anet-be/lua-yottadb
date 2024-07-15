@@ -70,10 +70,15 @@
     <li><a href="#dump">dump (node[, ...[, maxlines=30]])</a></li>
     <li><a href="#require">require (Mprototypes)</a></li>
 <br/>
-<li><a href="#Class_node"><b>Class node </b></a></li>
+<li><a href="#Node_class_operations"><b>Node class operations </b></a></li>
+    <li><a href="#inherit">inherit (node_func[, metatable])</a></li>
+    <li><a href="#isnode">isnode (object)</a></li>
     <li><a href="#node">node (varname[, subsarray][, ...], node)</a></li>
+<br/>
+<li><a href="#Node_class"><b>Node class </b></a></li>
     <li><a href="#node:__ipairs">node:__ipairs ()</a></li>
     <li><a href="#node:__pairs">node:__pairs ([reverse])</a></li>
+    <li><a href="#node:__repr">node:__repr ()</a></li>
     <li><a href="#node:delete_tree">node:delete_tree ()</a></li>
     <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
     <li><a href="#node:get">node:get ([default])</a></li>
@@ -89,7 +94,7 @@
     <li><a href="#node:settree">node:settree (tbl[, filter[, _seen]])</a></li>
     <li><a href="#node:subscripts">node:subscripts ([reverse])</a></li>
 <br/>
-<li><a href="#Node_properties"><b>Node properties </b></a></li>
+<li><a href="#Node_class_properties"><b>Node class properties </b></a></li>
     <li><a href="#node:data">node:data ()</a></li>
     <li><a href="#node:depth">node:depth ()</a></li>
     <li><a href="#node:has_tree">node:has_tree ()</a></li>
@@ -99,9 +104,9 @@
     <li><a href="#node:subsarray">node:subsarray ()</a></li>
     <li><a href="#node:varname">node:varname ()</a></li>
 <br/>
-<li><a href="#Class_key"><b>Class key </b></a></li>
+<li><a href="#Key_class"><b>Key class </b></a></li>
+    <li><a href="#_property_">_property_</a></li>
     <li><a href="#key">key (varname[, subsarray])</a></li>
-    <li><a href="#key._property_">key._property_</a></li>
     <li><a href="#key:delete_node">key:delete_node ()</a></li>
     <li><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])</a></li>
     <li><a href="#key:subscript_previous">key:subscript_previous ([reset])</a></li>
@@ -247,12 +252,23 @@
 	<td class="summary">Import M routines as Lua functions specified in ydb 'call-in' file.</td>
 	</tr>
 </table>
-<h2><a href="#Class_node">Class node </a></h2>
+<h2><a href="#Node_class_operations">Node class operations </a></h2>
 <table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#inherit">inherit (node_func[, metatable])</a></td>
+	<td class="summary">Create a new node class that inherits from the yottadb.node superclass.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#isnode">isnode (object)</a></td>
+	<td class="summary">Tests whether object is a node object or inherits from a node object.</td>
+	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node">node (varname[, subsarray][, ...], node)</a></td>
 	<td class="summary">Creates an object that represents a YottaDB node.</td>
 	</tr>
+</table>
+<h2><a href="#Node_class">Node class </a></h2>
+<table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#node:__ipairs">node:__ipairs ()</a></td>
 	<td class="summary">Not implemented: use <code>pairs(node)</code> or <code>node:__pairs()</code> instead.</td>
@@ -260,6 +276,10 @@
 	<tr>
 	<td class="name" nowrap><a href="#node:__pairs">node:__pairs ([reverse])</a></td>
 	<td class="summary">Implement <code>pairs()</code> by iterating over the children of a given node.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#node:__repr">node:__repr ()</a></td>
+	<td class="summary">Return raw representation of node's unique memory address.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#node:delete_tree">node:delete_tree ()</a></td>
@@ -318,7 +338,7 @@
 	<td class="summary">Return iterator over the <em>child</em> subscript names of a node (in M terms, collate from "" to "").</td>
 	</tr>
 </table>
-<h2><a href="#Node_properties">Node properties </a></h2>
+<h2><a href="#Node_class_properties">Node class properties </a></h2>
 <table class="function_list">
 	<tr>
 	<td class="name" nowrap><a href="#node:data">node:data ()</a></td>
@@ -353,15 +373,15 @@
 	<td class="summary">Fetch the varname of the node: the leftmost subscript.</td>
 	</tr>
 </table>
-<h2><a href="#Class_key">Class key </a></h2>
+<h2><a href="#Key_class">Key class </a></h2>
 <table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#_property_">_property_</a></td>
+	<td class="summary">Properties of key object that are accessed with a dot.</td>
+	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#key">key (varname[, subsarray])</a></td>
 	<td class="summary">Creates an object that represents a YDB node; deprecated after v0.1.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#key._property_">key._property_</a></td>
-	<td class="summary">Properties of key object that are accessed with a dot.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#key:delete_node">key:delete_node ()</a></td>
@@ -1677,9 +1697,89 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Class_node"></a>Class node </h2>
+    <h2 class="section-header "><a name="Node_class_operations"></a>Node class operations </h2>
 
     <dl class="function">
+    <dt>
+    <a name = "inherit"></a>
+    <strong>inherit (node_func[, metatable])</strong>
+    </dt>
+    <dd>
+    Create a new node class that inherits from the yottadb.node superclass.
+ The returned function will generate nodes of a new class (a new metatable). You may add or
+ override class methods by adding them to <code>new_metatable</code> either before or after calling inherit.
+ Any class method the user does not define in <code>new_metatable</code> will default to the class method of the superclass.
+ If desired, the new class may be further subclassed, also using <a href="yottadb.html#inherit">inherit</a>. Refer to the example below, and further
+ explanation in the <a href="https://github.com/anet-be/lua-yottadb#class-inheritance">README</a>.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">node_func</span>
+         <a href="yottadb.html#node">yottadb.node</a> or a descendent that inherits from it using <a href="yottadb.html#inherit">inherit</a>
+        </li>
+        <li><span class="parameter">metatable</span>
+         to use for the new node class. Defaults to <code>{}</code>.
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+        <li>
+        function that generates node of the new type</li>
+        <li>
+        subclass metatable (modified)</li>
+        <li>
+        superclass metatable used by the original node_func</li>
+    </ol>
+
+
+
+    <h3>Example:</h3>
+    <ul>
+        <pre class="example"><span class="comment">-- To average all data stored in a particular database node:
+</span>averaged_node, class, superclass = ydb.inherit(ydb.node)
+<span class="keyword">function</span> class:set(value)  sum=sum+value  writes=writes+<span class="number">1</span>  <span class="keyword">return</span> superclass.set(self, value)  <span class="keyword">end</span>
+
+<span class="comment">-- Now use the new class
+</span>sum, writes = <span class="number">0</span>, <span class="number">0</span>
+shoesize = averaged_node(<span class="string">'shoesize'</span>)
+shoesize:set(<span class="number">5</span>)
+shoesize:set(<span class="number">10</span>)
+shoesize.__ = <span class="number">15</span>  <span class="comment">-- overriding set() also changes the behaviour of: .__ =
+</span><span class="global">print</span>(<span class="string">'Average'</span>, sum/writes)
+<span class="comment">-- Average 10.0</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "isnode"></a>
+    <strong>isnode (object)</strong>
+    </dt>
+    <dd>
+    Tests whether object is a node object or inherits from a node object.
+
+    </ul>
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">object</span>
+         to test
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        boolean true or false
+    </ol>
+
+
+
+
+</dd>
     <dt>
     <a name = "node"></a>
     <strong>node (varname[, subsarray][, ...], node)</strong>
@@ -1697,11 +1797,11 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
     <li>Several standard Lua operators work on nodes. These are: <code>+</code> <code>-</code> <code>=</code> <code>pairs()</code> <code>tostring()</code></li>
     <li>Although the syntax <code>node:method()</code> is pretty, be aware that it is slow. If you need speed, prefix the node method
     with two underscores, <code>node:__method()</code>, which is equivalent, but 15x faster.
-    The former is slow because in Lua, <code>node:method()</code> is syntactic sugar which expands to <code>node.method(node)</code>,
+    The former is slow because in Lua, <code>node:method(...)</code> is syntactic sugar which expands to <code>node.method(node, ...)</code>,
     causing lua-yottadb to create an intermediate node object <code>node.method</code>. It is only when this new object gets called
-    with <code>()</code>, and the first parameter is of type <a href="yottadb.html#node">node</a>, that lua-yottadb detects it was supposed to be a method access
-    and invokes <code>node.__method()</code>, discarding the intermediate subnode object it created.</li>
-    <li>Because the <code>__</code> prefix accesses <em>methods</em> names (as above), it cannot access <em>node</em> names.
+    with <code>(node, ...)</code>, and the first parameter is of type <a href="yottadb.html#node">node</a>, that the <code>__call</code> metamethod detects it was supposed to
+    be a method access and invokes <code>node.__method()</code>, discarding the intermediate subnode object it created.</li>
+    <li>Because the <code>__</code> prefix accesses <em>method</em> names (as above), it cannot access database subnode names starting with <code>__</code>.
     Instead, use mynode('__nodename') to access a database node named <code>__nodename</code>.</li>
     <li>This <code>__</code> prefix handling also means that object method names that start with two underscores, like <code>__tostring</code>,
     are only accessible with an <em>additional</em> <code>__</code> prefix; for example, <code>node:____tostring()</code>.</li>
@@ -1748,6 +1848,10 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     </ul>
 
 </dd>
+</dl>
+    <h2 class="section-header "><a name="Node_class"></a>Node class </h2>
+
+    <dl class="function">
     <dt>
     <a name = "node:__ipairs"></a>
     <strong>node:__ipairs ()</strong>
@@ -1840,6 +1944,26 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
 </dd>
     <dt>
+    <a name = "node:__repr"></a>
+    <strong>node:__repr ()</strong>
+    </dt>
+    <dd>
+    Return raw representation of node's unique memory address.
+
+    </ul>
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        string in hexadecimal format, starting with <code>0x</code>.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
     <a name = "node:delete_tree"></a>
     <strong>node:delete_tree ()</strong>
     </dt>
@@ -1853,7 +1977,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
     <h3>See also:</h3>
     <ul>
-         <a href="yottadb.html#node:kill">node:kill</a>
+         <a href="yottadb.html#kill">kill</a>
     </ul>
 
 
@@ -1892,6 +2016,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <dd>
     Get <a href="yottadb.html#node">node</a>'s value.
  Equivalent to <code>node.__</code>, but 2.5x slower.
+ If node is subclassed, then <code>node.__</code> invokes the subclass's <code>node:__get()</code> if it exists.
 
     </ul>
 
@@ -2074,7 +2199,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
 
     <h3>See also:</h3>
     <ul>
-         <a href="yottadb.html#kill">kill</a>
+         <a href="yottadb.html#node:kill">node:kill</a>
     </ul>
 
 
@@ -2186,6 +2311,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     <dd>
     Set <a href="yottadb.html#node">node</a>'s value.
  Equivalent to <code>node.__ = x</code>, but 4x slower.
+ If node is subclassed, then <code>node.__ = x</code> invokes the subclass's <code>node:__set(x)</code> if it exists.
 
     </ul>
 
@@ -2196,6 +2322,11 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
         </li>
     </ul>
 
+    <h3>Returns:</h3>
+    <ol>
+
+        value
+    </ol>
 
 
     <h3>See also:</h3>
@@ -2312,7 +2443,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Node_properties"></a>Node properties </h2>
+    <h2 class="section-header "><a name="Node_class_properties"></a>Node class properties </h2>
 
     <dl class="function">
     <dt>
@@ -2444,9 +2575,52 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 
 </dd>
 </dl>
-    <h2 class="section-header "><a name="Class_key"></a>Class key </h2>
+    <h2 class="section-header "><a name="Key_class"></a>Key class </h2>
 
     <dl class="function">
+    <dt>
+    <a name = "_property_"></a>
+    <strong>_property_</strong>
+    </dt>
+    <dd>
+    Properties of key object that are accessed with a dot.
+ These properties, listed below, are unlike object methods, which are accessed with a colon.
+ This kind of property access is for backward compatibility.</p>
+
+<p> For example, access data property with: <code>key.data</code>
+
+    </ul>
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">name</span>
+         equivalent to <code>node:name()</code>
+        </li>
+        <li><span class="parameter">data</span>
+         equivalent to <code>node:data()</code>
+        </li>
+        <li><span class="parameter">has_value</span>
+         equivalent to <code>node:has_value()</code>
+        </li>
+        <li><span class="parameter">has_tree</span>
+         equivalent to <code>node:has_tree()</code>
+        </li>
+        <li><span class="parameter">value</span>
+         equivalent to <code>node.__</code>
+        </li>
+        <li><span class="parameter">__varname</span>
+         database variable name string -- for compatibility with a previous version
+        </li>
+        <li><span class="parameter">__subsarray</span>
+         table array of database subscript name strings -- for compatibility with a previous version
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
     <dt>
     <a name = "key"></a>
     <strong>key (varname[, subsarray])</strong>
@@ -2493,49 +2667,6 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     <ul>
          <a href="yottadb.html#node">node</a>
     </ul>
-
-
-</dd>
-    <dt>
-    <a name = "key._property_"></a>
-    <strong>key._property_</strong>
-    </dt>
-    <dd>
-    Properties of key object that are accessed with a dot.
- These properties, listed below, are unlike object methods, which are accessed with a colon.
- This kind of property access is for backward compatibility.</p>
-
-<p> For example, access data property with: <code>key.data</code>
-
-    </ul>
-
-    <h3>Fields:</h3>
-    <ul>
-        <li><span class="parameter">name</span>
-         equivalent to <code>node:name()</code>
-        </li>
-        <li><span class="parameter">data</span>
-         equivalent to <code>node:data()</code>
-        </li>
-        <li><span class="parameter">has_value</span>
-         equivalent to <code>node:has_value()</code>
-        </li>
-        <li><span class="parameter">has_tree</span>
-         equivalent to <code>node:has_tree()</code>
-        </li>
-        <li><span class="parameter">value</span>
-         equivalent to <code>node.__</code>
-        </li>
-        <li><span class="parameter">__varname</span>
-         database variable name string -- for compatibility with a previous version
-        </li>
-        <li><span class="parameter">__subsarray</span>
-         table array of database subscript name strings -- for compatibility with a previous version
-        </li>
-    </ul>
-
-
-
 
 
 </dd>
@@ -2673,7 +2804,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2024-07-10 23:51:42 </i>
+<i style="float:right;">Last updated 2024-07-22 17:37:12 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

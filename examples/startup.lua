@@ -78,7 +78,8 @@ else
   -- hook print()
   local original_print = print
   function print(...)
-    if select('#', ...)~=1 or getmetatable(...) ~= ydb._node then  return original_print(...)  end
+    -- retain the existence check for ydb.isnode below to prevent errors startup.lua errors with an old version of lua-yottadb
+    if select('#', ...)~=1 or not ydb.isnode or not ydb.isnode(...) then  return original_print(...)  end
     original_print(ydb.dump(..., {}, 30))
   end
 end
