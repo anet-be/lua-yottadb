@@ -62,11 +62,17 @@ docs/lua-yottadb-ydbdocs.rst: $(DOC_DEPS)
 	@echo
 
 # Test that YDBDoc can use the docs -- requires you to clone YDBDoc into YDBDOC_PATH
-YDBDOC_PATH:=~/projects/anet/YDBDoc
+YDBDOC_PATH:=$(work_dir)/YDBDoc
 ydbdocs: docs/lua-yottadb-ydbdocs.rst
-	@test -d $(YDBDOC_PATH) || { echo "Could not find a clone of YDBDoc. Run 'make ydbdocs YDBDOC_PATH=<path_to_YDBDoc_clone>'"; exit 1; }
-	cp $< $(YDBDOC_PATH)
-	make -C $(YDBDOC_PATH) html
+	@test -d "$(YDBDOC_PATH)" || { echo "Could not find a clone of YDBDoc. Run 'make ydbdocs YDBDOC_PATH=<path_to_YDBDoc_clone>'"; exit 1; }
+	@# YDBDoc looks for a lua-yottadb directory in its parent, pulls it, and builds against doc files there, so symlink that to here.
+	@if [[ `readlink -f .` != `readlink -f "$(YDBDOC_PATH)/../lua-yottadb"` ]]; then \
+		echo "For YDBDocs to build against this lua-yottadb directory, YDBDoc/lua-yottadb must point here. Do:" && \
+		echo "  ln -st \"$(YDBDOC_PATH)/..\" `readlink -f .`"; \
+		exit 1; \
+	fi
+	make -C "$(YDBDOC_PATH)" html
+	echo "Open $(YDBDOC_PATH)/MultiLangProgGuide/_build/html/MultiLangProgGuide.html to check the new YottaDB documentation."
 
 
 # ~~~ Release a new version and create luarock

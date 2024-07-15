@@ -116,7 +116,7 @@ for index, oaktree in pairs(trees) do
 -- Oak 3 is 15.0m high
 ```
 
-You may also wish to look at **`node:gettree()`** which has multiple uses. On first appearances, it just loads a database tree into a Lua table (opposite of `settree` above), but it also allows you to iterate over a whole database tree and process each node through a filter function. For example, to use `print` as a filter function, do `node:gettree(nil, print)` from the [API docs](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#node:gettree). Incidentally, lua-yottadb itself uses `gettree` to implement `node:dump()`.
+You may also wish to look at **`node:gettree()`** which has multiple uses. On first appearances, it just loads a database tree into a Lua table (opposite of `settree` above), but it also allows you to iterate over a whole database tree and process each node through a filter function. For example, to use `print` as a [filter function](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#node:gettree), do `node:gettree(nil, print)`. Incidentally, lua-yottadb itself uses `gettree` to implement `node:dump()`.
 
 ### Database transactions are also available:
 
@@ -148,6 +148,35 @@ value
 > Znode:get()  -- check that the data got set
 value
 ```
+
+### Class inheritance
+
+The Node class can be subclassed, letting you add your own functionality to class methods. You can make the `get()` method do whatever you want (for example, cache its value in Lua), or override the object's `__tostring()` Lua method so that Lua prints your data in your own special format. Alternatively, you can add your own class methods so that you can do `n:myfunc()`. These new methods will apply only to nodes created by that particular subclass, so other subclasses may create nodes with different methods.
+
+An example in the [reference documentation](https://htmlpreview.github.io/?https://github.com/anet-be/lua-yottadb/blob/master/docs/yottadb.html#inherit) keeps statistics on data entered on subclassed nodes. This is explained here in smaller chunks:
+
+``` lua
+-- Create a node subclass and override the set method
+averaged_node, class, superclass = ydb.inherit(ydb.node)
+function class:set(value)  sum=sum+value  writes=writes+1  return superclass.set(self, value)  end
+```
+The first line takes parameter `ydb.node` which is the object-creation function that we're going to clone. It returns 3 values. The first returned value (`averaged_node`) is a new function that, just like `ydb.node`, creates Lua objects that represent database nodes -- except that this new function now creates Lua objects that are no longer instances of the lua-yottadb internal parent class (returned as `superclass`) but are now instances of a new child class, returned as `class`.
+
+The function `averaged_node()` creates instances of `class`. Having access to `class` means that you can add or override class methods to the class which will work only on nodes created by `averaged_node()`.
+
+To override modify (override) an existing class method, define a class method named the same as a method in the original class. That is what we do in the final code line above by defining `class:set()` which increments Lua counter variables `sum` and `writes` and then calls the old class method `superclass.set()` to do the database work.
+
+Now let's create an instance of this new node class and use it. To average all data stored in the shoesize node:
+``` lua
+sum, writes = 0, 0
+shoesize = averaged_node('shoesize')
+shoesize:set(5)
+shoesize:set(10)
+shoesize.__ = 15  -- overriding set() also changes the behaviour of: .__ =
+print('Average', sum/writes)
+-- Average 10.0
+```
+Calling our new (overridden) `set` function not only sets the node value; it also adds each specified value to `sum` (in our case 5, 10, and 15), and each time it increments `writes` by 1. So in the end the printed result is (5+10+15)/3, which results in 10.
 
 ### Calling M from Lua
 
