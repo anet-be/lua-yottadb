@@ -38,8 +38,8 @@
 <li><a href="#Basic_low_level_functions"><b>Basic low level functions </b></a></li>
     <li><a href="#block_M_signals">block_M_signals (bool)</a></li>
     <li><a href="#data">data (varname[, subsarray[, ...]])</a></li>
-    <li><a href="#delete_node">delete_node (varname[, subsarray[, ...]])</a></li>
-    <li><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])</a></li>
+    <li><a href="#delete_node">delete_node (varname[, subsarray[, ...]])  [deprecated v3.0]:</a></li>
+    <li><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])  [deprecated v3.0]:</a></li>
     <li><a href="#get">get (varname[, subsarray[, ...]])</a></li>
     <li><a href="#get_error_code">get_error_code (message)</a></li>
     <li><a href="#grab">grab (varname[, subsarray[, ...[, timeout]]])</a></li>
@@ -79,7 +79,7 @@
     <li><a href="#node:__ipairs">node:__ipairs ()</a></li>
     <li><a href="#node:__pairs">node:__pairs ([reverse])</a></li>
     <li><a href="#node:__repr">node:__repr ()</a></li>
-    <li><a href="#node:delete_tree">node:delete_tree ()</a></li>
+    <li><a href="#node:delete_tree">node:delete_tree ()  [deprecated v3.0]:</a></li>
     <li><a href="#node:dump">node:dump ([maxlines=30])</a></li>
     <li><a href="#node:get">node:get ([default])</a></li>
     <li><a href="#node:gettree">node:gettree ([maxdepth[, filter[, _value[, _depth]]]])</a></li>
@@ -105,12 +105,12 @@
     <li><a href="#node:varname">node:varname ()</a></li>
 <br/>
 <li><a href="#Key_class"><b>Key class </b></a></li>
-    <li><a href="#_property_">_property_</a></li>
-    <li><a href="#key">key (varname[, subsarray])</a></li>
-    <li><a href="#key:delete_node">key:delete_node ()</a></li>
-    <li><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])</a></li>
-    <li><a href="#key:subscript_previous">key:subscript_previous ([reset])</a></li>
-    <li><a href="#key:subscripts">key:subscripts ([reverse])</a></li>
+    <li><a href="#_property_">_property_  [deprecated v1.0]:</a></li>
+    <li><a href="#key">key (varname[, subsarray])  [deprecated v1.0]:</a></li>
+    <li><a href="#key:delete_node">key:delete_node ()  [deprecated v1.0]:</a></li>
+    <li><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])  [deprecated v1.0]:</a></li>
+    <li><a href="#key:subscript_previous">key:subscript_previous ([reset])  [deprecated v1.0]:</a></li>
+    <li><a href="#key:subscripts">key:subscripts ([reverse])  [deprecated v1.0]:</a></li>
 
 
 </ul>
@@ -138,11 +138,11 @@
 	<td class="summary">Return whether a node has a value or subtree.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#delete_node">delete_node (varname[, subsarray[, ...]])</a></td>
+	<td class="name" nowrap><a href="#delete_node">delete_node (varname[, subsarray[, ...]])  [deprecated v3.0]:</a></td>
 	<td class="summary">Deprecated and replaced by <code>set(varname[, subsarray[, ...]], nil)</code>.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])</a></td>
+	<td class="name" nowrap><a href="#delete_tree">delete_tree (varname[, subsarray[, ...]])  [deprecated v3.0]:</a></td>
 	<td class="summary">Deprecated and replaced by kill.</td>
 	</tr>
 	<tr>
@@ -282,7 +282,7 @@
 	<td class="summary">Return raw representation of node's unique memory address.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#node:delete_tree">node:delete_tree ()</a></td>
+	<td class="name" nowrap><a href="#node:delete_tree">node:delete_tree ()  [deprecated v3.0]:</a></td>
 	<td class="summary">Deprecated and replaced by kill.</td>
 	</tr>
 	<tr>
@@ -376,27 +376,27 @@
 <h2><a href="#Key_class">Key class </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#_property_">_property_</a></td>
+	<td class="name" nowrap><a href="#_property_">_property_  [deprecated v1.0]:</a></td>
 	<td class="summary">Properties of key object that are accessed with a dot.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key">key (varname[, subsarray])</a></td>
+	<td class="name" nowrap><a href="#key">key (varname[, subsarray])  [deprecated v1.0]:</a></td>
 	<td class="summary">Creates an object that represents a YDB node; deprecated after v0.1.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key:delete_node">key:delete_node ()</a></td>
+	<td class="name" nowrap><a href="#key:delete_node">key:delete_node ()  [deprecated v1.0]:</a></td>
 	<td class="summary">Deprecated way to delete database node value pointed to by node object.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])</a></td>
+	<td class="name" nowrap><a href="#key:subscript_next">key:subscript_next ([reset[, reverse]])  [deprecated v1.0]:</a></td>
 	<td class="summary">Deprecated way to get next <em>sibling</em> subscript.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key:subscript_previous">key:subscript_previous ([reset])</a></td>
+	<td class="name" nowrap><a href="#key:subscript_previous">key:subscript_previous ([reset])  [deprecated v1.0]:</a></td>
 	<td class="summary">Deprecated way to get previous <em>sibling</em> subscript.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#key:subscripts">key:subscripts ([reverse])</a></td>
+	<td class="name" nowrap><a href="#key:subscripts">key:subscripts ([reverse])  [deprecated v1.0]:</a></td>
 	<td class="summary">Deprecated way to get same-level subscripts from this node onward.</td>
 	</tr>
 </table>
@@ -433,6 +433,7 @@
  2020s x86_64 CPU; see <code>make benchmarks</code>)
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -462,6 +463,7 @@
     <dd>
     Return whether a node has a value or subtree.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -505,11 +507,12 @@
 </dd>
     <dt>
     <a name = "delete_node"></a>
-    <strong>delete_node (varname[, subsarray[, ...]])</strong>
+    <strong>delete_node (varname[, subsarray[, ...]])  [deprecated v3.0]:</strong>
     </dt>
     <dd>
     Deprecated and replaced by <code>set(varname[, subsarray[, ...]], nil)</code>.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -542,11 +545,12 @@ ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string"
 </dd>
     <dt>
     <a name = "delete_tree"></a>
-    <strong>delete_tree (varname[, subsarray[, ...]])</strong>
+    <strong>delete_tree (varname[, subsarray[, ...]])  [deprecated v3.0]:</strong>
     </dt>
     <dd>
     Deprecated and replaced by kill.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -580,6 +584,7 @@ ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string"
     <dd>
     Gets and returns the value of a database variable or node; or <code>nil</code> if the variable or node does not exist.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -625,6 +630,7 @@ ydb.delete_node(<span class="string">'^Population'</span>, {<span class="string"
     Get the YDB error code (if any) contained in the given error message.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -664,6 +670,7 @@ ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRAC
  <em>Caution:</em> timeout is <em>not</em> optional if <code>...</code> list of subscripts is provided, but it may be <code>nil</code>.
  Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -712,6 +719,7 @@ ydb.get_error_code(<span class="string">'YDB Error: -150374122: %YDB-E-ZGBLDIRAC
 <p> <em>Caution:</em> increment is <em>not</em> optional if <code>...</code> list of subscript is provided.
  Otherwise incr() cannot tell whether last parameter is a subscript or an increment.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -765,6 +773,7 @@ ydb.get(<span class="string">'num'</span>)
 <p> <em>Note:</em> any calls to the YDB API also initialize YDB; any subsequent call here will set <code>signal_blocker</code> but not re-init YDB.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -800,6 +809,7 @@ ydb.get(<span class="string">'num'</span>)
     <dd>
     Deletes a database variable tree (node and subnodes) or a node subtree.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -846,6 +856,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
  Raises an error <code>yottadb.YDB_LOCK_TIMEOUT</code> if a lock could not be acquired.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -877,6 +888,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
     Decrements a lock of the same name as varname[(subsarray)], releasing it if zero.
  Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -922,6 +934,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
  <em>Caution:</em> timeout is <em>not</em> optional if <code>...</code> list of subscripts is provided, but it may be <code>nil</code>.
  Otherwise lock_incr cannot tell whether it is a subscript or a timeout.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -969,6 +982,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
 
 <p> <em>Note:</em> <code>node:gettree()</code> or <code>node:subscripts()</code> may be a better way to iterate a node tree
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1031,6 +1045,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
 <p> <em>Note:</em> <code>node:gettree()</code> or <code>node:subscripts()</code> may be a better way to iterate a node tree
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1079,6 +1094,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
  Releasing a lock cannot create an error unless the varname/subsarray names are invalid.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1117,6 +1133,7 @@ ydb.data(<span class="string">'^Population'</span>, {<span class="string">'USA'<
     <dd>
     Sets the value of a database variable or node.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1164,6 +1181,7 @@ ydb.set(<span class="string">'^Population'</span>, {<span class="string">'USA'</
     Returns the zwrite-formatted version of the given string.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1198,6 +1216,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
     <dd>
     Returns the next subscript for a database variable or node; or <code>nil</code> if there isn't one.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1242,6 +1261,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
     <dd>
     Returns the previous subscript for a database variable or node; or <code>nil</code> if there isn't one.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1293,6 +1313,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
  and which you may consider to be preferable.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1333,6 +1354,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
  before re-issuing the interrupted system call.
 
     </ul>
+    </ul>
 
 
     <h3>Returns:</h3>
@@ -1356,6 +1378,7 @@ str=<span class="string">'The quick brown dog\b\b\bfox jumps over the lazy fox\b
     <dd>
     Returns the string described by the given zwrite-formatted string.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1400,6 +1423,7 @@ zwr_str=ydb.str2zwr(str1)
     Initiates a transaction (low level function).
  Restarts are subject to <code>$ZMAXTPTIME</code> after which they cause error <code>%YDB-E-TPTIMEOUT</code>
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1510,6 +1534,7 @@ ydb.set(<span class="string">'^savings'</span>, <span class="number">85000</span
  It will be called within a YottaDB transaction and the database globals restored on error or <code>yottadb.trollback()</code>
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1589,6 +1614,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     Make the currently running transaction function restart immediately.
 
     </ul>
+    </ul>
 
 
 
@@ -1603,6 +1629,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     <dd>
     Make the currently running transaction function rollback immediately with a YDB<em>TP</em>ROLLBACK error.
 
+    </ul>
     </ul>
 
 
@@ -1622,6 +1649,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
     <dd>
     Dump the specified node tree.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1663,6 +1691,7 @@ transact(<span class="keyword">function</span>() <span class="keyword">end</span
  See example call-in file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci">arithmetic.ci</a>
  and matching M file <a href="https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m">arithmetic.m</a>.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1713,6 +1742,7 @@ arithmetic.add_verbose(<span class="string">"Sum is:"</span>, <span class="numbe
  explanation in the <a href="https://github.com/anet-be/lua-yottadb#class-inheritance">README</a>.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1762,6 +1792,7 @@ shoesize.__ = <span class="number">15</span>  <span class="comment">-- overridin
     Tests whether object is a node object or inherits from a node object.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1808,6 +1839,7 @@ shoesize.__ = <span class="number">15</span>  <span class="comment">-- overridin
 </ul>
 
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -1872,6 +1904,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 <p> Alternatives using <code>pairs()</code> are as follows:
 
     </ul>
+    </ul>
 
 
 
@@ -1915,6 +1948,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -1951,6 +1985,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     Return raw representation of node's unique memory address.
 
     </ul>
+    </ul>
 
 
     <h3>Returns:</h3>
@@ -1965,11 +2000,12 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 </dd>
     <dt>
     <a name = "node:delete_tree"></a>
-    <strong>node:delete_tree ()</strong>
+    <strong>node:delete_tree ()  [deprecated v3.0]:</strong>
     </dt>
     <dd>
     Deprecated and replaced by kill.
 
+    </ul>
     </ul>
 
 
@@ -1989,6 +2025,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
     <dd>
     Dump the specified node tree.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2018,6 +2055,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
  Equivalent to <code>node.__</code>, but 2.5x slower.
  If node is subclassed, then <code>node.__</code> invokes the subclass's <code>node:__get()</code> if it exists.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2058,6 +2096,7 @@ yottadb.node(<span class="string">'varname'</span>)[<span class="string">'sub1'<
 </ul>
 
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2134,6 +2173,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
  If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -2161,6 +2201,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     <dd>
     Increment <a href="yottadb.html#node">node</a>'s value.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2193,6 +2234,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     Delete database tree (node and subnodes) pointed to by node object.
 
     </ul>
+    </ul>
 
 
 
@@ -2213,6 +2255,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
  Returns after <code>timeout</code>, if specified.
  If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2240,6 +2283,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     Decrements a lock matching this node, releasing it if zero.
 
     </ul>
+    </ul>
 
 
 
@@ -2262,6 +2306,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
  Returns after <code>timeout</code>, if specified.
  If timeout is not supplied or is <code>nil</code>, wait forever; timeout of zero means try only once.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2291,6 +2336,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
     Alias for node:lock_decr to decrement a lock matching this node, releasing it if zero.
 
     </ul>
+    </ul>
 
 
 
@@ -2313,6 +2359,7 @@ n:gettree(<span class="keyword">nil</span>, <span class="global">print</span>)
  Equivalent to <code>node.__ = x</code>, but 4x slower.
  If node is subclassed, then <code>node.__ = x</code> invokes the subclass's <code>node:__set(x)</code> if it exists.
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2349,6 +2396,7 @@ n:settree({__='berwyn', weight=78, ['!@#$']='junk', appearance={__='handsome', e
 </code></pre>
 
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2413,6 +2461,7 @@ n:dump()</pre></li>
  Note that <code>subscripts()</code> order is guaranteed to equal the M collation sequence.
 
     </ul>
+    </ul>
 
     <h3>Parameters:</h3>
     <ul>
@@ -2454,6 +2503,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     Fetch the 'data' bitfield of the node that describes whether the node has a data value or subtrees.
 
     </ul>
+    </ul>
 
 
     <h3>Returns:</h3>
@@ -2477,6 +2527,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     Fetch the depth of the node: how many subscripts it has.
 
     </ul>
+    </ul>
 
 
 
@@ -2491,6 +2542,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     <dd>
     Return true if the node has a tree; otherwise false.
 
+    </ul>
     </ul>
 
 
@@ -2507,6 +2559,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     Return true if the node has a value; otherwise false.
 
     </ul>
+    </ul>
 
 
 
@@ -2521,6 +2574,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     <dd>
     Return true if the node is mutable; otherwise false.
 
+    </ul>
     </ul>
 
 
@@ -2537,6 +2591,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     Fetch the name of the node: the rightmost subscript.
 
     </ul>
+    </ul>
 
 
 
@@ -2551,6 +2606,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     <dd>
     Return <a href="yottadb.html#node">node</a>'s subsarray of subscript strings as a table.
 
+    </ul>
     </ul>
 
 
@@ -2567,6 +2623,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     Fetch the varname of the node: the leftmost subscript.
 
     </ul>
+    </ul>
 
 
 
@@ -2580,7 +2637,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
     <dl class="function">
     <dt>
     <a name = "_property_"></a>
-    <strong>_property_</strong>
+    <strong>_property_  [deprecated v1.0]:</strong>
     </dt>
     <dd>
     Properties of key object that are accessed with a dot.
@@ -2589,6 +2646,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 
 <p> For example, access data property with: <code>key.data</code>
 
+    </ul>
     </ul>
 
     <h3>Fields:</h3>
@@ -2623,7 +2681,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </dd>
     <dt>
     <a name = "key"></a>
-    <strong>key (varname[, subsarray])</strong>
+    <strong>key (varname[, subsarray])  [deprecated v1.0]:</strong>
     </dt>
     <dd>
 
@@ -2643,6 +2701,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </ul>
 
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2672,12 +2731,13 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </dd>
     <dt>
     <a name = "key:delete_node"></a>
-    <strong>key:delete_node ()</strong>
+    <strong>key:delete_node ()  [deprecated v1.0]:</strong>
     </dt>
     <dd>
     Deprecated way to delete database node value pointed to by node object.
  Prefer <code>node:set(nil)</code>
 
+    </ul>
     </ul>
 
 
@@ -2693,7 +2753,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </dd>
     <dt>
     <a name = "key:subscript_next"></a>
-    <strong>key:subscript_next ([reset[, reverse]])</strong>
+    <strong>key:subscript_next ([reset[, reverse]])  [deprecated v1.0]:</strong>
     </dt>
     <dd>
 
@@ -2710,6 +2770,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </ul>
 
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2736,12 +2797,13 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </dd>
     <dt>
     <a name = "key:subscript_previous"></a>
-    <strong>key:subscript_previous ([reset])</strong>
+    <strong>key:subscript_previous ([reset])  [deprecated v1.0]:</strong>
     </dt>
     <dd>
     Deprecated way to get previous <em>sibling</em> subscript.
  See notes for <code>subscript_previous()</code>
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>
@@ -2765,7 +2827,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </dd>
     <dt>
     <a name = "key:subscripts"></a>
-    <strong>key:subscripts ([reverse])</strong>
+    <strong>key:subscripts ([reverse])  [deprecated v1.0]:</strong>
     </dt>
     <dd>
 
@@ -2778,6 +2840,7 @@ node = ydb.node(<span class="string">'^myvar'</span>, <span class="string">'subs
 </ul>
 
 
+    </ul>
     </ul>
 
     <h3>Parameters:</h3>

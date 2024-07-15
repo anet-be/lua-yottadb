@@ -185,6 +185,7 @@ local node = {}
 
 -- Deprecated object that represents a YDB node.
 -- old name of YDB node object -- retains the deprecated syntax for backward compatibility
+--- @deprecated v1.0
 local key = {}
 
 --- Return whether a node has a value or subtree.
@@ -213,6 +214,7 @@ M.data = _yottadb.data
 -- @param varname String of the database node (this can also be replaced by cachearray)
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
+--- @deprecated v3.0
 -- @example
 -- ydb = require('yottadb')
 -- ydb.set('^Population', {'Belgium'}, 1367000)
@@ -249,6 +251,7 @@ end
 -- @param[opt] subsarray Table of subscripts
 -- @param[opt] ... List of subscripts to append after any elements in optional subsarray table
 -- @see kill
+--- @deprecated v3.0
 M.delete_tree = M.kill
 
 --- Gets and returns the value of a database variable or node; or `nil` if the variable or node does not exist.
@@ -980,6 +983,7 @@ function node:kill()  return M.kill(self)  end
 --- Deprecated and replaced by kill.
 -- @function node:delete_tree
 -- @see kill
+--- @deprecated v3.0
 node.delete_tree = node.kill
 
 --- Increment `node`'s value.
@@ -1465,6 +1469,7 @@ end
 -- @param[opt] subsarray list of subscripts or table subscripts
 -- @return key object of the specified node with metatable `yottadb._key`
 -- @see node
+--- @deprecated v1.0
 function M.key(...)
   assert_type(..., 'string', 1, "key")
   assert_type(select(2, ...), _table_nil, 2, "key")
@@ -1500,6 +1505,7 @@ for k, v in pairs(node) do  key[k]=v  if string.sub(k,1,2)~='__' then key['__'..
 -- @field value equivalent to `node.__`
 -- @field __varname database variable name string -- for compatibility with a previous version
 -- @field __subsarray table array of database subscript name strings -- for compatibility with a previous version
+--- @deprecated v1.0
 key_properties = {
   name = key.name, -- equivalent to node::name()
   data = key.data, -- :name()
@@ -1519,6 +1525,7 @@ local key_values = {}  -- Simulate node attribute storage using another table of
 --   key[k] (i.e. look up in class named 'key' -- finds key.get, key.__call, etc.)
 --   if nothing found, returns `nil`
 -- @param k Node attribute to look up
+--- @deprecated v1.0
 function key:__index(k)
   local value_table = key_values[self]
   if value_table then
@@ -1532,6 +1539,7 @@ end
 
 -- Sets dbase node value if k is 'value'; otherwise set self[k] = v
 -- Differs from node.__newindex() as this can also set fields of self
+--- @deprecated v1.0
 function key:__newindex(k, v)
   if k == 'value' then
     key.set(self, v)
@@ -1549,6 +1557,7 @@ end
 --- Deprecated way to delete database node value pointed to by node object.
 -- Prefer `node:set(nil)`
 -- @see kill, set
+--- @deprecated v1.0
 function key:delete_node() M.delete_node(self) end
 
 --- Deprecated way to get next *sibling* subscript.
@@ -1563,6 +1572,7 @@ function key:delete_node() M.delete_node(self) end
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to `subscript_next()`
 -- @param[opt] reverse If `true` then get previous instead of next
 -- @see node:__pairs, subscript_previous
+--- @deprecated v1.0
 function key:subscript_next(reset, reverse)
   local actuator = reverse and M.subscript_previous or M.subscript_next
   if not self.__next_cachearray then
@@ -1582,6 +1592,7 @@ end
 -- @param[opt] reset If `true`, resets to the original subscript before any calls to `subscript_next()`
 -- or `subscript_previous()`
 -- @see node:__pairs, subscript_next
+--- @deprecated v1.0
 function key:subscript_previous(reset)
   return self:subscript_next(reset, true)
 end
@@ -1593,6 +1604,7 @@ end
 -- * It was non-intuitive that `key:subscripts()` iterates only subsequent subscripts, not all child subscripts.
 -- @param[opt] reverse When set to `true`, iterates in reverse
 -- @see subscripts
+--- @deprecated v1.0
 function key:subscripts(...)
   local cachearray = self
   if self:depth() == 0 then
