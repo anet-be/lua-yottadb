@@ -4,7 +4,15 @@
 #define LUA_YOTTADB_H
 
 /* Version History
-v3.0 Breaking change to lock() and lock_incr() which now wait forever with nil timeout, like the M LOCK command
+v3.0 Introduce inheritable nodes using yottadb.inherit()
+ - Update examples/startup.lua to properly detect inherited nodes
+ - Breaking change to lock() and lock_incr() which now wait forever with nil timeout, like the M LOCK command
+ - Docs:
+   - Document `yottadb.inherit()`
+   - Update documentation with new node methods: `kill`, `grab`, `release`, and `__repr`.
+   - Add @deprecated tag per "Lua Language Server", compatible with Ldoc
+   - Fix makefile to build YDBDoc against the current directory's docs.
+   - Other minor documentation improvements.
 v2.2 First version to generate YDB docs for inclusion into Lua section of official YDB manual
 v2.1 Additional 3.6x speed improvement on node creation (now 47x v1.x) - PR #26
  - Bugfix: yottadb.set(node, nil) now returns nil like its docs say it should

@@ -15,5 +15,16 @@ backtick_references = true
 format = 'markdown'
 sort = true
 
+-- format @deprecated tag
+custom_display_name_handler = function(item, default_handler)
+  if item.tags.deprecated then
+    return default_handler(item) .. ('  [deprecated %s]:'):format(item.tags.deprecated[1])
+  end
+  return default_handler(item)
+end
+
 alias('example', 'usage')
-custom_tags = {{'invocation', title='Invocation', hidden=true}}
+custom_tags = {
+    {'invocation', title='Invocation', hidden=true},
+    {'deprecated', title='Deprecated', hidden=true},
+}
