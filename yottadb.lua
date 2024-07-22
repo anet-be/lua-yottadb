@@ -1,7 +1,7 @@
 -- Copyright 2021-2022 Mitchell and Berwyn Hoyt. See LICENSE.
 
 --- Lua-bindings for YottaDB, sponsored by the [University of Antwerp Library](https://www.uantwerpen.be/en/library/).
--- See [README](https://github.com/anet-be/lua-yottadb/blob/master/README.md) for a quick introduction with examples. <br>
+-- See [README](https://github.com/anet-be/lua-yottadb#overview) for a quick introduction with examples. <br>
 -- Home page: [https://github.com/anet-be/lua-yottadb/](https://github.com/anet-be/lua-yottadb/)
 -- @module yottadb
 
@@ -1370,7 +1370,7 @@ end
 -- override class methods by adding them to `new_metatable` either before or after calling inherit.
 -- Any class method the user does not define in `new_metatable` will default to the class method of the superclass.
 -- If desired, the new class may be further subclassed, also using `inherit`. Refer to the example below, and further
--- explanation in the [README](https://github.com/anet-be/lua-yottadb#class-inheritance).
+-- explanation in the README on [class inheritance](https://github.com/anet-be/lua-yottadb#class-inheritance).
 -- @function M.inherit
 -- @param node_func `yottadb.node` or a descendent that inherits from it using `inherit`
 -- @param[opt] metatable to use for the new node class. Defaults to `{}`.
