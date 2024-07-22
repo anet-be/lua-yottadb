@@ -1190,7 +1190,7 @@ The returned function will generate nodes of a new class (a new metatable). You 
 override class methods by adding them to ``new_metatable`` either before or after calling inherit.
 Any class method the user does not define in ``new_metatable`` will default to the class method of the superclass.
 If desired, the new class may be further subclassed, also using ``inherit``. Refer to the example below, and further
-explanation in the `README <https://github.com/anet-be/lua-yottadb#class-inheritance>`_.
+explanation in the README on `class inheritance <https://github.com/anet-be/lua-yottadb#class-inheritance>`_.
 
 
 
