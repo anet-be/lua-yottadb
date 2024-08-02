@@ -1133,11 +1133,11 @@ Dump the specified node tree.
 
 
 
-~~~~~~~~~~~~~~~~~~~~~~~
-require (Mprototypes)
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+require (Mprototypes, debug)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Import M routines as Lua functions specified in ydb 'call-in' file.
+Import M routines as Lua functions specified in a ydb 'call-in' file.
 
 See example call-in file `arithmetic.ci <https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci>`_
 and matching M file `arithmetic.m <https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m>`_.
@@ -1148,6 +1148,10 @@ and matching M file `arithmetic.m <https://github.com/anet-be/lua-yottadb/blob/m
   A list of lines in the format of ydb 'call-in' files required by ``ydb_ci()``.
   If the string contains ``:`` it is considered to be the call-in specification itself;
   otherwise it is treated as the filename of a call-in file to be opened and read.
+
+* ``debug``:
+  When neither false nor nil, tell Lua not to delete the temporary preprocessed call-in table file it created.
+  The name of this file will be stored in the ``__ci_filename`` field of the returned table.
 
 
 :Returns:
@@ -1163,7 +1167,7 @@ and matching M file `arithmetic.m <https://github.com/anet-be/lua-yottadb/blob/m
     :dedent: 2
     :force:
 
-      $ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
+      $ export ydb_routines=examples   # put arithmetic.m into ydb path
       $ lua -lyottadb
       arithmetic = yottadb.require('examples/arithmetic.ci')
       arithmetic.add_verbose("Sum is:", 2, 3)

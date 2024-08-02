@@ -737,6 +737,8 @@ int luaopen__yottadb(lua_State *L) {
   lua_pushboolean(L, true), lua_setfield(L, -2, "YDB_DEL_TREE");  // these 2 values are changed from libyottadb.h so delete()
   lua_pushboolean(L, false), lua_setfield(L, -2, "YDB_DEL_NODE");  // can detect their type is not string/number. No API change.
   lua_pushstring(L, LUA_YOTTADB_VERSION_STRING), lua_setfield(L, -2, "_VERSION");
+
+  // Create Lua table YDB_CI_PARAM_TYPES to hold constants specified by yottadb_types
   lua_createtable(L, 0, (sizeof(yottadb_types)/sizeof(const_Reg))-1);
   for (const_Reg *c = &yottadb_types[0]; c->name; c++) {
     lua_pushinteger(L, c->value), lua_setfield(L, -2, c->name);
