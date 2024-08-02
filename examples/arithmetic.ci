@@ -2,26 +2,29 @@
 
 // Format of lines in this file:
 //<c-call-name> : <ret-type> <label-ref> ([<direction>:<param-type>,...])
-// where <ret-type> may only be:
-//      void
-//      [unsigned]integer: (ydb_[u]long_t*)
-//      null-terminated string: ydb_char_t*  (see note below re use as an IO)
-//      string: ydb_string_t* [preallocation]
+// where <ret-type> and <param-type> may be:
+//      [unsigned]integer: ydb_[u]long_t OR [u]long
+//      [unsigned]int32: ydb_[u]int_t OR [u]int (32-bit),
+//      [unsigned]int64: ydb_[u]int64_t OR [u]int64 (64-bit platforms only)
+//      [unsigned]long: ydb_[u]long_t OR [u]long (32 or 64-bit depending on platform)
+//      floating point: ydb_float_t, ydb_double_t OR float, double
+//      null-terminated string: ydb_char_t* OR char*  (see note below re use as an IO)
+//      string: ydb_string_t* [preallocation] OR ydb_buffer_t* [preallocation]
 //        (preallocation is the amount of bytes Lua should allocate for output strings from M)
-// where <param_type> may be any of the above, plus:
-//      [unsigned]int32: ydb_[u]int_t (32-bit),
-//      [unsigned]int64: ydb_[u]int64_t (64-bit platforms only)
-//      [unsigned]long: ydb_[u]long_t (32 or 64-bit depending on platform)
-//      floating point: ydb_float_t, ydb_double_t
-//    each type may optionally be followed by '*' for pointer type (required for O and IO direction)
+// and <ret-type> may also be:
+//      void
+//    for O and IO direction, each type must be followed by '*' to specify pointer type
 // where <direction> may be: I, O, or IO (in/out to M; outputs may only be pointer types)
 // Notes:
 //   - between YDB r1.26 - r1.35, ydb_string_t* as an IO cannot output more characters than were input (but ydb_char_t* can).
 //   - ydb_char_t* as an output/retval is discouraged as preallocation is always max (1MB) to prevent overruns.
 //   - ydb_char_t* cannot return data containing '\0' characters since '\0' determines its end.
-//   - ydb_buffer_t* is also accepted but lua-yottadb automatically converts between it and ydb_string_t* for best efficiency/support.
-//   - double/int/float don't actually work with Lua and so are automatically converted to pointer types
+//   - ydb_buffer_t*/ydb_string_t*: lua-yottadb automatically converts between these for best efficiency/support.
+//   - float is converted to double since Lua doesn't use floats (this avoids unexpected noise in the insignificant bits).
+//   - double/int/float don't actually work with Lua and so are automatically converted to double*/int*/double*.
+//   - non-pointer return types are not allowed by YottaDB, so lua-yottadb automatically converts them to pointer types.
 
-add_verbose: ydb_string_t*[1024] addVerbose^arithmetic(I:ydb_string_t*, I:ydb_long_t, I:ydb_long_t)
-add: ydb_long_t* add^arithmetic(I:ydb_long_t, I:ydb_long_t)
-sub: ydb_long_t* sub^arithmetic(I:ydb_long_t, I:ydb_long_t)
+add_verbose: string*[1024] addVerbose^arithmetic(I:string*, I:long, I:long)
+add: long* add^arithmetic(I:long, I:long)
+sub: long* sub^arithmetic(I:long, I:long)
+addfloats: float* add^arithmetic(I:float, I:float)

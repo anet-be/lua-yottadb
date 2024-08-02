@@ -821,16 +821,18 @@ local function parse_prototype(line, ci_handle)
   return routine_name, func
 end
 
---- Import M routines as Lua functions specified in ydb 'call-in' file. <br>
+--- Import M routines as Lua functions specified in a ydb 'call-in' file. <br>
 -- See example call-in file [arithmetic.ci](https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.ci)
 -- and matching M file [arithmetic.m](https://github.com/anet-be/lua-yottadb/blob/master/examples/arithmetic.m).
 -- @param Mprototypes A list of lines in the format of ydb 'call-in' files required by `ydb_ci()`.
 -- If the string contains `:` it is considered to be the call-in specification itself;
 -- otherwise it is treated as the filename of a call-in file to be opened and read.
+-- @param debug When neither false nor nil, tell Lua not to delete the temporary preprocessed call-in table file it created.
+-- The name of this file will be stored in the `__ci_filename` field of the returned table.
 -- @return A table of functions analogous to a Lua module.
 -- Each function in the table will call an M routine specified in `Mprototypes`.
 -- @example
--- $ export ydb_routines=examples   # put arithmetic.m (below) into ydb path
+-- $ export ydb_routines=examples   # put arithmetic.m into ydb path
 -- $ lua -lyottadb
 -- arithmetic = yottadb.require('examples/arithmetic.ci')
 -- arithmetic.add_verbose("Sum is:", 2, 3)
@@ -838,7 +840,7 @@ end
 -- -- Sum is: 5
 -- arithmetic.sub(5,7)
 -- -- -2
-function M.require(Mprototypes)
+function M.require(Mprototypes,debug)
   local routines = {}
   if not Mprototypes:find(':', 1, true) then
     -- read call-in file
@@ -847,38 +849,60 @@ function M.require(Mprototypes)
     Mprototypes = f:read('a')
     f:close()
   end
-  -- preprocess call-in types that can't be used with wrapper caller ydb_call_variadic_plist_func()
-  Mprototypes = Mprototypes:gsub('ydb_double_t%s*%*?', 'ydb_double_t*')
-  Mprototypes = Mprototypes:gsub('ydb_float_t%s*%*?', 'ydb_float_t*')
-  Mprototypes = Mprototypes:gsub('ydb_int_t%s*%*?', 'ydb_int_t*')
-  if ydb_release < 1.36 then  Mprototypes = Mprototypes:gsub('ydb_buffer_t%s*%*', 'ydb_string_t*')  end
-  if ydb_release >= 1.36 then
-    -- Convert between buffer/string types for efficiency (lets user just use ydb_string_t* all the time without thinking about it
-    Mprototypes = Mprototypes:gsub('IO:ydb_string_t%s*%*', 'IO:ydb_buffer_t*')
-    Mprototypes = Mprototypes:gsub('([^IO][IO]):ydb_buffer_t%s*%*', '%1:ydb_string_t*')
-    -- Also replace buffer with string in the retval (first typespec in the line)
-    -- (note: %f[^\n\0] below, captures beginning of line or string)
-    Mprototypes = Mprototypes:gsub('(\n%s*[A-Za-z0-9_]+%s*:%s*)ydb_buffer_t%s*%*', '%1ydb_string_t*')
-    Mprototypes = Mprototypes:gsub('^(%s*[A-Za-z0-9_]+%s*:%s*)ydb_buffer_t%s*%*', '%1ydb_string_t*')
+
+  -- now preprocess the call-in table to make it more suited to lua-yottadb
+  -- first, declare a function that will be passed every string of types, for potential substitution
+  local function type_replacer(before,types,after)
+    local isretval = not types:find(':')  -- if we're replacing the retval, there is no ':' in types
+    -- convert floats to doubles since Lua doesn't use floats. Avoids unexpected junk in the insignificant figures
+    types = types:gsub('float', 'double')
+    -- any non-pointer types that can't be used with ydb_call_variadic_plist_func(), convert to pointer types
+    for _,typ in pairs{'ydb_double_t','ydb_int_t','double','int'} do
+      types = types:gsub('(' .. typ .. '%s*)[*]*([,) ])', '%1*%2')
+    end
+    -- convert any non-pointer retvals (which are illegal) to pointer types
+    if isretval and not types:find('void') then  types=types:gsub('([A-Za-z0-9_]+)[%s*]+', '%1* ')  end
+    if ydb_release < 1.36 then
+      -- make ydb <1.36 emulate 'buffer' type, even though it's not as good as string for output-only (O:) parameters
+      types = types:gsub('ydb_buffer_t%s*%*', 'ydb_string_t*')
+    end
+    if ydb_release >= 1.36 then
+      -- convert between buffer/string types for best efficiency (lets user use either one without thinking about it)
+      types = types:gsub('IO%s*:%s*ydb_string_t%s*%*', 'IO:ydb_buffer_t*')  -- IO: params
+      types = types:gsub('IO%s*:%s*string%s*%*', 'IO:ydb_buffer_t*')
+      types = types:gsub('([^IO][IO])%s*:%s*ydb_buffer_t%s*%*', '%1:ydb_string_t*') -- I: or O: params
+      -- always replace 'buffer' with 'string' in the retval as it is equivalent of an O: param
+      if isretval then  types=types:gsub('ydb_buffer_t%s*%*', 'ydb_string_t*')  end
+    end
+    return before..types..after
   end
-  -- remove preallocation specs for ydb which (as of r1.34) can only process them in call-out tables
-  local ydb_prototypes = Mprototypes:gsub('%b[]', '')
+  -- replace things in parameters, i.e. between parentheses, and then replace things in retvals, i.e. immediately after first ':'
+  -- note: `(\1?)` is my substitute for an empty capture since `()` is a special Lua code that returns the position in the string
+  Mprototypes = Mprototypes:gsub('(\1?)(%([^\n]*%))(\1?)', type_replacer )
+  Mprototypes = Mprototypes:gsub('^(%s*[A-Za-z0-9_]+%s*:%s*)([^%s*]+[%s*]+)(\1?)', type_replacer) -- first line's retval
+  Mprototypes = Mprototypes:gsub('(\n%s*[A-Za-z0-9_]+%s*:%s*)([^%s*]+[%s*]+)(\1?)', type_replacer) -- other lines' retval
+  -- remove preallocation specs for ydb which can only process them in call-out tables not call-in tables
+  local ydb_prototypes = Mprototypes  -- take a copy for our own parser which requires preallocation specs
+  Mprototypes = Mprototypes:gsub('%b[]', '')
+
   -- write call-in file and load into ydb
   local filename = os.tmpname()
   local f = assert(io.open(filename, 'w'), string.format("cannot open temporary call-in file %q", filename))
-  assert(f:write(ydb_prototypes), string.format("cannot write to temporary call-in file %q", filename))
+  assert(f:write(Mprototypes), string.format("cannot write to temporary call-in file %q", filename))
   f:close()
   local ci_handle = _yottadb.ci_tab_open(filename)
-  routines.__ci_filename = filename
+  if debug then  routines.__ci_filename = filename  end
   routines.__ci_table_handle = ci_handle
+
   -- process ci-table ourselves to get routine names and types to cast
+  -- do this after ydb has handled it to let ydb catch any errors in the table
   local line_no = 0
-  for line in Mprototypes:gmatch('([^\n]*)\n?') do
+  for line in ydb_prototypes:gmatch('([^\n]*)\n?') do
     line_no = line_no+1
     local ok, routine, func = pcall(parse_prototype, line, ci_handle)
     if routine then  routines[routine] = func end
   end
-  os.remove(filename) -- cleanup
+  if not debug then  os.remove(filename)  end  -- cleanup
   return routines
 end
 

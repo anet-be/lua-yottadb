@@ -7,6 +7,7 @@
 v3.0 Introduce inheritable nodes using yottadb.inherit()
  - Update examples/startup.lua to properly detect inherited nodes
  - Breaking change to lock() and lock_incr() which now wait forever with nil timeout, like the M LOCK command
+ - Support all call-in table types, now including those not starting with `ydb_`, like `int`
  - Docs:
    - Document `yottadb.inherit()`
    - Update documentation with new node methods: `kill`, `grab`, `release`, and `__repr`.
