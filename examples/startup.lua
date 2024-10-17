@@ -2,7 +2,7 @@
 
 -- this file is public domain
 
-M = {}
+local M = {}
 
 -- Return a recursive dump table (or iterator) `tbl`, with indentation
 --   Return as both a string (first) and a table of lines (second).
