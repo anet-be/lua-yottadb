@@ -15,9 +15,11 @@ This project provides a shared library that lets the [Lua](https://lua.org/) lan
 ```bash
 git clone https://github.com/anet-be/lua-yottadb.git
 cd lua-yottadb
-make
-sudo make install
+make [lua=/path/to/lua]
+sudo make install [lua=/path/to/lua]
 ```
+
+Specify your `path/to/lua` if you are using a Lua version other than the default run by `lua`. For more unique installation requirements see below at [Installation Detail](#installation-detail).
 
 ## Intro by example
 
@@ -271,23 +273,17 @@ If you need more detail on signals, here is a discussion in the MLua repository 
 ### Requirements
 
 * YottaDB 1.34 or later.
-* Lua 5.1 or greater. The Makefile will use your system's Lua version by default. To override this, run `make lua=/path/to/lua`.
-  * Lua-yottadb gets automatically tested against every major Lua version from 5.1 onward using its github actions [workflow here](.github/workflows/automation.yml).
+* Lua 5.1 or greater. Lua-yottadb gets automatically tested against every major Lua version from 5.1 onward using its github actions [workflow here](.github/workflows/automation.yml).
 
-If more specifics are needed, build the bindings by running `make ydb_dist=/path/to/YDB/install` where */path/to/YDB/install* is the path to your installation of YottaDB that contains its header and shared library files.
+The basic installation method is specified in the [QuickStart](#quickstart). If, instead, you need to build the module for an alternate YottaDB installation, do so by running `make ydb_dist=/path/to/YDB/install` where `/path/to/YDB/install` is the path to your installation of YottaDB that contains its header and shared library files.
 
-Install the bindings by running `make install` or `sudo make install`, or copy the newly built
-*_yottadb.so* and *yottadb.lua* files to somewhere in your Lua path. You can then use `local
-yottadb = require('yottadb')` from your Lua scripts to communicate with YottaDB.  Then set up
-your YDB environment as usual (i.e. source /path/to/YDB/install/ydb_env_set) before running
-your Lua scripts.
+Install the module by running `make install` or `sudo make install`, or copy the newly built `_yottadb.so` and `yottadb.lua` files to somewhere in your Lua path.
 
-The *Makefile* looks for Lua header files either in your compiler's default include path such
-as /usr/local/include (the lua install default) or in */usr/include/luaX.Y*. Where *X.Y*
-is the lua version installed on your system. If your Lua headers are elsewhere, run
-`make lua_include=/path/to/your/lua/headers`.
+Now you should be able to use `ydb = require('yottadb')` from your Lua scripts to communicate with YottaDB. Set up your YDB environment as usual (i.e. `source /path/to/YDB/install/ydb_env_set`) before running your Lua scripts.
 
-### Example install of yottadb with minimal privileges
+The `make` command looks for Lua header files either in your compiler's default include path such as `/usr/local/include` (the Lua install default) or in `/usr/include/luaX.Y`. Where `X.Y` is the Lua version installed on your system. If your Lua headers are elsewhere, run `make lua_include=/path/to/your/lua/headers`.
+
+### Example install of YottaDB with minimal privileges
 
 The following example builds and installs a local copy of YottaDB to *YDB/install* in the current
 working directory. The only admin privileges required are to change ownership of *gtmsecshr*
